@@ -2340,9 +2340,27 @@ if (grp === 'DF') return { Defans: clamp(ovr + 2 + j(1)), Fizik: clamp(ovr + 1 +
 if (grp === 'OS') return { Pas: clamp(ovr + 2 + j(1)), Vizyon: clamp(ovr + 1 + j(2)), Şut: clamp(ovr - (pos === 'OOS' ? 1 : 4) + j(3)), Defans: clamp(ovr - (pos === 'DOS' ? 1 : 6) + j(4)) };
 return { Şut: clamp(ovr + (pos === 'SNT' ? 2 : 0) + j(1)), Hız: clamp(ovr + 1 + j(2)), Dribling: clamp(ovr + 1 + j(3)), Pas: clamp(ovr - 4 + j(4)) };
 }
+function computeRealisticMarketValue(ovr, age) {
+const o = Math.max(55, Math.min(95, Number(ovr) || 70));
+const a = Number(age) || 25;
+// Exponential 2026 Transfermarkt-style curve: 65->0.8M, 70->2.3M, 75->7.5M, 80->23M, 85->62M, 88->102M, 90->135M, 92->172M
+let base = 0.35 * Math.pow(1.225, Math.max(0, o - 60));
+if (o >= 88) base += (o - 87) * 11;
+let ageMult = 1.0;
+if (a <= 20) ageMult = 1.32;
+else if (a <= 23) ageMult = 1.18;
+else if (a <= 27) ageMult = 1.04;
+else if (a <= 29) ageMult = 0.85;
+else if (a <= 31) ageMult = 0.62;
+else if (a <= 33) ageMult = 0.38;
+else if (a <= 35) ageMult = 0.22;
+else ageMult = 0.12;
+const raw = Math.max(0.3, Math.min(210, base * ageMult));
+return Number(raw >= 20 ? raw.toFixed(0) : raw.toFixed(1));
+}
 function makePlayer(name, pos, ovr, age, altPos, potential) {
-const value = Number((Math.max(0.5, (ovr - 60) * 0.65 * (age < 24 ? 1.35 : (age > 32 ? 0.65 : 1.0)))).toFixed(1));
-const wage = Number((Math.max(0.3, (ovr - 65) * 0.16)).toFixed(1));
+const value = computeRealisticMarketValue(ovr, age);
+const wage = Number((Math.max(0.2, value * 0.085)).toFixed(1));
 const obj = { id: uid(), name, pos, altPos: Array.isArray(altPos) ? altPos.slice() : [], ovr, age, value, wage, contractUntil: 2026 + randInt(2, 4), stamina: 100, goals: 0, assists: 0, injuredWeeks: 0, suspendedWeeks: 0, yellowCount: 0, lastOvrChange: 0, morale: 72, motmCount: 0 };
 if (potential) obj.potential = potential;
 return obj;
@@ -3415,13 +3433,13 @@ return getLineupPlayers(club).map(p => ({ name: p.name, pos: p.pos, ovr: p.ovr }
 function simulateSingleMatch(match) {
 const home = getClub(match.home), away = getClub(match.away);
 const hb = getTacticalBonus(home), ab = getTacticalBonus(away);
-const myEdgeH = home.id === game.myClubId ? 1.4 : 0;
-const myEdgeA = away.id === game.myClubId ? 1.4 : 0;
-const diff = ((getClubEffectiveOvr(home) + 2.0 + myEdgeH + hb.att - ab.def) - (getClubEffectiveOvr(away) + myEdgeA + ab.att - hb.def)) / 6.2;
+const myEdgeH = home.id === game.myClubId ? 2.2 : 0;
+const myEdgeA = away.id === game.myClubId ? 2.2 : 0;
+const diff = ((getClubEffectiveOvr(home) + 1.8 + myEdgeH + hb.att - ab.def) - (getClubEffectiveOvr(away) + myEdgeA + ab.att - hb.def)) / 5.0;
 let hg = 0, ag = 0;
 for (let i = 0; i < 6; i++) {
-if (Math.random() < Math.max(0.03, Math.min(0.52, 0.21 + diff * 0.125))) hg++;
-if (Math.random() < Math.max(0.025, Math.min(0.48, 0.16 - diff * 0.125))) ag++;
+if (Math.random() < Math.max(0.02, Math.min(0.58, 0.21 + diff * 0.155))) hg++;
+if (Math.random() < Math.max(0.02, Math.min(0.52, 0.15 - diff * 0.155))) ag++;
 }
 const isMyMatch = true;
 const events = [];
@@ -4109,14 +4127,14 @@ setTimeout(() => openHalftimeModal(), 300);
 const tm = liveState.tempoMod || 1;
 const roll = Math.random();
 if (roll < 0.086 * tm) {
-const myPrepH = liveState.home.id === game.myClubId ? 1.8 : 0;
-const myPrepA = liveState.away.id === game.myClubId ? 1.8 : 0;
-const homeAttProb = Math.max(0.22, Math.min(0.78, 0.50 + ((hPow + myPrepH) - (aPow + myPrepA)) * 0.0155));
+const myPrepH = liveState.home.id === game.myClubId ? 2.6 : 0;
+const myPrepA = liveState.away.id === game.myClubId ? 2.6 : 0;
+const homeAttProb = Math.max(0.16, Math.min(0.84, 0.50 + ((hPow + myPrepH) - (aPow + myPrepA)) * 0.0235));
 const homeAttack = Math.random() < homeAttProb;
 const attClub = homeAttack ? liveState.home : liveState.away, defClub = homeAttack ? liveState.away : liveState.home;
 const scorer = pickScorer(attClub);
 const sName = scorer ? scorer.name : 'Forvet';
-const goalChance = Math.max(0.16, Math.min(0.42, 0.27 + ((homeAttack ? hPow - aPow : aPow - hPow) * 0.013)));
+const goalChance = Math.max(0.12, Math.min(0.48, 0.26 + ((homeAttack ? hPow - aPow : aPow - hPow) * 0.017)));
 const shotXg = Number((0.09 + Math.random() * 0.35).toFixed(2));
 if (homeAttack) { liveState.hShots++; liveState.hXg += shotXg; } else { liveState.aShots++; liveState.aXg += shotXg; }
 if (Math.random() < goalChance) {
@@ -4861,23 +4879,62 @@ document.getElementById('mrTabLineupsBtn').onclick = () => setMrTab('lineups');
 setMrTab('events');
 document.getElementById('matchReportModal').classList.remove('hidden');
 }
+function collectUserCupResultsForWeek(w, clubId) {
+const lines = [];
+if (!game || !game.cups || !clubId) return lines;
+Object.values(game.cups).forEach(cup => {
+if (cup.format === 'league36_2leg') {
+cup.lpWeeks.forEach((cw, mdIdx) => {
+if (cw === w && cup.matchdays[mdIdx]) {
+const m = cup.matchdays[mdIdx].find(x => x.played && (x.home === clubId || x.away === clubId));
+if (m) lines.push(`⭐ ${cup.short} (Lig ${mdIdx + 1}): ${getClub(m.home).name} ${m.hg} - ${m.ag} ${getClub(m.away).name}`);
+}
+});
+cup.weeks.forEach((cw, rIdx) => {
+if (cw === w && cup.rounds[rIdx]) {
+const m = cup.rounds[rIdx].find(x => x.played && (x.home === clubId || x.away === clubId));
+if (m) lines.push(`⭐ ${cup.short} (${EURO_2LEG_NAMES[rIdx]}): ${getClub(m.home).name} ${m.hg} - ${m.ag} ${getClub(m.away).name}${m.aggTxt ? ' (' + m.aggTxt + ')' : ''}${m.penTxt || ''}`);
+}
+});
+} else {
+cup.weeks.forEach((cw, rIdx) => {
+if (cw === w && cup.rounds[rIdx]) {
+const m = cup.rounds[rIdx].find(x => x.played && (x.home === clubId || x.away === clubId));
+if (m) lines.push(`🏆 ${cup.name} (${CUP_ROUND_NAMES[rIdx]}): ${getClub(m.home).name} ${m.hg} - ${m.ag} ${getClub(m.away).name}${m.penTxt || ''}`);
+}
+});
+}
+});
+return lines;
+}
 function simulateUntilWeek(targetWeekIdx) {
 if (game.week >= getTotalWeeks() || targetWeekIdx < game.week) return;
 if (game.managerMeta && game.managerMeta.meetingPending) { showToast('Önce yönetim toplantısına katılmalısın!'); openBoardMeetingModal(); return; }
 snapshotPrevRanks();
 const club = myClub(), results = [];
 for (let w = game.week; w <= targetWeekIdx; w++) {
+// 1. Play any scheduled Domestic Cup / European Cup matches for this week BEFORE league match!
+processAllCupsForWeek(w, true);
+collectUserCupResultsForWeek(w, club.id).forEach(line => results.push(line));
+// 2. Play active league week
 const weekMatches = game.schedule[w];
 weekMatches.forEach(m => { if (!m.played) simulateSingleMatch(m); });
 const myM = weekMatches.find(m => m.home === club.id || m.away === club.id);
-results.push(`Hafta ${w + 1} (${game.weekDates[w]}): ${getClub(myM.home).name} ${myM.hg} - ${myM.ag} ${getClub(myM.away).name}`);
+if (myM) results.push(`Hafta ${w + 1} (${game.weekDates[w] || ''}): ${getClub(myM.home).name} ${myM.hg} - ${myM.ag} ${getClub(myM.away).name}`);
+// 3. Advance all other 6 leagues so ALL AI managers & tables progress in lockstep!
+simulateOtherLeaguesWeek(w);
 game.clubs.forEach(c => { c.squad.forEach(p => { p.stamina = Math.min(100, p.stamina + 5); }); });
 game.week = w + 1;
 processWeeklyCycle();
+pruneOldAiReports();
 checkBoardStatusAfterWeek();
 if (game.managerMeta.meetingPending) { targetWeekIdx = w; break; }
 }
 game.week = targetWeekIdx + 1;
+if (game.week >= getTotalWeeks()) {
+finishAllRemainingWorldCompetitions();
+if (!game.pendingYouthIntake) game.pendingYouthIntake = generateYouthIntake(myClub());
+}
 recordSeasonIfFinished();
 saveActiveCareer(); renderHeader();
 if (currentTab === 'calendar') renderCalendar(); else renderHome();
@@ -5773,11 +5830,11 @@ function simulateVirtualRoundForLeague(clubs) {
 const sh = clubs.slice().sort(() => Math.random() - 0.5);
 for (let i = 0; i + 1 < sh.length; i += 2) {
 const h = sh[i], a = sh[i + 1];
-const diff = ((h.ovr || 74) + 2.0 - (a.ovr || 74)) / 7.5;
+const diff = ((h.ovr || 74) + 1.8 - (a.ovr || 74)) / 5.2;
 let hg = 0, ag = 0;
 for (let c = 0; c < 6; c++) {
-if (Math.random() < Math.max(0.03, Math.min(0.50, 0.21 + diff * 0.115))) hg++;
-if (Math.random() < Math.max(0.025, Math.min(0.46, 0.16 - diff * 0.115))) ag++;
+if (Math.random() < Math.max(0.02, Math.min(0.56, 0.21 + diff * 0.15))) hg++;
+if (Math.random() < Math.max(0.02, Math.min(0.50, 0.15 - diff * 0.15))) ag++;
 }
 h.stats.p++; a.stats.p++;
 h.stats.gf += hg; h.stats.ga += ag;
@@ -8005,6 +8062,122 @@ new MutationObserver(sweep).observe(document.body, { childList: true });
 setTimeout(sweep, 800);
 setTimeout(sweep, 2500);
 })();
+
+
+// ==============================================================================
+// SOCCER SIMULATOR v30 — REALISTIC EURO TIERING & MARKET VALUE MIGRATION
+// ==============================================================================
+
+// Re-implement initSeasonCups so ŞL STRICTLY gets the 36 strongest/top-qualifying clubs,
+// AL gets the next 36 mid-upper clubs, and KL gets the next 36 lower-upper clubs!
+initSeasonCups = function(g, prevStandingsMap) {
+const cups = {};
+const byId = id => g.clubs.find(c => c.id === id);
+const ensureIncludeMine = (arr, allowedLeagues) => {
+const mc = g.myClubId ? byId(g.myClubId) : null;
+if (mc && allowedLeagues.includes(mc.leagueId) && !arr.includes(mc.id)) arr[arr.length - 1] = mc.id;
+return arr;
+};
+DOMESTIC_CUPS_META.forEach(cm => {
+let pool = [];
+if (cm.id === 'tr_cup') {
+const sl = g.clubs.filter(c => c.leagueId === 'super_lig').sort((a,b) => b.ovr - a.ovr).slice(0, 10).map(c => c.id);
+const t1 = g.clubs.filter(c => c.leagueId === 'tff_1_lig').sort((a,b) => b.ovr - a.ovr).slice(0, 6).map(c => c.id);
+pool = sl.concat(t1);
+} else {
+pool = g.clubs.filter(c => cm.leagues.includes(c.leagueId)).sort((a,b) => b.ovr - a.ovr).slice(0, 16).map(c => c.id);
+}
+pool = ensureIncludeMine(pool, cm.leagues).sort(() => Math.random() - 0.5);
+cups[cm.id] = buildBracket16(cm, pool, false);
+});
+
+const topLeagues = ['premier_league', 'la_liga', 'serie_a', 'bundesliga', 'ligue_1', 'super_lig'];
+const ucl = [], uel = [], uecl = [], used = new Set();
+const addUnique = (arr, id) => { if (id && byId(id) && !used.has(id) && arr.length < 36) { arr.push(id); used.add(id); } };
+
+if (!prevStandingsMap) {
+// Season 1: Verified 2026-27 ŞL clubs first, then fill ŞL strictly by highest OVR across all 6 top-tier leagues!
+const s1UclSeeds = [
+'ars','mci','liv','mun','avl','che','tot','new',
+'rma','bar','atm','vil','bet','bil','rso',
+'int','nap','rom','mil','juv','ata','laz','com',
+'bay','bvb','rbl','b04','vfb','sge',
+'psg','om','mon','lyo','lil','len',
+'gs','fb'
+];
+s1UclSeeds.forEach(id => addUnique(ucl, id));
+// Fill remaining ŞL (if any), then AL (next 36 strongest!), then KL (next 36 below AL!)
+const allRemaining = g.clubs
+.filter(c => c.leagueId !== 'tff_1_lig' && !used.has(c.id))
+.sort((a, b) => (b.ovr || 74) - (a.ovr || 74));
+allRemaining.forEach(c => {
+if (ucl.length < 36) addUnique(ucl, c.id);
+else if (uel.length < 36) addUnique(uel, c.id);
+else if (uecl.length < 36) addUnique(uecl, c.id);
+});
+} else {
+// Season 2+: Seed strictly by League Standings tier!
+// 1. ŞL: Top 4 of Big 5 (20) + Top 2 of Süper Lig (2) + next best 5th/6th place & highest OVR qualifiers -> 36
+topLeagues.forEach(lid => {
+const st = prevStandingsMap[lid] || [];
+const lm = getLeagueMeta(lid);
+st.slice(0, lm.ucl).forEach(id => addUnique(ucl, id));
+});
+// Fill rest of ŞL from 5th-7th place of Big 5 + 3rd of TR sorted by OVR
+const uclFill = [];
+topLeagues.forEach(lid => {
+const st = prevStandingsMap[lid] || [];
+const lm = getLeagueMeta(lid);
+st.slice(lm.ucl, lm.ucl + 4).forEach(id => { if (!used.has(id) && byId(id)) uclFill.push(byId(id)); });
+});
+uclFill.sort((a, b) => b.ovr - a.ovr).forEach(c => addUnique(ucl, c.id));
+// 2. AL: Next highest-ranked clubs (ranks 5-11 across the 6 leagues) sorted by league rank + OVR
+const alPool = [];
+topLeagues.forEach(lid => {
+const st = prevStandingsMap[lid] || [];
+st.slice(2, 12).forEach((id, idx) => { if (!used.has(id) && byId(id)) alPool.push({ club: byId(id), score: byId(id).ovr - idx * 0.8 }); });
+});
+alPool.sort((a, b) => b.score - a.score).forEach(x => addUnique(uel, x.club.id));
+// 3. KL: Next 36 remaining top-tier clubs
+const klPool = g.clubs.filter(c => c.leagueId !== 'tff_1_lig' && !used.has(c.id)).sort((a, b) => b.ovr - a.ovr);
+klPool.forEach(c => addUnique(uecl, c.id));
+}
+
+EURO_CUPS_META.forEach(em => {
+const ent = em.id === 'ucl' ? ucl : (em.id === 'uel' ? uel : uecl);
+cups[em.id] = buildEuroLeague36(em, ent);
+});
+return cups;
+};
+
+// Re-sync realistic market values, proportional budgets & realistic Euro cups on v30 load!
+const _v29EnsureWorld = ensureWorldData;
+ensureWorldData = function(g) {
+_v29EnsureWorld(g);
+if (g.v30Applied !== true) {
+g.clubs.forEach(c => {
+c.squad.forEach(p => {
+p.value = computeRealisticMarketValue(p.ovr, p.age);
+p.wage = Number((Math.max(0.2, p.value * 0.085)).toFixed(1));
+});
+// Scale transfer budget realistically if still on old low scale
+if (c.ovr >= 85 && c.budget < 120) c.budget = Number((c.budget * 1.65).toFixed(1));
+else if (c.ovr >= 80 && c.budget < 65) c.budget = Number((c.budget * 1.45).toFixed(1));
+else if (c.ovr >= 75 && c.budget < 25) c.budget = Number((c.budget * 1.30).toFixed(1));
+});
+if (g.market) {
+g.market.forEach(p => {
+p.value = computeRealisticMarketValue(p.ovr, p.age);
+p.wage = Number((Math.max(0.2, p.value * 0.085)).toFixed(1));
+});
+}
+// If Season 1 hasn't finished Europe yet (week < 3), re-seed European cups cleanly so Torino isn't in ŞL!
+if ((g.week || 0) < 3) {
+g.cups = initSeasonCups(g, null);
+}
+g.v30Applied = true;
+}
+};
 
 })();
 </script>
