@@ -725,6 +725,21 @@ white-space: nowrap;
 [id*="netlify" i], [class*="netlify" i], iframe[src*="netlify" i], a[href*="netlify.com"][style*="fixed"], .netlify-badge { display: none !important; visibility: hidden !important; pointer-events: none !important; opacity: 0 !important; }
 .bottom-nav { z-index: 2147483640 !important; }
 
+
+/* v31 FM Depth Styles */
+.train-pills { display:grid; grid-template-columns:repeat(2,1fr); gap:6px; }
+.train-btn { padding:7px 9px; border-radius:9px; border:1px solid var(--border-strong); background:var(--elevated); color:var(--text); font-size:11px; font-weight:700; cursor:pointer; text-align:left; transition:all 0.15s; }
+.train-btn.active { border-color:var(--accent); background:var(--accent-soft); color:var(--accent-text); }
+.fac-card { padding:11px 12px; border-radius:12px; border:1px solid var(--border-strong); background:var(--elevated); display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.award-card { padding:11px 12px; border-radius:12px; border:1px solid var(--border-strong); background:var(--elevated); border-left:4px solid #fbbf24; }
+.bosman-badge { display:inline-block; padding:1px 6px; border-radius:5px; font-size:9.5px; font-weight:800; background:rgba(16,185,129,0.2); color:#34d399; margin-left:4px; }
+.loan-badge { display:inline-block; padding:1px 6px; border-radius:5px; font-size:9.5px; font-weight:800; background:rgba(56,189,248,0.2); color:#38bdf8; margin-left:4px; }
+.mgr-stint-card { padding:9px 11px; border-radius:11px; border:1px solid var(--border-strong); background:var(--elevated); display:flex; align-items:center; gap:10px; }
+.wdl-pill { display:inline-block; padding:1px 6px; border-radius:5px; font-size:10px; font-weight:800; }
+.wdl-w { background:rgba(16,185,129,0.18); color:#34d399; }
+.wdl-d { background:rgba(245,158,11,0.18); color:#fbbf24; }
+.wdl-l { background:rgba(239,68,68,0.18); color:#f87171; }
+
 </style>
 </head>
 <body data-theme="dark" data-accent="emerald" data-pitch="striped">
@@ -1055,6 +1070,18 @@ white-space: nowrap;
 </section>
 <!-- TAB 2: TACTICS -->
 <section id="tab-tactics" class="hidden stack-md">
+<div class="surface stack-sm" style="padding:10px 12px;">
+<div style="display:flex;align-items:center;justify-content:space-between;">
+<span style="font-size:11.5px;font-weight:800;">Haftalık Antrenman Odağı</span>
+<span id="trainingActiveHint" style="font-size:10.5px;color:var(--accent-text);font-weight:700;">Bitiricilik</span>
+</div>
+<div class="train-pills">
+<button type="button" data-train-focus="attack" class="train-btn active">🎯 Bitiricilik <span style="display:block;font-size:9.5px;color:var(--muted);font-weight:500;">Maçta +Hücum bonusu</span></button>
+<button type="button" data-train-focus="defense" class="train-btn">🛡️ Savunma &amp; Duran Top <span style="display:block;font-size:9.5px;color:var(--muted);font-weight:500;">Maçta +Defans bonusu</span></button>
+<button type="button" data-train-focus="fitness" class="train-btn">⚡ Kondisyon Toparlama <span style="display:block;font-size:9.5px;color:var(--muted);font-weight:500;">+Ekstra dayanıklılık</span></button>
+<button type="button" data-train-focus="youth" class="train-btn">🌱 Genç Gelişimi <span style="display:block;font-size:9.5px;color:var(--muted);font-weight:500;">U23 hızlı OVR artışı</span></button>
+</div>
+</div>
 <div class="surface" style="padding:12px;">
 <div class="tactics-controls">
 <div>
@@ -1218,6 +1245,7 @@ white-space: nowrap;
 <div style="display:flex;gap:6px;">
 <button id="transferTabBuy" type="button" class="btn btn-primary">Oyuncu Al</button>
 <button id="transferTabSell" type="button" class="btn btn-ghost">Oyuncu Sat</button>
+<button id="transferTabFac" type="button" class="btn btn-ghost">Tesisler</button>
 </div>
 </div>
 <div id="transferBuyWrap" class="stack-sm">
@@ -1259,6 +1287,9 @@ white-space: nowrap;
 </div>
 <div id="transferSellWrap" class="hidden stack-sm">
 <div id="transferSellList" class="stack-sm"></div>
+</div>
+<div id="transferFacWrap" class="hidden stack-sm">
+<div id="facilitiesList" class="stack-sm"></div>
 </div>
 <div id="transferNewsCard" class="surface stack-sm" style="padding:12px;">
 <div style="display:flex;align-items:center;justify-content:space-between;">
@@ -1603,8 +1634,12 @@ white-space: nowrap;
 <div class="elevated" style="padding:7px;"><div style="font-size:10px;color:var(--muted);">Moral</div><div id="pmMorale" style="font-size:13px;font-weight:800;color:#10b981;">%72</div></div>
 <div class="elevated" style="padding:7px;"><div style="font-size:10px;color:var(--muted);">Maçın Adamı</div><div id="pmMotm" style="font-size:13px;font-weight:800;color:#fbbf24;">0</div></div>
 </div>
-<div style="display:flex;justify-content:flex-end;gap:8px;">
-<button id="pmOfferBtn" type="button" class="btn btn-primary hidden">Transfer Görüşmesi Başlat</button>
+<div id="pmAwardsBox" class="hidden" style="display:flex;flex-wrap:wrap;gap:5px;"></div>
+<div style="display:flex;justify-content:flex-end;gap:6px;flex-wrap:wrap;">
+<button id="pmRenewBtn" type="button" class="btn btn-soft hidden" style="font-size:11.5px;">Sözleşme Yenile</button>
+<button id="pmBuyOptionBtn" type="button" class="btn btn-primary hidden" style="font-size:11.5px;">Bonservisini Al</button>
+<button id="pmLoanBtn" type="button" class="btn btn-soft hidden" style="font-size:11.5px;">1 Sezon Kirala</button>
+<button id="pmOfferBtn" type="button" class="btn btn-primary hidden" style="font-size:11.5px;">Transfer Görüşmesi</button>
 <button id="closePlayerModalBtn" type="button" class="btn btn-ghost">Kapat</button>
 </div>
 </div>
@@ -2096,6 +2131,7 @@ Kalecin kırmızı kart gördü! Devam etmek için sahadan bir oyuncuyu seçip y
 <button id="seTabChampsBtn" type="button" class="btn btn-primary" style="font-size:11.5px;padding:6px 11px;">Şampiyonlar &amp; Kupalar</button>
 <button id="seTabTablesBtn" type="button" class="btn btn-ghost" style="font-size:11.5px;padding:6px 11px;">Lig Sıralamaları</button>
 <button id="seTabPromoBtn" type="button" class="btn btn-ghost" style="font-size:11.5px;padding:6px 11px;">Düşen &amp; Çıkanlar</button>
+<button id="seTabAwardsBtn" type="button" class="btn btn-ghost" style="font-size:11.5px;padding:6px 11px;">Ödüller 🏆</button>
 </div>
 <div id="seScrollBody" class="stack-md">
 <div id="seChampsWrap" class="stack-md"></div>
@@ -2110,6 +2146,7 @@ Kalecin kırmızı kart gördü! Devam etmek için sahadan bir oyuncuyu seçip y
 </div>
 </div>
 <div id="sePromoWrap" class="hidden stack-sm"></div>
+<div id="seAwardsWrap" class="hidden stack-sm"></div>
 </div>
 <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;padding-top:4px;">
 <button id="seGoToYouthBtn" type="button" class="btn btn-primary">Altyapı Seçimine Geç 🌱 →</button>
@@ -2199,6 +2236,7 @@ const FORMATIONS = {
 '5-2-3':   [{ slots:['SLK','SNT','SĞK'] }, { slots:['DOS','OS'] }, { slots:['SLB','STP','STP','STP','SĞB'] }, { slots:['KL'] }]
 };
 const CLUB_MANAGERS_2026 = {"gs": ["Okan Buruk", 53, "TR", "4-2-3-1", 84], "fb": ["Emre Belözoğlu", 46, "TR", "4-2-3-1", 80], "bjk": ["Vincenzo Italiano", 48, "IT", "4-2-3-1", 82], "ts": ["Thomas Reis", 53, "DE", "4-2-3-1", 79], "bfk": ["Nuri Şahin", 38, "TR", "4-2-3-1", 78], "sam": ["Nenad Bjelica", 55, "HR", "4-2-3-1", 76], "goz": ["Stanimir Stoilov", 59, "BG", "3-4-1-2", 77], "amd": ["Besnik Hasi", 54, "AL", "4-2-3-1", 74], "kas": ["Alfred Schreuder", 54, "NL", "4-1-4-1", 75], "kon": ["İlhan Palut", 50, "TR", "4-2-3-1", 76], "riz": ["Recep Uçar", 51, "TR", "4-1-4-1", 74], "ala": ["Uğur Uçar", 39, "TR", "4-1-4-1", 72], "gfk": ["Volkan Demirel", 45, "TR", "4-2-3-1", 74], "gb": ["Bernd Storck", 63, "DE", "3-4-3", 73], "koc": ["Selçuk İnan", 41, "TR", "4-3-3", 74], "eyp": ["Mustafa Dalcı", 53, "TR", "4-2-3-1", 72], "cor": ["Burak Yılmaz", 41, "TR", "4-2-3-1", 75], "erz": ["Serkan Özbalta", 47, "TR", "4-1-4-1", 72], "ant": ["Osman Özköylü", 55, "TR", "4-2-3-1", 71], "fkg": ["Salvatore Bocchetti", 39, "IT", "3-4-2-1", 72], "kay": ["Atila Gerin", 58, "TR", "4-2-3-1", 70], "bur": ["Mustafa Er", 46, "TR", "4-2-3-1", 72], "siv": ["Çağdaş Çavuş", 43, "TR", "4-3-3", 70], "bod": ["Burhan Eşer", 41, "TR", "4-2-3-1", 70], "ero": ["Hikmet Karaman", 66, "TR", "4-2-3-1", 73], "igd": ["Kenan Koçak", 45, "TR", "4-2-3-1", 71], "ist": ["Özer Hurmacı", 40, "TR", "4-2-3-1", 69], "pen": ["Murat Şahin", 50, "TR", "4-2-3-1", 70], "ban": ["Mustafa İzgi", 47, "TR", "4-2-3-1", 68], "sar": ["Hakan Kutlu", 54, "TR", "4-4-2", 71], "man": ["Nestor El Maestro", 43, "GB", "4-2-3-1", 70], "umr": ["Bülent Bölükbaşı", 50, "TR", "4-2-3-1", 69], "kec": ["Osman Zeki Korkmaz", 44, "TR", "4-2-3-1", 70], "bol": ["Mustapha Yatabaré", 40, "ML", "4-1-4-1", 68], "bat": ["Selçuk Şahin", 45, "TR", "4-1-4-1", 69], "mar": ["Ivaylo Petev", 51, "BG", "4-2-3-1", 70], "mug": ["Yalçın Koşukavak", 54, "TR", "4-2-3-1", 69], "van": ["Mustafa Gürsel", 52, "TR", "4-2-3-1", 69], "ars": ["Mikel Arteta", 44, "ES", "4-3-3", 89], "avl": ["Unai Emery", 55, "ES", "4-2-3-1", 86], "bou": ["Marco Rose", 50, "DE", "4-4-2", 81], "bre": ["Keith Andrews", 46, "IE", "4-2-3-1", 77], "bri": ["Fabian Hürzeler", 33, "DE", "4-2-3-1", 81], "che": ["Xabi Alonso", 45, "ES", "3-4-2-1", 89], "cov": ["Frank Lampard", 48, "GB", "4-2-3-1", 76], "cry": ["Thomas Frank", 53, "DK", "4-3-3", 82], "eve": ["David Moyes", 63, "GB", "4-2-3-1", 80], "ful": ["Álvaro Arbeloa", 43, "ES", "4-3-3", 78], "hul": ["Sergej Jakirović", 49, "BA", "4-2-3-1", 75], "ips": ["Gary O'Neil", 43, "GB", "4-2-3-1", 76], "lee": ["Daniel Farke", 50, "DE", "4-2-3-1", 78], "liv": ["Andoni Iraola", 44, "ES", "4-2-3-1", 86], "mci": ["Enzo Maresca", 46, "IT", "4-2-3-1", 86], "mun": ["Mauricio Pochettino", 54, "AR", "4-2-3-1", 86], "new": ["Matthias Jaissle", 38, "DE", "4-2-3-1", 81], "nfo": ["Oliver Glasner", 52, "AT", "3-4-2-1", 82], "sun": ["Régis Le Bris", 50, "FR", "4-2-3-1", 77], "tot": ["Roberto De Zerbi", 47, "IT", "4-2-3-1", 85], "ala_es": ["Quique Sánchez Flores", 61, "ES", "5-3-2", 77], "bil": ["Edin Terzić", 44, "DE", "4-2-3-1", 82], "atm": ["Diego Simeone", 56, "AR", "5-3-2", 89], "bar": ["Hansi Flick", 61, "DE", "4-2-3-1", 90], "cel": ["Claudio Giráldez", 38, "ES", "3-4-3", 79], "dep": ["Antonio Hidalgo", 47, "ES", "4-2-3-1", 76], "elc": ["Martín Anselmi", 41, "AR", "3-4-2-1", 75], "esp": ["Eder Sarabia", 45, "ES", "4-3-3", 76], "get": ["José Bordalás", 62, "ES", "4-4-2", 79], "lev": ["Luís Castro", 46, "PT", "4-3-3", 75], "mal": ["Juan Francisco Funes", 43, "ES", "4-2-3-1", 74], "osa": ["Jagoba Arrasate", 48, "ES", "4-2-3-1", 79], "rac": ["José Alberto", 44, "ES", "4-2-3-1", 75], "ray": ["Beñat San José", 47, "ES", "4-2-3-1", 76], "bet": ["Manuel Pellegrini", 73, "CL", "4-2-3-1", 83], "rma": ["José Mourinho", 63, "PT", "4-2-3-1", 90], "rso": ["Pellegrino Matarazzo", 48, "US", "4-2-3-1", 79], "sev": ["Luis García Plaza", 53, "ES", "4-2-3-1", 78], "val": ["Javier Aguirre", 67, "MX", "5-3-2", 79], "vil": ["Iñigo Pérez", 38, "ES", "4-2-3-1", 80], "mil": ["Ruben Amorim", 41, "PT", "3-4-2-1", 85], "ata": ["Maurizio Sarri", 67, "IT", "4-3-3", 83], "blg": ["Raffaele Palladino", 42, "IT", "3-4-2-1", 80], "cag": ["Fabio Pisacane", 40, "IT", "3-5-2", 74], "com": ["Cesc Fàbregas", 39, "ES", "4-2-3-1", 81], "fio": ["Paolo Vanoli", 54, "IT", "3-5-2", 79], "fro": ["Massimiliano Alvini", 56, "IT", "3-4-2-1", 74], "gen_it": ["Daniele De Rossi", 43, "IT", "4-3-3", 78], "int": ["Cristian Chivu", 46, "RO", "3-5-2", 83], "juv": ["Luciano Spalletti", 67, "IT", "4-2-3-1", 87], "laz": ["Gennaro Gattuso", 48, "IT", "4-3-3", 80], "lec": ["Eusebio Di Francesco", 57, "IT", "4-3-3", 76], "mnz": ["Ivan Jurić", 51, "HR", "3-4-2-1", 77], "nap": ["Massimiliano Allegri", 59, "IT", "3-5-2", 87], "par": ["Alberto Gilardino", 44, "IT", "3-5-2", 76], "rom": ["Gian Piero Gasperini", 68, "IT", "3-4-2-1", 86], "sas": ["Roberto D'Aversa", 51, "IT", "4-3-3", 76], "tor": ["Ignazio Abate", 40, "IT", "4-2-3-1", 76], "udi": ["Paolo Zanetti", 43, "IT", "4-2-3-1", 76], "ven": ["Davide Nicola", 53, "IT", "3-5-2", 76], "koe": ["René Wagner", 38, "DE", "4-2-3-1", 75], "b04": ["Carles Martínez Novell", 42, "ES", "3-4-2-1", 81], "bay": ["Vincent Kompany", 40, "BE", "4-2-3-1", 88], "bvb": ["Niko Kovač", 55, "HR", "4-2-3-1", 84], "bmg": ["Alexander Blessin", 53, "DE", "3-4-3", 77], "sge": ["Adi Hütter", 56, "AT", "4-2-3-1", 82], "fca": ["Manuel Baum", 47, "DE", "4-2-3-1", 75], "hsv": ["Merlin Polzin", 36, "DE", "4-3-3", 76], "m05": ["Urs Fischer", 60, "CH", "3-5-2", 79], "rbl": ["Martín Demichelis", 45, "AR", "4-2-3-1", 81], "scf": ["Julian Schuster", 41, "DE", "4-2-3-1", 79], "scp": ["Ralf Kettemann", 40, "DE", "3-4-2-1", 73], "s04": ["Miron Muslić", 44, "AT", "3-4-2-1", 76], "elv": ["Vincent Wagner", 40, "DE", "4-2-3-1", 74], "hof": ["Christian Ilzer", 49, "AT", "4-4-2", 78], "fcu": ["Mauro Lustrinelli", 50, "CH", "3-5-2", 76], "vfb": ["Sebastian Hoeneß", 44, "DE", "4-2-3-1", 84], "svw": ["Daniel Thioune", 52, "DE", "4-2-3-1", 77], "ang": ["Stéphane Gilli", 52, "FR", "4-2-3-1", 74], "aux": ["Will Still", 34, "BE", "4-2-3-1", 78], "bre_fr": ["Julien Lachuer", 50, "FR", "4-3-3", 76], "hac": ["Valérien Ismaël", 51, "FR", "3-4-3", 75], "lem": ["Patrick Videira", 49, "FR", "4-2-3-1", 73], "len": ["Didier Digard", 40, "FR", "4-2-3-1", 79], "lil": ["Davide Ancelotti", 37, "IT", "4-2-3-1", 80], "lor": ["Alexandre Dujeux", 50, "FR", "4-2-3-1", 75], "lyo": ["Carlos Vicens", 43, "ES", "4-3-3", 80], "om": ["Bruno Génésio", 60, "FR", "4-2-3-1", 82], "mon": ["Filipe Luís", 41, "BR", "4-2-3-1", 82], "nic": ["Olivier Pantaloni", 59, "FR", "4-2-3-1", 77], "pfc": ["Liam Rosenior", 42, "GB", "4-2-3-1", 79], "psg": ["Luis Enrique", 56, "ES", "4-3-3", 90], "ren": ["Franck Haise", 55, "FR", "3-4-2-1", 81], "str": ["Vítor Matos", 38, "PT", "4-3-3", 77], "tou": ["Jens Berthel Askou", 44, "DK", "4-3-3", 76], "tro": ["Stéphane Dumont", 44, "FR", "4-2-3-1", 74]};
+const EXTRA_20_MANAGERS_V31 = [["Ersun Yanal", 64, "TR", "4-2-3-1", 78], ["Erol Bulut", 51, "TR", "4-2-3-1", 75], ["Rıza Çalımbay", 63, "TR", "4-2-3-1", 76], ["Çağdaş Atan", 46, "TR", "4-3-3", 76], ["Ömer Erdoğan", 49, "TR", "4-2-3-1", 74], ["İbrahim Üzülmez", 52, "TR", "4-2-3-1", 72], ["Samet Aybaba", 71, "TR", "4-4-2", 75], ["Tolunay Kafkas", 58, "TR", "4-1-4-1", 73], ["Hüseyin Eroğlu", 53, "TR", "4-2-3-1", 73], ["Sami Uğurlu", 48, "TR", "4-2-3-1", 73], ["Erik ten Hag", 56, "NL", "4-2-3-1", 84], ["Graham Potter", 51, "GB", "3-4-2-1", 82], ["Rudi Garcia", 62, "FR", "4-3-3", 82], ["Roger Schmidt", 59, "DE", "4-2-3-1", 83], ["Joachim Löw", 66, "DE", "4-2-3-1", 85], ["Ruud van Nistelrooy", 50, "NL", "4-2-3-1", 80], ["Steven Gerrard", 46, "GB", "4-3-3", 78], ["Andrea Pirlo", 47, "IT", "4-3-3", 78], ["Sérgio Conceição", 52, "PT", "4-4-2", 84], ["Julen Lopetegui", 60, "ES", "4-3-3", 83]];
 const FREE_AGENT_MANAGERS_2026 = [["Fatih Terim", 73, "TR", "4-4-2", 83], ["Şenol Güneş", 74, "TR", "4-2-3-1", 81], ["Abdullah Avcı", 63, "TR", "4-2-3-1", 79], ["Aykut Kocaman", 61, "TR", "4-4-2", 78], ["İsmail Kartal", 65, "TR", "4-2-3-1", 80], ["Fatih Tekke", 49, "TR", "4-2-3-1", 76], ["Vincenzo Montella", 52, "IT", "4-2-3-1", 82], ["Bülent Korkmaz", 58, "TR", "4-2-3-1", 74], ["Bülent Uygun", 55, "TR", "4-4-2", 73], ["Thorsten Fink", 59, "DE", "4-2-3-1", 76], ["João Pereira", 42, "PT", "3-4-2-1", 74], ["Orhan Ak", 47, "TR", "4-2-3-1", 72], ["Pep Guardiola", 55, "ES", "4-3-3", 94], ["Antonio Conte", 57, "IT", "3-5-2", 89], ["Didier Deschamps", 58, "FR", "4-2-3-1", 88], ["Arne Slot", 48, "NL", "4-2-3-1", 87], ["Eddie Howe", 48, "GB", "4-3-3", 84], ["Julian Nagelsmann", 39, "DE", "4-2-3-1", 87], ["Ernesto Valverde", 62, "ES", "4-2-3-1", 85], ["Roberto Martínez", 53, "ES", "4-3-3", 83], ["Gareth Southgate", 56, "GB", "4-2-3-1", 82], ["Marcelo Bielsa", 71, "AR", "4-3-3", 84], ["Ronald Koeman", 63, "NL", "4-2-3-1", 83], ["Rafael Benítez", 66, "ES", "4-2-3-1", 82], ["Marcelino García Toral", 61, "ES", "4-4-2", 83], ["Thiago Motta", 44, "IT", "4-2-3-1", 82], ["Kieran McKenna", 40, "GB", "4-2-3-1", 79], ["Kasper Hjulmand", 54, "DK", "3-4-2-1", 81], ["Domenico Tedesco", 41, "DE", "4-2-3-1", 80], ["Michael Carrick", 45, "GB", "4-2-3-1", 78]];
 let calFilter = 'all';
 let mgrListMode = 'league';
@@ -8178,6 +8216,554 @@ g.cups = initSeasonCups(g, null);
 g.v30Applied = true;
 }
 };
+
+
+// ==============================================================================
+// SOCCER SIMULATOR v31 — FM DERİNLİĞİ ENGINE
+// ==============================================================================
+
+// 1. INJECT 20 EXTRA FREE AGENT MANAGERS + FACILITIES + TRAINING FOCUS ON INIT/MIGRATION
+function ensureV31Features(g) {
+if (!g) return;
+if (!g.trainingFocus) g.trainingFocus = 'attack';
+g.clubs.forEach(c => {
+if (!c.facilities) {
+const baseLvl = (c.ovr || 74) >= 85 ? 3 : ((c.ovr || 74) >= 79 ? 2 : 1);
+c.facilities = { youth: baseLvl, stadium: baseLvl, medical: baseLvl };
+}
+});
+if (g.managers && !g.v31ManagersAdded) {
+const existingNames = new Set(g.managers.map(m => m.name));
+EXTRA_20_MANAGERS_V31.forEach((info, idx) => {
+const [name, age, nat, prefF, rep] = info;
+if (existingNames.has(name)) return;
+const styleObj = pickStyleForManager(name, rep);
+g.managers.push({
+id: 'mgr_v31_' + idx, name, age, nat,
+prefFormation: FORMATIONS[prefF] ? prefF : '4-2-3-1', style: styleObj.name, rep, clubId: null,
+hiredWeek: -10, bounceWeeks: 0, leakedWeek: -10,
+avatar: makeDeterministicAvatar(name),
+stats: { p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0 },
+currentStint: null, trophies: [], history: []
+});
+});
+g.v31ManagersAdded = true;
+}
+// Catch up any unplayed past cup/Euro matches from older saves!
+if (g.cups && (g.week || 0) > 0) {
+processAllCupsForWeek(g.week - 1, true);
+}
+}
+
+const _v30EnsureWorld = ensureWorldData;
+ensureWorldData = function(g) {
+_v30EnsureWorld(g);
+ensureV31Features(g);
+};
+
+// 2. BULLETPROOF 2-PASS CUP & EUROPEAN SWEEP (GUARANTEES BULK SIM PLAYS EVERY EURO & CUP MATCH!)
+const _v29ProcessCups = processAllCupsForWeek;
+processAllCupsForWeek = function(weekIdx, includeUser) {
+if (!game || !game.cups) return;
+// Run 2 passes so newly seeded knockout rounds (e.g. Play-Off -> Son 16) on <= weekIdx are also resolved!
+for (let pass = 0; pass < 2; pass++) {
+Object.values(game.cups).forEach(cup => {
+if (cup.matchdays && cup.lpWeeks) {
+cup.lpWeeks.forEach((cw, mdIdx) => {
+if (weekIdx >= cw && cup.matchdays[mdIdx]) {
+cup.matchdays[mdIdx].forEach((m, mIdx) => {
+if (m.played) return;
+const isMine = !game.isUnemployed && (m.home === game.myClubId || m.away === game.myClubId);
+if (isMine && !includeUser) return;
+const h = getClub(m.home), a = getClub(m.away);
+if (!h || !a) return;
+const myEdgeH = h.id === game.myClubId ? 2.2 : 0;
+const myEdgeA = a.id === game.myClubId ? 2.2 : 0;
+const diff = ((getClubEffectiveOvr(h) + 1.8 + myEdgeH) - (getClubEffectiveOvr(a) + myEdgeA)) / 5.2;
+let hg = 0, ag = 0;
+for (let c = 0; c < 6; c++) {
+if (Math.random() < Math.max(0.02, Math.min(0.56, 0.21 + diff * 0.15))) hg++;
+if (Math.random() < Math.max(0.02, Math.min(0.50, 0.15 - diff * 0.15))) ag++;
+}
+applyEuroLeagueMatchResult(cup, mdIdx, mIdx, hg, ag);
+awardEuroPrizeMoney(cup, h, a, hg, ag, true);
+});
+}
+});
+cup.weeks.forEach((cw, rIdx) => {
+if (weekIdx >= cw && cup.rounds[rIdx]) {
+cup.rounds[rIdx].forEach((m, mIdx) => {
+if (m.played) return;
+const isMine = !game.isUnemployed && (m.home === game.myClubId || m.away === game.myClubId);
+if (isMine && !includeUser) return;
+const h = getClub(m.home), a = getClub(m.away);
+if (!h || !a) return;
+const myEdgeH = h.id === game.myClubId ? 2.2 : 0;
+const myEdgeA = a.id === game.myClubId ? 2.2 : 0;
+const diff = ((getClubEffectiveOvr(h) + 1.6 + myEdgeH) - (getClubEffectiveOvr(a) + myEdgeA)) / 5.2;
+let hg = 0, ag = 0;
+for (let c = 0; c < 6; c++) {
+if (Math.random() < Math.max(0.02, Math.min(0.56, 0.21 + diff * 0.15))) hg++;
+if (Math.random() < Math.max(0.02, Math.min(0.50, 0.15 - diff * 0.15))) ag++;
+}
+let wId = hg > ag ? h.id : (ag > hg ? a.id : null), penTxt = '';
+if (rIdx === 8 && !wId) {
+let hp = randInt(3, 5), ap = randInt(3, 5);
+while (hp === ap) { if (Math.random() < 0.5) hp++; else ap++; }
+wId = hp > ap ? h.id : a.id; penTxt = ` (Pen: ${hp}-${ap})`;
+}
+resolveCupMatch(cup.id, rIdx, mIdx, hg, ag, wId, penTxt, false);
+awardEuroPrizeMoney(cup, h, a, hg, ag, false);
+});
+}
+});
+} else {
+cup.weeks.forEach((cw, rIdx) => { if (weekIdx >= cw) simulateCupRoundAI(cup, rIdx, includeUser); });
+}
+});
+}
+};
+
+function awardEuroPrizeMoney(cup, h, a, hg, ag, isLP) {
+const winBonus = cup.id === 'ucl' ? 2.1 : (cup.id === 'uel' ? 0.9 : 0.5);
+const drawBonus = cup.id === 'ucl' ? 0.7 : (cup.id === 'uel' ? 0.3 : 0.15);
+const mult = isLP ? 1.0 : 2.0;
+if (hg > ag) h.budget = Number((h.budget + winBonus * mult).toFixed(1));
+else if (ag > hg) a.budget = Number((a.budget + winBonus * mult).toFixed(1));
+else {
+h.budget = Number((h.budget + drawBonus * mult).toFixed(1));
+a.budget = Number((a.budget + drawBonus * mult).toFixed(1));
+}
+}
+
+// 3. TRAINING FOCUS BONUS + STADIUM WEEKLY INCOME + MEDICAL INJURY PROTECTION + WEEK 26 CONTRACT ALERT
+const _v29TacticalBonus = getTacticalBonus;
+getTacticalBonus = function(club) {
+const b = _v29TacticalBonus(club);
+if (game && club && club.id === game.myClubId) {
+if (game.trainingFocus === 'attack') b.att += 1.6;
+else if (game.trainingFocus === 'defense') b.def += 1.6;
+}
+return b;
+};
+
+const _v29WeeklyCycle = processWeeklyCycle;
+processWeeklyCycle = function() {
+_v29WeeklyCycle();
+if (!game || game.isUnemployed || !myClub()) return;
+const mc = myClub();
+// Training Focus effects
+if (game.trainingFocus === 'fitness') {
+mc.squad.forEach(p => { p.stamina = Math.min(100, p.stamina + 6); });
+} else if (game.trainingFocus === 'youth' && Math.random() < 0.25) {
+const u23 = mc.squad.filter(p => p.age <= 23 && p.ovr < 88);
+if (u23.length) {
+const yp = pick(u23);
+yp.ovr = Math.min(92, yp.ovr + 1);
+yp.value = computeRealisticMarketValue(yp.ovr, yp.age);
+}
+}
+// Stadium matchday income (every other week = home game!)
+const fac = mc.facilities || { youth: 1, stadium: 1, medical: 1 };
+if (game.week % 2 === 1) {
+const income = Number((fac.stadium * 0.45).toFixed(1));
+mc.budget = Number((mc.budget + income).toFixed(1));
+}
+// Medical center speeds up injury recovery
+if (fac.medical >= 3 && Math.random() < (fac.medical * 0.12)) {
+mc.squad.forEach(p => { if (p.injuredWeeks > 1) p.injuredWeeks--; });
+}
+// Week 26: Contract expiry alert in Inbox!
+if (game.week === 26) {
+const expiring = mc.squad.filter(p => (p.contractUntil || 2029) <= game.seasonYear + 1 && !p.loanFrom);
+if (expiring.length) {
+pushInboxMsg('Yönetim', `${mc.name} Sportif Direktörü`, `📄 Sözleşmesi Bitecek Oyuncular (${expiring.length})`,
+`Hocam sezon sonunda sözleşmesi sona erecek oyuncular var: ${expiring.slice(0, 6).map(p => p.name).join(', ')}. Profil ekranından "Sözleşme Yenile" ile uzatmazsan bedelsiz ayrılacaklar!`);
+}
+}
+};
+
+// 4. FACILITIES UPGRADE UI INSIDE TRANSFER -> TESİSLER TAB
+function renderFacilitiesTab() {
+const mc = myClub();
+const box = document.getElementById('facilitiesList');
+if (!mc || !box) return;
+if (!mc.facilities) mc.facilities = { youth: 1, stadium: 1, medical: 1 };
+const items = [
+{ key: 'youth', icon: '🌱', name: 'Altyapı Akademisi', desc: 'Sezon sonu çıkan gençlerin gücü ve Yıldız Adayı ihtimali artar.', costBase: 8 },
+{ key: 'stadium', icon: '🏟️', name: 'Stadyum & Maç Günü Geliri', desc: 'Her iç saha maçında kasana daha fazla bilet/sponsor geliri girer.', costBase: 10 },
+{ key: 'medical', icon: '🏥', name: 'Sağlık & Rehabilitasyon Merkezi', desc: 'Oyuncuların sakatlıktan daha hızlı dönmesini sağlar.', costBase: 7 }
+];
+box.innerHTML = items.map(it => {
+const lvl = mc.facilities[it.key] || 1;
+const cost = Number((it.costBase * lvl * 1.4).toFixed(1));
+const maxed = lvl >= 5;
+return `<div class="fac-card">
+<div style="min-width:0;flex:1;">
+<div style="font-size:13px;font-weight:800;">${it.icon} ${it.name} <span class="pot-badge">Sv. ${lvl} / 5</span></div>
+<div style="font-size:11px;color:var(--muted);margin-top:3px;">${it.desc}</div>
+</div>
+${maxed
+? '<span style="font-size:11px;font-weight:800;color:#10b981;">Maksimum ✓</span>'
+: `<button type="button" data-upgrade-fac="${it.key}" data-fac-cost="${cost}" class="btn btn-primary" style="padding:6px 10px;font-size:11px;white-space:nowrap;">Yükselt (${fmtMoney(cost)})</button>`}
+</div>`;
+}).join('');
+box.querySelectorAll('[data-upgrade-fac]').forEach(btn => btn.addEventListener('click', () => {
+const key = btn.dataset.upgradeFac, cost = Number(btn.dataset.facCost);
+if (mc.budget < cost) { showToast(`Yetersiz bütçe! Gereken: ${fmtMoney(cost)}`); return; }
+mc.budget = Number((mc.budget - cost).toFixed(1));
+mc.facilities[key] = (mc.facilities[key] || 1) + 1;
+saveActiveCareer();
+renderTransfer(); renderHeader();
+showToast(`Tesis Sv. ${mc.facilities[key]} seviyesine yükseltildi!`);
+}));
+}
+
+// Enhance renderTransfer to support 3rd sub-tab (Tesisler), Bosman badges, and U23 Loan-Out buttons!
+const _v30RenderTransfer = renderTransfer;
+renderTransfer = function() {
+if (!myClub() || game.isUnemployed) { _v30RenderTransfer(); return; }
+document.getElementById('transferTabFac').className = transferMode === 'fac' ? 'btn btn-primary' : 'btn btn-ghost';
+document.getElementById('transferFacWrap').classList.toggle('hidden', transferMode !== 'fac');
+if (transferMode === 'fac') {
+document.getElementById('transferBudgetVal').textContent = fmtMoney(myClub().budget);
+document.getElementById('transferTabBuy').className = 'btn btn-ghost';
+document.getElementById('transferTabSell').className = 'btn btn-ghost';
+document.getElementById('transferBuyWrap').classList.add('hidden');
+document.getElementById('transferSellWrap').classList.add('hidden');
+renderFacilitiesTab();
+return;
+}
+_v30RenderTransfer();
+// Add Loan-Out (Gelişim) buttons for U23 non-starters in Sell tab!
+if (transferMode === 'sell') {
+const club = myClub();
+const starterSet = new Set(club.lineup);
+const sellEl = document.getElementById('transferSellList');
+if (sellEl) {
+sellEl.querySelectorAll('[data-sell-id]').forEach(sBtn => {
+const pid = sBtn.dataset.sellId;
+const p = club.squad.find(x => x.id === pid);
+if (p && p.age <= 23 && !starterSet.has(p.id) && !p.loanFrom && !p.loanedOutTo && club.squad.length > 15) {
+const lBtn = document.createElement('button');
+lBtn.type = 'button'; lBtn.className = 'btn btn-soft';
+lBtn.style.cssText = 'padding:5px 8px;font-size:10.5px;margin-right:4px;';
+lBtn.textContent = 'Kirala';
+lBtn.addEventListener('click', () => {
+const dests = game.clubs.filter(c => c.id !== club.id && (c.ovr || 72) <= (club.ovr || 76));
+const dest = pick(dests);
+if (!dest) return;
+club.squad = club.squad.filter(x => x.id !== p.id);
+p.loanedOutFrom = club.id;
+dest.squad.push(p);
+saveActiveCareer();
+showToast(`${p.name}, gelişim için 1 sezonluğuna ${dest.name} ekibine kiralandı!`);
+renderTransfer();
+});
+sBtn.parentNode.insertBefore(lBtn, sBtn);
+}
+});
+}
+}
+};
+
+// 5. ENHANCE PLAYER MODAL (CONTRACT RENEWAL, BOSMAN FREE SIGNING, 1-SEASON LOAN-IN, BUY-OUT OPTION & AWARDS!)
+const _v30OpenPlayerModal = openPlayerModal;
+openPlayerModal = function(playerId, clubId) {
+_v30OpenPlayerModal(playerId, clubId);
+const mc = myClub();
+const renewBtn = document.getElementById('pmRenewBtn');
+const buyOptBtn = document.getElementById('pmBuyOptionBtn');
+const loanBtn = document.getElementById('pmLoanBtn');
+const offerBtn = document.getElementById('pmOfferBtn');
+const awBox = document.getElementById('pmAwardsBox');
+[renewBtn, buyOptBtn, loanBtn].forEach(b => b && b.classList.add('hidden'));
+if (awBox) { awBox.classList.add('hidden'); awBox.innerHTML = ''; }
+if (!mc || game.isUnemployed) return;
+
+let p = null, srcClub = null;
+if (clubId === 'market') p = game.market.find(x => x.id === playerId);
+else { srcClub = getClub(clubId); if (srcClub) p = srcClub.squad.find(x => x.id === playerId); }
+if (!p) return;
+
+if (awBox && p.awards && p.awards.length) {
+awBox.classList.remove('hidden');
+awBox.innerHTML = p.awards.map(a => `<span class="pot-badge">🏆 ${a}</span>`).join('');
+}
+
+const isMine = clubId === game.myClubId;
+if (isMine) {
+if (p.loanFrom && p.loanBuyOption) {
+buyOptBtn.classList.remove('hidden');
+buyOptBtn.textContent = `Bonservisini Al (${fmtMoney(p.loanBuyOption)})`;
+buyOptBtn.onclick = () => {
+if (mc.budget < p.loanBuyOption) { showToast(`Yetersiz bütçe! Gereken: ${fmtMoney(p.loanBuyOption)}`); return; }
+mc.budget = Number((mc.budget - p.loanBuyOption).toFixed(1));
+const orig = getClub(p.loanFrom);
+if (orig) orig.budget = Number((orig.budget + p.loanBuyOption).toFixed(1));
+delete p.loanFrom; delete p.loanBuyOption;
+p.contractUntil = game.seasonYear + 4;
+saveActiveCareer();
+document.getElementById('playerModal').classList.add('hidden');
+showToast(`${p.name}'in bonservisi kalıcı olarak alındı!`);
+renderHeader();
+};
+} else {
+renewBtn.classList.remove('hidden');
+renewBtn.textContent = `Sözleşme Yenile (${p.contractUntil || game.seasonYear + 2})`;
+renewBtn.onclick = () => {
+const cost = Number(Math.max(0.5, (p.wage || 1) * 0.6).toFixed(1));
+if (mc.budget < cost) { showToast(`İmza parası için ${fmtMoney(cost)} bütçe gerekiyor.`); return; }
+mc.budget = Number((mc.budget - cost).toFixed(1));
+p.contractUntil = game.seasonYear + 4;
+p.morale = Math.min(100, (p.morale || 72) + 10);
+saveActiveCareer();
+showToast(`${p.name} ile ${p.contractUntil} yılına kadar yeni sözleşme imzalandı!`);
+openPlayerModal(playerId, clubId);
+};
+}
+} else if (srcClub) {
+// Bosman Free Signing if contract expires at season end!
+const isBosman = (p.contractUntil || 2029) <= game.seasonYear + 1;
+if (isBosman && offerBtn) {
+offerBtn.textContent = 'Bedelsiz İmza (Bosman · €0)';
+offerBtn.onclick = () => {
+srcClub.squad = srcClub.squad.filter(x => x.id !== p.id);
+p.contractUntil = game.seasonYear + 4;
+mc.squad.push(p);
+saveActiveCareer();
+document.getElementById('playerModal').classList.add('hidden');
+showToast(`✍️ ${p.name} bedelsiz (Bosman) olarak kadrona katıldı!`);
+renderHeader(); if (currentTab === 'transfer') renderTransfer();
+};
+} else if (offerBtn) {
+offerBtn.textContent = 'Transfer Görüşmesi';
+}
+// 1-Season Loan-In button!
+if (srcClub.squad.length > 15 && !p.loanFrom) {
+const loanFee = Number(Math.max(0.4, p.value * 0.14).toFixed(1));
+loanBtn.classList.remove('hidden');
+loanBtn.textContent = `1 Sezon Kirala (${fmtMoney(loanFee)})`;
+loanBtn.onclick = () => {
+if (mc.budget < loanFee) { showToast(`Yetersiz bütçe! Kiralama bedeli: ${fmtMoney(loanFee)}`); return; }
+mc.budget = Number((mc.budget - loanFee).toFixed(1));
+srcClub.budget = Number((srcClub.budget + loanFee).toFixed(1));
+srcClub.squad = srcClub.squad.filter(x => x.id !== p.id);
+p.loanFrom = srcClub.id;
+p.loanBuyOption = Number((p.value * 1.05).toFixed(1));
+mc.squad.push(p);
+pickBestAiFormationAndLineup(srcClub);
+saveActiveCareer();
+document.getElementById('playerModal').classList.add('hidden');
+showToast(`${p.name}, 1 sezonluğuna kiralandı! (Satın alma opsiyonu: ${fmtMoney(p.loanBuyOption)})`);
+renderHeader(); if (currentTab === 'transfer') renderTransfer();
+};
+}
+}
+};
+
+// 6. COLORFUL, MINIMAL AI MANAGER CAREER HISTORY (MATCHING OUR OWN MANAGER TAB!)
+openAiManagerModal = function(mgrId) {
+const m = (game.managers || []).find(x => x.id === mgrId);
+if (!m) return;
+const c = m.clubId ? getClub(m.clubId) : null;
+document.getElementById('aiMgrAvatar').innerHTML = renderManagerSvg(m.avatar || setupAvatar, c ? c.bg : '#1e293b', c ? c.fg : '#10b981');
+document.getElementById('aiMgrName').textContent = m.name;
+document.getElementById('aiMgrSub').textContent = `Yaş ${m.age} · Uyruk: ${m.nat} · İtibar ${m.rep}`;
+document.getElementById('aiMgrClubBadge').innerHTML = c
+? `<span style="display:inline-flex;align-items:center;gap:5px;padding:2px 9px;border-radius:999px;font-size:10.5px;font-weight:800;background:${c.bg};color:${c.fg};">${c.name} (${getLeagueMeta(c.leagueId).short})</span>`
+: '<span class="obj-badge obj-track">Boşta (Kulüp Arıyor)</span>';
+const st = m.stats || { p: 0, w: 0, d: 0, l: 0, pts: 0 };
+const ppg = st.p > 0 ? ((st.w * 3 + st.d) / st.p).toFixed(2) : '0.00';
+document.getElementById('aiMgrStatsGrid').innerHTML = `
+<div class="elevated" style="padding:8px;"><div style="font-size:10px;color:var(--muted);">Maç</div><div style="font-size:14px;font-weight:800;">${st.p}</div></div>
+<div class="elevated" style="padding:8px;"><div style="font-size:10px;color:var(--muted);">Galibiyet</div><div style="font-size:14px;font-weight:800;color:#34d399;">${st.w}</div></div>
+<div class="elevated" style="padding:8px;"><div style="font-size:10px;color:var(--muted);">Mağlubiyet</div><div style="font-size:14px;font-weight:800;color:#f87171;">${st.l}</div></div>
+<div class="elevated" style="padding:8px;"><div style="font-size:10px;color:var(--muted);">Puan Ort.</div><div style="font-size:14px;font-weight:800;color:var(--accent-text);">${ppg}</div></div>`;
+document.getElementById('aiMgrFormVal').textContent = m.prefFormation || '4-2-3-1';
+const stEl = document.getElementById('aiMgrStyleVal');
+if (stEl) stEl.textContent = m.style || 'Dengeli';
+const allAwards = (m.trophies || []).concat(m.awards || []);
+document.getElementById('aiMgrTrophies').innerHTML = allAwards.length
+? allAwards.map(t => `<span class="pot-badge">🏆 ${t}</span>`).join('')
+: '<span style="font-size:11px;color:var(--muted);">Henüz kupa/ödül kazanmadı</span>';
+
+const renderStint = (s, isActive) => {
+const sppg = s.p > 0 ? ((s.w * 3 + s.d) / s.p).toFixed(2) : '0.00';
+const bg = s.clubBg || '#1e293b', fg = s.clubFg || '#ffffff', sh = s.clubShort || s.clubName.slice(0, 3).toUpperCase();
+return `<div class="mgr-stint-card" style="border-left:4px solid ${isActive ? 'var(--accent)' : bg};">
+<div class="club-crest" style="width:34px;height:34px;font-size:10.5px;background:${bg};color:${fg};flex-shrink:0;">${sh}</div>
+<div style="min-width:0;flex:1;">
+<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;">
+<strong class="truncate" style="font-size:12.5px;">${s.clubName} ${isActive ? '<span style="color:var(--accent-text);font-size:10px;">● Aktif</span>' : ''}</strong>
+<span style="font-size:10.5px;color:var(--muted);flex-shrink:0;">${s.season}</span>
+</div>
+<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-top:4px;">
+<span class="wdl-pill wdl-w">${s.w}G</span>
+<span class="wdl-pill wdl-d">${s.d}B</span>
+<span class="wdl-pill wdl-l">${s.l}M</span>
+<span style="font-size:10.5px;color:var(--muted);margin-left:2px;">${s.p} Maç · <strong style="color:var(--accent-text);">${sppg}</strong> PO</span>
+</div>
+</div>
+</div>`;
+};
+const rows = [];
+if (m.currentStint && c) rows.push(renderStint(m.currentStint, true));
+(m.history || []).slice(0, 8).forEach(h => rows.push(renderStint(h, false)));
+document.getElementById('aiMgrHistory').innerHTML = rows.length ? rows.join('') : '<div style="font-size:11px;color:var(--muted);">Kariyer yeni başladı (0 maç).</div>';
+document.getElementById('aiManagerModal').classList.remove('hidden');
+};
+
+// 7. SEASON AWARDS (BALLON D'OR, GOLDEN BOOT, MANAGER OF THE YEAR, LEAGUE MVP & U21!)
+function computeSeasonAwards() {
+if (game.seasonAwards && game.seasonAwards.year === game.seasonYear) return game.seasonAwards;
+const seasonStr = `${game.seasonYear}-${String(game.seasonYear + 1).slice(2)}`;
+const uclChampId = game.cups && game.cups.ucl && game.cups.ucl.championId;
+const allPlayers = [];
+game.clubs.forEach(c => {
+const isTopTier = c.leagueId !== 'tff_1_lig';
+const isUclChamp = c.id === uclChampId;
+const st = getSortedStandings(c.leagueId);
+const isLeagueChamp = st[0] && st[0].id === c.id;
+c.squad.forEach(p => {
+const score = (p.ovr * 1.4) + ((p.goals || 0) * 1.8) + ((p.assists || 0) * 1.2) + ((p.motmCount || 0) * 2.0) + (isUclChamp ? 12 : 0) + (isLeagueChamp ? 6 : 0) + (isTopTier ? 6 : -10);
+allPlayers.push({ p, c, score, isTopTier });
+});
+});
+const ballon = allPlayers.slice().sort((a, b) => b.score - a.score)[0];
+const goldenBoot = allPlayers.filter(x => x.isTopTier).sort((a, b) => (b.p.goals || 0) - (a.p.goals || 0) || b.p.ovr - a.p.ovr)[0];
+const activePlayers = allPlayers.filter(x => x.c.leagueId === game.activeLeagueId);
+const leagueMvp = activePlayers.slice().sort((a, b) => b.score - a.score)[0];
+const leagueYoung = activePlayers.filter(x => x.p.age <= 21).sort((a, b) => b.score - a.score)[0] || leagueMvp;
+
+// Best Manager across all 7 leagues (including User!)
+let bestMgr = { name: game.managerName, clubName: myClub() ? myClub().name : '-', score: 0, ppg: '0.00', isUser: true };
+if (!game.isUnemployed && myClub()) {
+const s = getManagedStatsForCurrentClub();
+const ppg = s.p > 0 ? (s.pts / s.p) : 0;
+const rank = getSortedStandings().findIndex(x => x.id === myClub().id) + 1;
+bestMgr = { name: game.managerName, clubName: myClub().name, score: ppg * 30 + (rank === 1 ? 18 : 0) + (myClub().id === uclChampId ? 25 : 0), ppg: ppg.toFixed(2), isUser: true };
+}
+(game.managers || []).forEach(m => {
+if (!m.currentStint || m.currentStint.p < 15) return;
+const cs = m.currentStint;
+const ppg = cs.pts / cs.p;
+const c = getClub(cs.clubId);
+const isCh = c && getSortedStandings(c.leagueId)[0] && getSortedStandings(c.leagueId)[0].id === c.id;
+const sc = ppg * 30 + (isCh ? 18 : 0) + (cs.clubId === uclChampId ? 25 : 0);
+if (sc > bestMgr.score) bestMgr = { id: m.id, name: m.name, clubName: cs.clubName, score: sc, ppg: ppg.toFixed(2), isUser: false };
+});
+
+// Stamp permanent award badges on winners!
+if (ballon) { if (!ballon.p.awards) ballon.p.awards = []; ballon.p.awards.unshift(`${seasonStr} Ballon d'Or`); }
+if (goldenBoot) { if (!goldenBoot.p.awards) goldenBoot.p.awards = []; goldenBoot.p.awards.unshift(`${seasonStr} Altın Ayakkabı`); }
+if (!bestMgr.isUser && bestMgr.id) {
+const bm = game.managers.find(x => x.id === bestMgr.id);
+if (bm) { if (!bm.awards) bm.awards = []; bm.awards.unshift(`${seasonStr} Yılın Hocası`); }
+} else if (bestMgr.isUser) {
+game.trophies.unshift({ id: uid(), title: 'Yılın Teknik Direktörü Ödülü', season: seasonStr, clubName: bestMgr.clubName, clubShort: myClub() ? myClub().short : 'TD', clubBg: myClub() ? myClub().bg : '#1e293b', clubFg: '#fbbf24' });
+}
+
+game.seasonAwards = {
+year: game.seasonYear,
+ballon: ballon ? { name: ballon.p.name, club: ballon.c.name, stats: `Güç ${ballon.p.ovr} · ${ballon.p.goals || 0}G ${ballon.p.assists || 0}A` } : null,
+goldenBoot: goldenBoot ? { name: goldenBoot.p.name, club: goldenBoot.c.name, stats: `${goldenBoot.p.goals || 0} Gol · Güç ${goldenBoot.p.ovr}` } : null,
+bestMgr,
+leagueMvp: leagueMvp ? { name: leagueMvp.p.name, club: leagueMvp.c.name, stats: `Güç ${leagueMvp.p.ovr} · ${leagueMvp.p.goals || 0}G ${leagueMvp.p.assists || 0}A` } : null,
+leagueYoung: leagueYoung ? { name: leagueYoung.p.name, club: leagueYoung.c.name, stats: `Yaş ${leagueYoung.p.age} · Güç ${leagueYoung.p.ovr}` } : null
+};
+return game.seasonAwards;
+}
+
+// Upgrade renderSeasonEndModal to support the 4th 'awards' tab!
+const _v29RenderSeasonEnd = renderSeasonEndModal;
+renderSeasonEndModal = function() {
+const awBtn = document.getElementById('seTabAwardsBtn');
+const awWrap = document.getElementById('seAwardsWrap');
+if (awBtn) awBtn.className = seModalTab === 'awards' ? 'btn btn-primary' : 'btn btn-ghost';
+if (awWrap) awWrap.classList.toggle('hidden', seModalTab !== 'awards');
+if (seModalTab === 'awards') {
+document.getElementById('seTabChampsBtn').className = 'btn btn-ghost';
+document.getElementById('seTabTablesBtn').className = 'btn btn-ghost';
+document.getElementById('seTabPromoBtn').className = 'btn btn-ghost';
+document.getElementById('seChampsWrap').classList.add('hidden');
+document.getElementById('seTablesWrap').classList.add('hidden');
+document.getElementById('sePromoWrap').classList.add('hidden');
+const aw = computeSeasonAwards();
+const lmName = getLeagueMeta(game.activeLeagueId).name;
+awWrap.innerHTML = `
+<div class="award-card"><div style="font-size:10.5px;font-weight:800;color:#fbbf24;">🏆 BALLON D'OR (ALTIN TOP)</div><div style="font-size:15px;font-weight:800;margin-top:2px;">${aw.ballon ? aw.ballon.name : '-'}</div><div style="font-size:11.5px;color:var(--muted);">${aw.ballon ? aw.ballon.club + ' · ' + aw.ballon.stats : ''}</div></div>
+<div class="award-card" style="border-left-color:#f97316;"><div style="font-size:10.5px;font-weight:800;color:#fb923c;">👟 AVRUPA ALTIN AYAKKABI</div><div style="font-size:15px;font-weight:800;margin-top:2px;">${aw.goldenBoot ? aw.goldenBoot.name : '-'}</div><div style="font-size:11.5px;color:var(--muted);">${aw.goldenBoot ? aw.goldenBoot.club + ' · ' + aw.goldenBoot.stats : ''}</div></div>
+<div class="award-card" style="border-left-color:#38bdf8;"><div style="font-size:10.5px;font-weight:800;color:#38bdf8;">👔 YILIN TEKNİK DİREKTÖRÜ</div><div style="font-size:15px;font-weight:800;margin-top:2px;">${aw.bestMgr.name}${aw.bestMgr.isUser ? ' (Sen!)' : ''}</div><div style="font-size:11.5px;color:var(--muted);">${aw.bestMgr.clubName} · ${aw.bestMgr.ppg} Puan Ort.</div></div>
+<div class="award-card" style="border-left-color:#10b981;"><div style="font-size:10.5px;font-weight:800;color:#34d399;">⭐ ${lmName.toUpperCase()} SEZONUN OYUNCUSU</div><div style="font-size:14px;font-weight:800;margin-top:2px;">${aw.leagueMvp ? aw.leagueMvp.name : '-'}</div><div style="font-size:11px;color:var(--muted);">${aw.leagueMvp ? aw.leagueMvp.club + ' · ' + aw.leagueMvp.stats : ''}</div></div>
+<div class="award-card" style="border-left-color:#a855f7;"><div style="font-size:10.5px;font-weight:800;color:#c084fc;">🌱 ${lmName.toUpperCase()} YILIN GENÇ OYUNCUSU (U21)</div><div style="font-size:14px;font-weight:800;margin-top:2px;">${aw.leagueYoung ? aw.leagueYoung.name : '-'}</div><div style="font-size:11px;color:var(--muted);">${aw.leagueYoung ? aw.leagueYoung.club + ' · ' + aw.leagueYoung.stats : ''}</div></div>`;
+return;
+}
+_v29RenderSeasonEnd();
+};
+
+// 8. YOUTH FACILITY BONUS IN generateYouthIntake + RETURN LOANS & EXPIRING CONTRACTS ON NEW SEASON!
+const _v29GenYouth = generateYouthIntake;
+generateYouthIntake = function(club) {
+const list = _v29GenYouth(club);
+const yLvl = (club && club.facilities && club.facilities.youth) || 1;
+const boost = (yLvl - 1) * 2;
+if (boost > 0) {
+list.forEach(p => {
+p.ovr = Math.min(82, p.ovr + boost);
+p.potential = Math.min(94, (p.potential || (p.ovr + 10)) + boost);
+p.value = computeRealisticMarketValue(p.ovr, p.age);
+});
+}
+return list;
+};
+
+const _v30CompleteSeason = completeNewSeasonTransition;
+completeNewSeasonTransition = function() {
+// Compute awards before resetting stats!
+computeSeasonAwards();
+// Return all loaned players (loaned-out youngsters gain +2..+4 OVR!)
+const returningLoans = [];
+game.clubs.forEach(c => {
+c.squad = c.squad.filter(p => {
+if (p.loanFrom) {
+const orig = getClub(p.loanFrom);
+delete p.loanFrom; delete p.loanBuyOption;
+if (orig) orig.squad.push(p);
+return false;
+}
+if (p.loanedOutFrom) {
+const orig = getClub(p.loanedOutFrom);
+delete p.loanedOutFrom;
+const boost = randInt(2, 4);
+p.ovr = Math.min(90, p.ovr + boost);
+p.value = computeRealisticMarketValue(p.ovr, p.age);
+if (orig) { orig.squad.push(p); if (orig.id === game.myClubId) returningLoans.push(`${p.name} (+${boost} Güç)`); }
+return false;
+}
+return true;
+});
+});
+// Reset seasonAwards for next season & call original transition
+game.seasonAwards = null;
+_v30CompleteSeason();
+if (returningLoans.length) {
+pushInboxMsg('Yönetim', 'Altyapı & Kiralık Takip', 'Kiralık Gençler Gelişerek Döndü!', `Kiralık gönderdiğin oyuncular sezonu çok verimli geçirdi ve takıma döndü: ${returningLoans.join(', ')}.`);
+}
+};
+
+// 9. WIRE NEW v31 UI LISTENERS
+document.getElementById('transferTabFac').addEventListener('click', () => { transferMode = 'fac'; renderTransfer(); });
+document.getElementById('seTabAwardsBtn').addEventListener('click', () => { seModalTab = 'awards'; renderSeasonEndModal(); });
+document.querySelectorAll('[data-train-focus]').forEach(btn => btn.addEventListener('click', () => {
+if (!game) return;
+game.trainingFocus = btn.dataset.trainFocus;
+const names = { attack: 'Bitiricilik', defense: 'Savunma & Duran Top', fitness: 'Kondisyon Toparlama', youth: 'Genç Gelişimi' };
+document.getElementById('trainingActiveHint').textContent = names[game.trainingFocus] || 'Bitiricilik';
+document.querySelectorAll('[data-train-focus]').forEach(b => b.classList.toggle('active', b.dataset.trainFocus === game.trainingFocus));
+saveActiveCareer();
+showToast(`Haftalık antrenman odağı: ${names[game.trainingFocus]}`);
+}));
 
 })();
 </script>
