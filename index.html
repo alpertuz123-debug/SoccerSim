@@ -853,7 +853,7 @@ select:focus, select:active, button:focus, button:active, input:focus, a:focus {
 <div class="menu-logo-ring">
 <svg class="svg-icon" style="width:28px;height:28px;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m12 6 3 4-1 5H10l-1-5 3-4Z"/><path d="M12 2v4"/><path d="m4.93 10.93 4.07-.93"/><path d="m19.07 10.93-4.07-.93"/><path d="m6.5 18.5 3.5-3.5"/><path d="m17.5 18.5-3.5-3.5"/></svg>
 </div>
-<div class="btn-soft" style="display:inline-flex;padding:3px 10px;border-radius:999px;font-size:10px;font-weight:700;margin-bottom:6px;">2026–27 DÜNYA SÜRÜMÜ · 7 LİG · v42</div>
+<div class="btn-soft" style="display:inline-flex;padding:3px 10px;border-radius:999px;font-size:10px;font-weight:700;margin-bottom:6px;">2026–27 DÜNYA SÜRÜMÜ · 7 LİG · v43</div>
 <h1 style="font-size:24px;font-weight:800;margin:0 0 4px;letter-spacing:-0.02em;">Soccer Simulator</h1>
 <p style="font-size:12px;color:var(--muted);margin:0;">Kendi teknik direktörlük kariyerini kur ve yönet.</p>
 </div>
@@ -15197,9 +15197,9 @@ enterCareer = function(careerObj) {
 
         if (this.highlightCooldownMin > 0) this.highlightCooldownMin--;
         // Curated frequency: min 6-min spacing, ~14% chance -> 7-10 genuinely exciting highlights per match!
-        if (nextMin >= 4 && nextMin <= 88 && this.highlightCooldownMin === 0 && Math.random() < 0.15) {
+        if (nextMin >= 4 && nextMin <= 88 && this.highlightCooldownMin === 0 && Math.random() < 0.21) {
           const attSide = Math.random() < homeShare ? 'home' : 'away';
-          this.highlightCooldownMin = 6;
+          this.highlightCooldownMin = 4;
           this.startHighlightSequence(attSide);
           break;
         }
@@ -15216,6 +15216,417 @@ enterCareer = function(careerObj) {
     this.kickoffsExecuted = 0;
     this.gkHoldSafe = false;
     _v41Init(home, away);
+  };
+})();
+
+
+// =========================================================================
+// v43: 7 VARIED SCENARIOS, TIGHT MAN-MARKING, SHOT BLOCKS & REALISTIC GK!
+// =========================================================================
+(function initMatch2DV43() {
+  const eng = window.Match2DEngine;
+  if (!eng) return;
+
+  const PITCH_W = 105;
+  const PITCH_H = 68;
+
+  const SCENARIOS = [
+    'left_wing_overlap',
+    'right_wing_cutback',
+    'fast_counter',
+    'central_tiki_taka',
+    'long_diagonal_switch',
+    'corner_kick',
+    'free_kick_edge'
+  ];
+  const SCENARIO_LABELS = {
+    left_wing_overlap: 'SOL KANAT ATAĞI',
+    right_wing_cutback: 'SAĞ KANAT ATAĞI',
+    fast_counter: 'HIZLI KONTRA ATAK',
+    central_tiki_taka: 'MERKEZDEN PASLAŞMA',
+    long_diagonal_switch: 'TERS KANAT DEĞİŞİMİ',
+    corner_kick: 'KÖŞE VURUŞU',
+    free_kick_edge: 'TEHLİKELİ FRİKİK'
+  };
+
+  eng.lastScenario = null;
+  eng.scenarioCounts = {};
+  eng.blocksCount = 0;
+  eng.missesCount = 0;
+
+  // 1. TIGHT GOAL-SIDE MAN-MARKING FOR CBs (STP), FBs (SLB/SĞB) & DMs (DOS)!
+  //    Prevents opponent strikers from ever standing wide open between the two center-backs!
+  const _v42ComputeTarget = eng.computeStructuredTarget.bind(eng);
+  eng.computeStructuredTarget = function(pl, ballX, ballY, teamHasBall, tp) {
+    const base = _v42ComputeTarget(pl, ballX, ballY, teamHasBall, tp);
+    if (teamHasBall || pl.pos === 'KL') return base;
+
+    const isHome = pl.side === 'home';
+    const ownGoalX = isHome ? 0 : PITCH_W;
+    const defDir = isHome ? -1 : 1; // Direction toward own goal
+    const oppSide = isHome ? 'away' : 'home';
+    const ballInDangerZone = isHome ? (ballX < 62) : (ballX > 43);
+    if (!ballInDangerZone) return base;
+
+    // Center-Backs (STP) tightly mark opponent Strikers (SNT) & box runners goal-side!
+    if (pl.pos === 'STP') {
+      const oppAttackers = this.players
+        .filter(o => o.side === oppSide && !o.sentOff && ['SNT','OOS','SLK','SĞK'].includes(o.pos))
+        .filter(o => isHome ? (o.x < 48) : (o.x > 57))
+        .sort((a, b) => Math.hypot(a.x - pl.x, a.y - pl.y) - Math.hypot(b.x - pl.x, b.y - pl.y));
+      // Pick striker first, or closest dangerous attacker inside our box
+      const targetMark = oppAttackers.find(o => o.pos === 'SNT') || oppAttackers[0];
+      if (targetMark) {
+        // Position tightly 2.0m goal-side of the striker (between striker and own goal!)
+        const mx = Math.max(5.5, Math.min(PITCH_W - 5.5, targetMark.x + defDir * 2.1));
+        const my = Math.max(8, Math.min(PITCH_H - 8, targetMark.y + (PITCH_H / 2 - targetMark.y) * 0.12));
+        return { x: mx, y: my, state: 'defend' };
+      }
+    }
+
+    // Fullbacks (SLB / SĞB) tightly track opponent wingers on their flank!
+    if (pl.pos === 'SLB' || pl.pos === 'SĞB') {
+      const oppWinger = this.players
+        .filter(o => o.side === oppSide && !o.sentOff && ['SLK','SĞK','SLB','SĞB'].includes(o.pos))
+        .filter(o => Math.abs(o.y - pl.y) < 22 && (isHome ? o.x < 55 : o.x > 50))
+        .sort((a, b) => Math.hypot(a.x - pl.x, a.y - pl.y) - Math.hypot(b.x - pl.x, b.y - pl.y))[0];
+      if (oppWinger) {
+        const mx = Math.max(6, Math.min(PITCH_W - 6, oppWinger.x + defDir * 2.3));
+        const my = Math.max(5, Math.min(PITCH_H - 5, oppWinger.y + (PITCH_H / 2 - oppWinger.y) * 0.18));
+        return { x: mx, y: my, state: 'defend' };
+      }
+    }
+
+    // Defensive Midfielder (DOS) screens opponent CAM (OOS) at edge of the box!
+    if (pl.pos === 'DOS') {
+      const oppCam = this.players.find(o => o.side === oppSide && !o.sentOff && o.pos === 'OOS' && (isHome ? o.x < 54 : o.x > 51));
+      if (oppCam) {
+        return {
+          x: Math.max(10, Math.min(PITCH_W - 10, oppCam.x + defDir * 2.5)),
+          y: Math.max(8, Math.min(PITCH_H - 8, oppCam.y)),
+          state: 'defend'
+        };
+      }
+    }
+
+    return base;
+  };
+
+  // 2. REALISTIC SHOT ACCURACY, DEFENSIVE SHOT BLOCKS & STRONG GOALKEEPER DIVING SAVES!
+  const _v42Kick = eng.kickBall.bind(eng);
+  eng.kickBall = function(fromAgent, tx, ty, type, targetAgent) {
+    _v42Kick(fromAgent, tx, ty, type, targetAgent);
+    if (type === 'shot') {
+      const b = this.ball;
+      const dx = tx - b.x, dy = ty - b.y;
+      const dist = Math.max(0.5, Math.hypot(dx, dy));
+      const ovrSkill = Math.max(0.45, Math.min(1.0, ((fromAgent ? fromAgent.ovr : 74) - 52) / 42));
+      // Check defender pressure right on the shooter -> increases shot error!
+      let defPress = 0;
+      if (fromAgent) {
+        for (let i = 0; i < this.players.length; i++) {
+          const op = this.players[i];
+          if (op.side !== fromAgent.side && !op.sentOff && op.pos !== 'KL') {
+            const d = Math.hypot(op.x - fromAgent.x, op.y - fromAgent.y);
+            if (d < 3.4) defPress += (3.4 - d) / 3.4;
+          }
+        }
+      }
+      // Realistic ~58-66% on-target rate (so shots can also miss narrowly wide or hit the post!)
+      const errAng = (Math.random() - 0.5) * 0.34 * (1.22 - ovrSkill * 0.52) * (1 + defPress * 0.45);
+      const ux = dx / dist, uy = dy / dist;
+      const dirX = ux * Math.cos(errAng) - uy * Math.sin(errAng);
+      const dirY = ux * Math.sin(errAng) + uy * Math.cos(errAng);
+      const spd = 25.5 + ovrSkill * 6.5;
+      b.vx = dirX * spd;
+      b.vy = dirY * spd;
+      b.vz = 1.4 + Math.random() * 2.2;
+      b.defPressOnShot = defPress;
+      b.blockChecked = false;
+    }
+  };
+
+  // Enhance stepBall with: (a) CB Shot Blocking, (b) GK Visible Dive toward b.y, (c) Realistic 70-84% GK Save Rate!
+  const _v42StepBall = eng.stepBall.bind(eng);
+  eng.stepBall = function(dt) {
+    const b = this.ball;
+    if (b.isShot && !this.owner) {
+      // Update ball trail
+      this.ballTrail.push({ x: b.x, y: b.y, z: b.z || 0 });
+      if (this.ballTrail.length > 7) this.ballTrail.shift();
+
+      b.x += b.vx * dt;
+      b.y += b.vy * dt;
+      if (b.z > 0 || b.vz > 0) { b.z = Math.max(0, b.z + b.vz * dt); b.vz -= 18.5 * dt; }
+
+      const scoringSide = b.shotSide;
+      const defSide = scoringSide === 'home' ? 'away' : 'home';
+      const gk = this.players.find(p => p.side === defSide && p.pos === 'KL' && !p.sentOff);
+
+      // (a) Visible GK Dive! GK actively slides toward the shot's Y trajectory!
+      if (gk) {
+        const targetGkY = Math.max(PITCH_H / 2 - 4.0, Math.min(PITCH_H / 2 + 4.0, b.y));
+        const dyGk = targetGkY - gk.y;
+        gk.y += Math.sign(dyGk) * Math.min(Math.abs(dyGk), 9.5 * dt);
+      }
+
+      // (b) Realistic Defender Shot Block if a CB/DM is right in the shot path!
+      if (!b.blockChecked && b.shooterRef) {
+        const distFromShooter = Math.hypot(b.x - b.shooterRef.x, b.y - b.shooterRef.y);
+        if (distFromShooter > 1.8 && distFromShooter < 7.5) {
+          for (let i = 0; i < this.players.length; i++) {
+            const def = this.players[i];
+            if (def.side === defSide && !def.sentOff && def.pos !== 'KL') {
+              if (Math.hypot(def.x - b.x, def.y - b.y) < 1.55) {
+                b.blockChecked = true;
+                if (Math.random() < 0.34) {
+                  // DEFENDER BLOCKED THE SHOT!
+                  b.isShot = false;
+                  this.blocksCount++;
+                  b.vx = -b.vx * 0.35;
+                  b.vy = (Math.random() < 0.5 ? -1 : 1) * 7.5;
+                  b.vz = 2.2;
+                  this.lastActionType = 'block';
+                  if (liveState && !liveState.finished) {
+                    const min = Math.max(1, liveState.minute || 1);
+                    if (Math.random() < 0.7) {
+                      addFeedItem(min, `🛡️ ${def.name} kritik bir kayarak müdahaleyle şutu blokladı!`, { type: 'neutral' });
+                    }
+                    if (liveState.ratings[def.id]) liveState.ratings[def.id] = Math.min(9.9, liveState.ratings[def.id] + 0.25);
+                  }
+                  if (this.highlightActive) this.highlightOutro = 1.05;
+                  return;
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // (c) Goal-line / Goalkeeper Save Resolution (Realistic 70-84% GK Save Rate!)
+      const reachedRight = b.x >= PITCH_W - 2.0 && scoringSide === 'home';
+      const reachedLeft = b.x <= 2.0 && scoringSide === 'away';
+      if (reachedRight || reachedLeft) {
+        b.isShot = false;
+        const onTarget = Math.abs(b.y - PITCH_H / 2) <= 3.75;
+        const shooter = b.shooterRef || null;
+        const shotDist = b.shotDist || 16;
+
+        if (onTarget) {
+          const gkSkill = gk ? (gk.ovr || 74) : 45;
+          const shSkill = shooter ? (shooter.ovr || 74) : 74;
+          const pressBonus = Math.min(0.12, (b.defPressOnShot || 0) * 0.08);
+          const distBonus = shotDist > 19 ? 0.16 : (shotDist < 10 ? -0.10 : 0.03);
+          // Realistic pro GK save rate: ~72% baseline (range 54%..92%!)
+          const saveProb = gk
+            ? Math.max(0.44, Math.min(0.84, 0.62 + distBonus + pressBonus + (gkSkill - shSkill) * 0.012))
+            : 0.14;
+
+          if (Math.random() < saveProb) {
+            this.aiMetrics.saves++;
+            const isCorner = Math.random() < 0.48;
+            if (isCorner) this.aiMetrics.corners++;
+            this.lastActionType = isCorner ? 'corner' : 'save';
+            if (gk && !isCorner) {
+              this.owner = gk;
+              gk.holdTimer = 1.4;
+              this.gkHoldSafe = true;
+            } else {
+              b.vx = (reachedRight ? -1 : 1) * 6.5;
+              b.vy = (Math.random() < 0.5 ? -1 : 1) * 8.5;
+              b.vz = 2.0;
+            }
+            this.emit2DEvent({ type: 'save', side: defSide, gk, shooter, corner: isCorner });
+          } else {
+            // GOAL!!
+            if (scoringSide === 'home') this.aiMetrics.goalsHome++; else this.aiMetrics.goalsAway++;
+            this.lastActionType = 'goal';
+            this.emit2DEvent({ type: 'goal', side: scoringSide, shooter });
+            this.pendingKickoffSide = defSide;
+            if (this.highlightActive) {
+              b.vx = 0; b.vy = 0; b.vz = 0;
+              this.highlightOutro = 1.55;
+            } else {
+              this.beginRealKickoffSequence(defSide);
+            }
+          }
+        } else {
+          // Narrow miss / woodwork!
+          this.missesCount++;
+          this.lastActionType = 'miss';
+          const hitPost = Math.abs(b.y - PITCH_H / 2) <= 4.35;
+          if (liveState && !liveState.finished && Math.random() < 0.65) {
+            const min = Math.max(1, liveState.minute || 1);
+            addFeedItem(min, hitPost
+              ? `💥 DİREKTEN DÖNDÜ! ${shooter ? shooter.name : 'Şut'} çerçeveye takıldı!`
+              : `⚡ ${shooter ? shooter.name : 'Şut'} az farkla auta gitti!`, { type: 'neutral' });
+          }
+          if (gk) { this.owner = gk; gk.holdTimer = 1.2; this.gkHoldSafe = true; }
+          if (this.highlightActive) this.highlightOutro = 1.0;
+        }
+        return;
+      }
+
+      if (b.y < 1 || b.y > PITCH_H - 1) {
+        b.isShot = false; this.lastActionType = 'miss';
+        if (this.highlightActive) this.highlightOutro = 0.85;
+      }
+      return;
+    }
+    _v42StepBall(dt);
+  };
+
+  // 3. 7 COMPLETELY DIFFERENT, ANTI-REPEAT HIGHLIGHT SCENARIOS!
+  eng.startHighlightSequence = function(attSide) {
+    const isHome = attSide === 'home';
+    const dir = isHome ? 1 : -1;
+    const defSide = isHome ? 'away' : 'home';
+    const attClub = isHome ? liveState.home : liveState.away;
+    const attTP = this.getTacticalProfile(attSide);
+    const defTP = this.getTacticalProfile(defSide);
+
+    // Pick a scenario DIFFERENT from the previous highlight!
+    const pool = SCENARIOS.filter(s => s !== this.lastScenario);
+    const scen = pick(pool);
+    this.lastScenario = scen;
+    this.scenarioCounts[scen] = (this.scenarioCounts[scen] || 0) + 1;
+
+    this.highlightActive = true;
+    this.highlightSide = attSide;
+    this.highlightTimer = 13.0;
+    this.highlightOutro = 0;
+    this.highlightPasses = 0;
+    this.highlightsShown++;
+    this.tackleCooldown = 0.8;
+    this.gkHoldSafe = false;
+    this.pendingKickoffSide = null;
+    this.kickoffStage = 0;
+    this.ballTrail = [];
+
+    const attPs = this.players.filter(p => p.side === attSide && !p.sentOff && p.pos !== 'KL');
+    const defPs = this.players.filter(p => p.side === defSide && !p.sentOff && p.pos !== 'KL');
+    const placeDefault = (bx, by) => {
+      this.ball = { x: bx, y: by, z: 0, vx: 0, vy: 0, vz: 0, isShot: false };
+      for (let i = 0; i < this.players.length; i++) {
+        const pl = this.players[i];
+        if (pl.sentOff) continue;
+        pl.vx = 0; pl.vy = 0; pl.recoverTimer = 0;
+        const st = this.computeStructuredTarget(pl, bx, by, pl.side === attSide, pl.side === attSide ? attTP : defTP);
+        pl.x = st.x; pl.y = st.y; pl.state = st.state;
+      }
+    };
+
+    let carrier = null;
+
+    if (scen === 'left_wing_overlap') {
+      const bx = isHome ? 62 : 43, by = isHome ? 9 : 59;
+      placeDefault(bx, by);
+      carrier = attPs.find(p => p.pos === 'SLK' || p.pos === 'SLB') || attPs[0];
+      if (carrier) { carrier.x = bx; carrier.y = by; }
+    } else if (scen === 'right_wing_cutback') {
+      const bx = isHome ? 66 : 39, by = isHome ? 59 : 9;
+      placeDefault(bx, by);
+      carrier = attPs.find(p => p.pos === 'SĞK' || p.pos === 'SĞB') || attPs[0];
+      if (carrier) { carrier.x = bx; carrier.y = by; }
+    } else if (scen === 'fast_counter') {
+      // Counter starts deep near own half while opponent backline is pushed high!
+      const bx = isHome ? 44 : 61, by = 22 + Math.random() * 24;
+      placeDefault(bx, by);
+      // Push defending backline higher so attackers have real space to sprint into!
+      defPs.forEach(d => {
+        d.x = isHome ? Math.max(48, d.x - 16) : Math.min(57, d.x + 16);
+      });
+      carrier = attPs.find(p => ['OOS','OS','SLK','SĞK'].includes(p.pos)) || attPs[0];
+      if (carrier) { carrier.x = bx; carrier.y = by; }
+    } else if (scen === 'central_tiki_taka') {
+      const bx = isHome ? 62 : 43, by = 34 + (Math.random() - 0.5) * 8;
+      placeDefault(bx, by);
+      carrier = attPs.find(p => ['DOS','OS','OOS'].includes(p.pos)) || attPs[0];
+      if (carrier) { carrier.x = bx; carrier.y = by; }
+    } else if (scen === 'long_diagonal_switch') {
+      // Deep playmaker on one flank switches across 38m to opposite winger!
+      const bx = isHome ? 50 : 55, by = 13;
+      placeDefault(bx, by);
+      carrier = attPs.find(p => ['DOS','OS','STP'].includes(p.pos)) || attPs[0];
+      const oppWing = attPs.find(p => p !== carrier && ['SĞK','SLK','SĞB'].includes(p.pos)) || attPs[attPs.length - 1];
+      if (carrier) { carrier.x = bx; carrier.y = by; }
+      if (oppWing) {
+        oppWing.x = isHome ? 76 : 29;
+        oppWing.y = 56;
+        // Kick the dramatic diagonal switch right away!
+        this.owner = carrier;
+        this.kickBall(carrier, oppWing.x + dir * 3, oppWing.y, 'long_pass', oppWing);
+        this.highlightPasses = 1;
+        carrier = null; // Ball already in flight!
+      }
+    } else if (scen === 'corner_kick') {
+      // Real Corner Kick from the corner flag into a packed box!
+      const topCorner = Math.random() < 0.5;
+      const cx = isHome ? PITCH_W - 1.5 : 1.5;
+      const cy = topCorner ? 2.0 : (PITCH_H - 2.0);
+      placeDefault(isHome ? 92 : 13, PITCH_H / 2);
+      this.ball = { x: cx, y: cy, z: 0, vx: 0, vy: 0, vz: 0, isShot: false };
+      const taker = attPs.find(p => ['SLK','SĞK','OOS','OS'].includes(p.pos)) || attPs[0];
+      // Pack attackers & defenders into the penalty box!
+      const boxX = isHome ? PITCH_W - 11 : 11;
+      attPs.filter(p => p !== taker).slice(0, 5).forEach((a, idx) => {
+        a.x = boxX + (Math.random() - 0.5) * 6;
+        a.y = 24 + idx * 5 + (Math.random() - 0.5) * 2;
+      });
+      defPs.slice(0, 6).forEach((d, idx) => {
+        d.x = boxX + dir * 1.8 + (Math.random() - 0.5) * 4;
+        d.y = 22 + idx * 4.5;
+      });
+      if (taker) {
+        taker.x = cx; taker.y = cy;
+        const targetHead = attPs.find(p => p !== taker && ['SNT','STP'].includes(p.pos)) || attPs[1];
+        this.owner = taker;
+        this.kickBall(taker, boxX + dir * 1.5, targetHead ? targetHead.y : PITCH_H / 2, 'cross', targetHead);
+        this.highlightPasses = 2; // Ready to head/shoot on arrival!
+        carrier = null;
+      }
+    } else if (scen === 'free_kick_edge') {
+      // Dangerous Direct Free Kick from 21-23m out with 3-man wall!
+      const fx = isHome ? PITCH_W - 22 : 22;
+      const fy = PITCH_H / 2 + (Math.random() - 0.5) * 14;
+      placeDefault(fx, fy);
+      this.ball = { x: fx, y: fy, z: 0, vx: 0, vy: 0, vz: 0, isShot: false };
+      // Pick club's chosen Free Kick specialist if available!
+      const fkRoleId = attClub && attClub.roles && attClub.roles.fkId;
+      const taker = (fkRoleId && attPs.find(p => p.id === fkRoleId)) || attPs.find(p => ['OOS','SNT','SLK','SĞK'].includes(p.pos)) || attPs[0];
+      // Line up 3 defenders as a wall 9m in front of the ball!
+      defPs.slice(0, 3).forEach((d, idx) => {
+        d.x = fx + dir * 8.5;
+        d.y = fy + (PITCH_H / 2 - fy) * 0.35 + (idx - 1) * 1.6;
+      });
+      if (taker) {
+        taker.x = fx - dir * 1.0; taker.y = fy;
+        this.owner = taker;
+        const goalX = isHome ? PITCH_W : 0;
+        const aimY = PITCH_H / 2 + (Math.random() < 0.5 ? -2.4 : 2.4);
+        this.kickBall(taker, goalX, aimY, 'shot', null);
+        this.ball.shotDist = 22;
+        if (isHome) this.aiMetrics.shotsHome++; else this.aiMetrics.shotsAway++;
+        this.emit2DEvent({ type: 'shot', side: attSide, player: taker, xg: 0.11, distGoal: 22 });
+        carrier = null;
+      }
+    }
+
+    if (carrier) {
+      this.owner = carrier;
+      this.lastTouchSide = attSide;
+      carrier.holdTimer = 0.6;
+      carrier.state = 'carry';
+    }
+
+    const ov = document.getElementById('live2dFastOverlay');
+    if (ov) ov.style.opacity = '0';
+    const hud = document.getElementById('live2dHudTag');
+    if (hud && attClub) {
+      hud.textContent = `🔥 ${SCENARIO_LABELS[scen] || 'ATAK'} · ${attClub.short} (${liveState.minute}')`;
+      hud.style.background = 'rgba(220,38,38,0.88)';
+      hud.style.color = '#ffffff';
+    }
   };
 })();
 
