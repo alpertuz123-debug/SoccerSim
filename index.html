@@ -697,6 +697,7 @@ white-space: nowrap;
 .board-room-bg { background: linear-gradient(135deg, #1c1917 0%, #292524 55%, #451a03 100%); color:#fef3c7; }
 .locker-room-bg { background: linear-gradient(135deg, #064e3b 0%, #0f172a 60%, #1e293b 100%); color:#ecfdf5; }
 .social-room-bg { background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 60%, #172554 100%); color:#eff6ff; }
+.transfer-room-bg { background: linear-gradient(135deg, #0b1324 0%, #16243d 55%, #0c4a6e 100%); color:#f0f9ff; }
 .comp-badge { display:inline-block; padding:2px 7px; border-radius:999px; font-size:9.5px; font-weight:800; letter-spacing:0.03em; }
 .comp-league { background:rgba(148,163,184,0.18); color:var(--text); }
 .comp-euro { background:rgba(37,99,235,0.22); color:#60a5fa; }
@@ -1752,13 +1753,32 @@ body[data-theme="glass"] #sceneBackdrop { opacity:0.0; }
 </div>
 <!-- MODAL: 2-STAGE TRANSFER NEGOTIATION -->
 <div id="negotiationModal" class="modal-backdrop hidden" style="z-index:78;">
-<div class="modal-box stack-md" style="max-width:440px;">
-<div style="display:flex;align-items:center;justify-content:space-between;">
-<div>
-<div id="negStageBadge" class="btn-soft" style="display:inline-flex;padding:3px 8px;border-radius:999px;font-size:10px;font-weight:700;margin-bottom:4px;">AŞAMA 1 / 2 · KULÜP GÖRÜŞMESİ</div>
-<h3 id="negPlayerTitle" style="font-size:15px;font-weight:800;margin:0;"></h3>
+<div class="modal-box stack-md" style="max-width:460px;">
+<div class="theme-room-banner transfer-room-bg">
+<svg class="room-bg" viewBox="0 0 420 115" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<radialGradient id="trSpot1" cx="22%" cy="0%" r="55%"><stop offset="0%" stop-color="#38bdf8" stop-opacity="0.45"/><stop offset="100%" stop-color="#0f172a" stop-opacity="0"/></radialGradient>
+<radialGradient id="trSpot2" cx="80%" cy="0%" r="55%"><stop offset="0%" stop-color="#fbbf24" stop-opacity="0.35"/><stop offset="100%" stop-color="#0f172a" stop-opacity="0"/></radialGradient>
+</defs>
+<rect width="420" height="115" fill="url(#trSpot1)"/>
+<rect width="420" height="115" fill="url(#trSpot2)"/>
+<rect x="24" y="76" width="372" height="39" rx="8" fill="#1e293b" stroke="#38bdf8" stroke-opacity="0.28" stroke-width="1"/>
+<rect x="148" y="54" width="66" height="44" rx="4" fill="#f8fafc" opacity="0.16" stroke="#bae6fd" stroke-opacity="0.45" stroke-width="1"/>
+<line x1="158" y1="65" x2="204" y2="65" stroke="#e0f2fe" stroke-opacity="0.55" stroke-width="1.5"/>
+<line x1="158" y1="73" x2="196" y2="73" stroke="#e0f2fe" stroke-opacity="0.4" stroke-width="1.5"/>
+<line x1="158" y1="81" x2="188" y2="81" stroke="#34d399" stroke-opacity="0.65" stroke-width="1.8"/>
+<path d="M226 84 L258 58 L263 63 L231 89 Z" fill="#fbbf24" opacity="0.65"/>
+<circle cx="348" cy="42" r="24" fill="none" stroke="#38bdf8" stroke-opacity="0.3" stroke-width="1.4"/>
+<circle cx="348" cy="42" r="13" fill="none" stroke="#38bdf8" stroke-opacity="0.25" stroke-width="1.2"/>
+<path d="M348 42 L366 26 A24 24 0 0 1 372 42 Z" fill="#38bdf8" opacity="0.28"/>
+</svg>
+<div class="room-fg">
+<div style="min-width:0;">
+<div id="negStageBadge" class="obj-badge obj-track" style="margin-bottom:4px;">AŞAMA 1 / 2 · KULÜP GÖRÜŞMESİ</div>
+<h3 id="negPlayerTitle" class="truncate" style="font-size:15px;font-weight:800;margin:0;color:#f8fafc;"></h3>
 </div>
-<button id="closeNegModalBtn" type="button" class="btn btn-ghost" style="padding:5px 10px;">Vazgeç</button>
+<button id="closeNegModalBtn" type="button" class="btn btn-ghost" style="padding:5px 10px;background:rgba(15,23,42,0.55);color:#f8fafc;border-color:rgba(148,163,184,0.35);flex-shrink:0;">Vazgeç</button>
+</div>
 </div>
 <div id="negDialogueBox" class="elevated" style="padding:11px;font-size:12px;line-height:1.5;border-left:3px solid var(--accent);"></div>
 <div id="negStage1Wrap" class="stack-sm">
@@ -7294,6 +7314,10 @@ const cls = myG > opG ? 'form-W' : (myG === opG ? 'form-D' : 'form-L');
 rightHtml = `<div style="display:flex;align-items:center;gap:6px;flex-shrink:0;"><span class="form-pill ${cls}" style="width:auto;padding:3px 9px;font-size:12px;">${m.hg}-${m.ag}${m.penTxt || ''}</span>${e.type === 'league' ? '<span style="font-size:10px;color:var(--accent-text);font-weight:700;">Rapor</span>' : ''}</div>`;
 } else if (e.type === 'league') {
 rightHtml = `<button type="button" data-sim-until="${e.week}" class="btn btn-soft" style="padding:4px 9px;font-size:10.5px;">Buraya Sim</button>`;
+} else if (e.week === game.week) {
+rightHtml = `<button type="button" data-sim-cup-now="1" class="btn btn-primary" style="padding:4px 9px;font-size:10.5px;">Simüle Et</button>`;
+} else if (e.week > game.week) {
+rightHtml = `<button type="button" data-sim-to-cup="${e.week}" data-sim-cup-name="${e.comp}" class="btn btn-soft" style="padding:4px 9px;font-size:10.5px;">Maça Sim</button>`;
 } else {
 rightHtml = `<span style="font-size:10.5px;color:var(--muted);font-weight:700;">Hafta ${e.week + 1}</span>`;
 }
@@ -8169,6 +8193,10 @@ const cls = myG > opG ? 'form-W' : (myG === opG ? 'form-D' : 'form-L');
 rightHtml = `<div style="display:flex;align-items:center;gap:6px;flex-shrink:0;"><span class="form-pill ${cls}" style="width:auto;padding:3px 9px;font-size:12px;">${m.hg}-${m.ag}${m.penTxt || ''}</span>${canReport ? '<span style="font-size:10px;color:var(--accent-text);font-weight:700;">Rapor</span>' : ''}</div>`;
 } else if (e.type === 'league') {
 rightHtml = `<button type="button" data-sim-until="${e.week}" class="btn btn-soft" style="padding:4px 9px;font-size:10.5px;">Buraya Sim</button>`;
+} else if (e.week === game.week) {
+rightHtml = `<button type="button" data-sim-cup-now="1" class="btn btn-primary" style="padding:4px 9px;font-size:10.5px;">Simüle Et</button>`;
+} else if (e.week > game.week) {
+rightHtml = `<button type="button" data-sim-to-cup="${e.week}" data-sim-cup-name="${e.comp}" class="btn btn-soft" style="padding:4px 9px;font-size:10.5px;">Maça Sim</button>`;
 } else {
 rightHtml = `<span style="font-size:10.5px;color:var(--muted);font-weight:700;">Hafta ${e.week + 1}</span>`;
 }
@@ -9197,32 +9225,34 @@ function autoRotateUserLineupForBulkSim(club) {
     const isTired = (cur.stamina ?? 100) < 74;
     const curGroup = POS_LINE_GROUP[cur.pos] || 'MID';
 
-    // Find best eligible bench replacement
-    const findReplacement = (minStamina, minOvrDelta) => {
+    // Find best eligible bench replacement (STRICT position match by default; sameLine ONLY in extreme injury/suspension emergency!)
+    const findReplacement = (minStamina, minOvrDelta, allowSameLineEmergency) => {
       const cands = bench.filter(b => {
         if ((b.stamina ?? 100) < minStamina) return false;
         if (cur.pos === 'KL') return b.pos === 'KL';
         if (b.pos === 'KL') return false;
         const exact = b.pos === cur.pos || (Array.isArray(b.altPos) && b.altPos.includes(cur.pos));
-        const sameLine = (POS_LINE_GROUP[b.pos] || 'MID') === curGroup;
+        const sameLine = allowSameLineEmergency && (POS_LINE_GROUP[b.pos] || 'MID') === curGroup;
         if (!exact && !sameLine) return false;
         return b.ovr >= (cur.ovr + minOvrDelta);
       }).sort((a, b) => {
-        const aExact = (a.pos === cur.pos || (Array.isArray(a.altPos) && a.altPos.includes(cur.pos))) ? 4 : 0;
-        const bExact = (b.pos === cur.pos || (Array.isArray(b.altPos) && b.altPos.includes(cur.pos))) ? 4 : 0;
-        return (b.ovr * 0.65 + (b.stamina ?? 100) * 0.35 + bExact) - (a.ovr * 0.65 + (a.stamina ?? 100) * 0.35 + aExact);
+        const aPrim = a.pos === cur.pos ? 10 : ((Array.isArray(a.altPos) && a.altPos.includes(cur.pos)) ? 6 : 0);
+        const bPrim = b.pos === cur.pos ? 10 : ((Array.isArray(b.altPos) && b.altPos.includes(cur.pos)) ? 6 : 0);
+        return (b.ovr * 0.65 + (b.stamina ?? 100) * 0.35 + bPrim) - (a.ovr * 0.65 + (a.stamina ?? 100) * 0.35 + aPrim);
       });
       return cands[0] || null;
     };
 
     let rep = null;
     if (isUnavailable) {
-      rep = findReplacement(45, -20);
+      // Extreme emergency: injured or suspended -> try exact/secondary pos first, same-line ONLY if zero natural backup!
+      rep = findReplacement(45, -20, false) || findReplacement(45, -25, true);
     } else if (isTired) {
-      rep = findReplacement(76, -9);
+      // Fatigue rotation: STRICTLY exact or real secondary position ONLY! Never play out of position just for fatigue.
+      rep = findReplacement(76, -8, false);
     } else if ((cur.stamina ?? 100) < 90) {
-      // Bring back rested stronger star if they recovered (>=88 stamina and +2 OVR stronger)
-      rep = findReplacement(88, 2);
+      // Bring back rested stronger star ONLY in their natural/secondary position
+      rep = findReplacement(88, 2, false);
     }
 
     if (rep) {
@@ -9341,49 +9371,23 @@ if (_cupBtnOld && _cupBtnOld.parentNode) {
   _cupBtnNew.addEventListener('click', () => quickSimPendingCupMatch());
 }
 
-// Enhance renderCalendar: add "Maça Sim" (for future European/Domestic Cup matches) & "Simüle Et" (for current-week cup matches)!
+// Bind European & Domestic Cup Sim buttons inside #fixtureList!
 const _v32RenderCalendar = renderCalendar;
 renderCalendar = function() {
   _v32RenderCalendar();
-  const club = myClub();
-  if (!club || game.isUnemployed) return;
-  const list = document.getElementById('calendarList');
+  const list = document.getElementById('fixtureList');
   if (!list) return;
-  // Find every unplayed cup/euro row (currently showing static "Hafta X" span) and upgrade it with an actionable Sim button!
-  list.querySelectorAll('.fixture-row').forEach(row => {
-    // Skip played rows (have form-pill) and league rows (already have data-sim-until)
-    if (row.querySelector('.form-pill') || row.querySelector('[data-sim-until]')) return;
-    const badge = row.querySelector('.comp-badge');
-    if (!badge) return;
-    const isEuroOrCup = badge.classList.contains('comp-euro') || badge.classList.contains('comp-cup');
-    if (!isEuroOrCup) return;
-    const spans = Array.from(row.children).filter(el => el.tagName === 'SPAN');
-    const weekSpan = spans[spans.length - 1];
-    if (!weekSpan) return;
-    const m = (weekSpan.textContent || '').match(/Hafta\s+(\d+)/);
-    if (!m) return;
-    const targetWeek = Number(m[1]) - 1;
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.style.cssText = 'padding:4px 9px;font-size:10.5px;flex-shrink:0;';
-    if (targetWeek === game.week) {
-      btn.className = 'btn btn-primary';
-      btn.textContent = 'Simüle Et';
-      btn.dataset.simCupNow = '1';
-      btn.addEventListener('click', () => quickSimPendingCupMatch());
-    } else if (targetWeek > game.week) {
-      btn.className = 'btn btn-soft';
-      btn.textContent = 'Maça Sim';
-      btn.dataset.simToCup = String(targetWeek);
-      btn.addEventListener('click', () => {
-        simulateUntilWeek(targetWeek - 1);
-        showToast(`🏆 ${badge.textContent} maç haftasına gelindi! Maça çıkabilir veya hızlı simüle edebilirsin.`);
-      });
-    } else {
-      return;
+  list.querySelectorAll('[data-sim-cup-now]').forEach(btn => btn.addEventListener('click', () => {
+    quickSimPendingCupMatch();
+  }));
+  list.querySelectorAll('[data-sim-to-cup]').forEach(btn => btn.addEventListener('click', () => {
+    const targetWeek = Number(btn.dataset.simToCup);
+    const compName = btn.dataset.simCupName || 'Kupa';
+    if (targetWeek > game.week) {
+      simulateUntilWeek(targetWeek - 1);
+      showToast(`🏆 ${compName} maç haftasına gelindi! Maça çıkabilir veya hızlı simüle edebilirsin.`);
     }
-    weekSpan.parentNode.replaceChild(btn, weekSpan);
-  });
+  }));
 };
 
 })();
