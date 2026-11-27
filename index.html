@@ -853,7 +853,7 @@ select:focus, select:active, button:focus, button:active, input:focus, a:focus {
 <div class="menu-logo-ring">
 <svg class="svg-icon" style="width:28px;height:28px;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m12 6 3 4-1 5H10l-1-5 3-4Z"/><path d="M12 2v4"/><path d="m4.93 10.93 4.07-.93"/><path d="m19.07 10.93-4.07-.93"/><path d="m6.5 18.5 3.5-3.5"/><path d="m17.5 18.5-3.5-3.5"/></svg>
 </div>
-<div class="btn-soft" style="display:inline-flex;padding:3px 10px;border-radius:999px;font-size:10px;font-weight:700;margin-bottom:6px;">2026–27 DÜNYA SÜRÜMÜ · 7 LİG · v41</div>
+<div class="btn-soft" style="display:inline-flex;padding:3px 10px;border-radius:999px;font-size:10px;font-weight:700;margin-bottom:6px;">2026–27 DÜNYA SÜRÜMÜ · 7 LİG · v42</div>
 <h1 style="font-size:24px;font-weight:800;margin:0 0 4px;letter-spacing:-0.02em;">Soccer Simulator</h1>
 <p style="font-size:12px;color:var(--muted);margin:0;">Kendi teknik direktörlük kariyerini kur ve yönet.</p>
 </div>
@@ -14675,6 +14675,547 @@ enterCareer = function(careerObj) {
   eng.stop = function() {
     setFastOverlayVisible(false);
     _v402Stop();
+  };
+})();
+
+
+// =========================================================================
+// v42: CRISP PASSING & THROUGH-BALLS, SAFE GK, REAL POST-GOAL KICKOFF,
+//      CALM FM PACE & CURATED DANGEROUS HIGHLIGHTS ONLY!
+// =========================================================================
+(function initMatch2DV42() {
+  const eng = window.Match2DEngine;
+  if (!eng) return;
+
+  const PITCH_W = 105;
+  const PITCH_H = 68;
+
+  eng.passTargetId = null;     // Intended pass receiver actively runs to meet the ball!
+  eng.kickoffStage = 0;        // 0 = none, 1 = waiting at center spot, 2 = kickoff pass rolling out
+  eng.kickoffSide = 'home';
+  eng.kickoffTimer = 0;
+  eng.kickoffsExecuted = 0;    // Test telemetry
+  eng.gkHoldSafe = false;      // When true, GK holds ball safely until outro ends (no giveaway!)
+
+  // 1. CRISP, FAST, ACCURATE PASSING & TRUE THROUGH-BALLS (FIXES SHORT/ERRATIC PASSES!)
+  const _v41Kick = eng.kickBall.bind(eng);
+  eng.kickBall = function(fromAgent, tx, ty, type, targetAgent) {
+    const b = this.ball;
+    const dx = tx - b.x, dy = ty - b.y;
+    const dist = Math.max(0.5, Math.hypot(dx, dy));
+    const ux = dx / dist, uy = dy / dist;
+    const ovrSkill = Math.max(0.5, Math.min(1.0, ((fromAgent ? fromAgent.ovr : 76) - 52) / 42));
+
+    if (type === 'shot') {
+      // Crisp, realistic shot physics
+      const errAng = (Math.random() - 0.5) * 0.20 * (1.20 - ovrSkill * 0.62);
+      const dirX = ux * Math.cos(errAng) - uy * Math.sin(errAng);
+      const dirY = ux * Math.sin(errAng) + uy * Math.cos(errAng);
+      const spd = 27 + ovrSkill * 6.5;
+      b.vx = dirX * spd; b.vy = dirY * spd; b.vz = 1.5 + Math.random() * 2.0;
+      b.isShot = true;
+      b.shotSide = fromAgent ? fromAgent.side : this.lastTouchSide;
+      b.shooterRef = fromAgent || null;
+      this.passTargetId = null;
+    } else {
+      // Crisp pro-level pass accuracy (~90%+ accurate, NO weak/short dead passes!)
+      const baseErr = (type === 'long_pass' || type === 'cross') ? 0.065 : 0.032;
+      const errAng = (Math.random() - 0.5) * baseErr * (1.3 - ovrSkill * 0.7);
+      const dirX = ux * Math.cos(errAng) - uy * Math.sin(errAng);
+      const dirY = ux * Math.sin(errAng) + uy * Math.cos(errAng);
+
+      let speed = 22, vz = 0;
+      if (type === 'short_pass') {
+        speed = Math.min(27, Math.max(17.5, dist * 1.12 + 8.5));
+        vz = 0;
+      } else if (type === 'through_ball') {
+        speed = Math.min(28.5, Math.max(19.0, dist * 1.10 + 9.0));
+        vz = 0.4;
+      } else if (type === 'long_pass') {
+        speed = Math.min(31, Math.max(21, dist * 0.78 + 11.0));
+        vz = Math.min(10.5, 5.5 + dist * 0.11);
+      } else if (type === 'cross') {
+        speed = Math.min(28, Math.max(19.5, dist * 0.85 + 9.5));
+        vz = Math.min(7.8, 4.0 + dist * 0.09);
+      }
+
+      b.vx = dirX * speed;
+      b.vy = dirY * speed;
+      b.vz = vz;
+      b.isShot = false;
+      this.passTargetId = targetAgent ? targetAgent.id : null;
+    }
+
+    this.owner = null;
+    this.lastPasserId = fromAgent ? fromAgent.id : null;
+    this.lastTouchSide = fromAgent ? fromAgent.side : this.lastTouchSide;
+    this.ballCooldown = 0.22;
+    this.lastActionType = type;
+    if (this.lastActionStats[type] !== undefined) this.lastActionStats[type]++;
+  };
+
+  // 2. LIGHTER WET-TURF FRICTION SO PASSES ARRIVE CRISPLY + SAFE GK HOLD!
+  const _v41StepBall = eng.stepBall.bind(eng);
+  eng.stepBall = function(dt) {
+    const b = this.ball;
+    // Update subtle motion comet trail
+    if (!this.owner && Math.hypot(b.vx, b.vy) > 10) {
+      this.ballTrail.push({ x: b.x, y: b.y, z: b.z || 0 });
+      if (this.ballTrail.length > 7) this.ballTrail.shift();
+    } else if (this.ballTrail.length) {
+      this.ballTrail.shift();
+    }
+
+    // If ball is in flight (shot), delegate to v41's clean shot handler (with post-goal kickoff hook!)
+    if (b.isShot && !this.owner) {
+      const prevGoals = this.aiMetrics.goalsHome + this.aiMetrics.goalsAway;
+      _v41StepBall(dt);
+      const nowGoals = this.aiMetrics.goalsHome + this.aiMetrics.goalsAway;
+      if (nowGoals > prevGoals) {
+        // GOAL JUST SCORED! Schedule real visible Center-Spot Kickoff after 1.5s celebration!
+        const defSide = b.shotSide === 'home' ? 'away' : 'home';
+        this.pendingKickoffSide = defSide;
+      }
+      return;
+    }
+
+    if (this.ballCooldown > 0) this.ballCooldown = Math.max(0, this.ballCooldown - dt);
+
+    if (this.owner && !this.owner.sentOff) {
+      const vMag = Math.hypot(this.owner.vx, this.owner.vy);
+      const fx = vMag > 0.4 ? (this.owner.vx / vMag) : (this.owner.side === 'home' ? 1 : -1);
+      const fy = vMag > 0.4 ? (this.owner.vy / vMag) : 0;
+      b.x = Math.max(1.2, Math.min(PITCH_W - 1.2, this.owner.x + fx * 1.1));
+      b.y = Math.max(1.2, Math.min(PITCH_H - 1.2, this.owner.y + fy * 1.1));
+      b.z = 0; b.vx = this.owner.vx; b.vy = this.owner.vy; b.vz = 0;
+      return;
+    }
+
+    // Free rolling / lofted pass physics with realistic crisp wet-turf friction!
+    b.x += b.vx * dt;
+    b.y += b.vy * dt;
+    if (b.z > 0 || b.vz > 0) {
+      b.z += b.vz * dt;
+      b.vz -= 18.5 * dt;
+      if (b.z <= 0) {
+        b.z = 0;
+        if (Math.abs(b.vz) > 1.8) { b.vz = -b.vz * 0.48; b.vx *= 0.88; b.vy *= 0.88; }
+        else b.vz = 0;
+      }
+      const airDamp = Math.pow(0.965, dt * 30);
+      b.vx *= airDamp; b.vy *= airDamp;
+    } else {
+      // Crisp wet-turf roll (0.976 instead of 0.955 -> passes reach receivers cleanly!)
+      const turfDamp = Math.pow(0.976, dt * 30);
+      b.vx *= turfDamp; b.vy *= turfDamp;
+      if (Math.hypot(b.vx, b.vy) < 0.25) { b.vx = 0; b.vy = 0; }
+    }
+
+    if (b.y < 1.2) { b.y = 1.2; b.vy = Math.abs(b.vy) * 0.5; }
+    if (b.y > PITCH_H - 1.2) { b.y = PITCH_H - 1.2; b.vy = -Math.abs(b.vy) * 0.5; }
+    if (b.x < 1.2) { b.x = 1.2; b.vx = Math.abs(b.vx) * 0.5; }
+    if (b.x > PITCH_W - 1.2) { b.x = PITCH_W - 1.2; b.vx = -Math.abs(b.vx) * 0.5; }
+
+    // Ball pickup: Intended receiver has slightly larger control reach so crisp passes & through-balls connect!
+    if (b.z < 2.2) {
+      let bestPl = null, bestD = 2.6;
+      for (let i = 0; i < this.players.length; i++) {
+        const pl = this.players[i];
+        if (pl.sentOff || (pl.recoverTimer || 0) > 0) continue;
+        if (this.ballCooldown > 0 && pl.id === this.lastPasserId) continue;
+        const d = Math.hypot(pl.x - b.x, pl.y - b.y);
+        const isIntended = this.passTargetId && pl.id === this.passTargetId;
+        const reach = pl.pos === 'KL' ? 2.6 : (isIntended ? 2.45 : 1.75);
+        if (d < reach && d < bestD) { bestD = d; bestPl = pl; }
+      }
+      if (bestPl) {
+        this.owner = bestPl;
+        this.lastTouchSide = bestPl.side;
+        this.passTargetId = null;
+        bestPl.state = 'carry';
+        const tp = this.getTacticalProfile(bestPl.side);
+        // Calmer, realistic FM Mobile first-touch hold time!
+        bestPl.holdTimer = Math.max(0.55, tp.holdBase * 1.15);
+      }
+    }
+  };
+
+  // 3. SAFE GOALKEEPER DISTRIBUTION (NEVER PASSES TO OPPONENT STRIKER!) + CALM BUILD-UP PASSING
+  eng.decideFMAction = function(pl) {
+    const isHome = pl.side === 'home';
+    const dir = isHome ? 1 : -1;
+    const tp = this.getTacticalProfile(pl.side);
+    const goalX = isHome ? PITCH_W : 0;
+    const distGoal = Math.hypot(goalX - pl.x, PITCH_H / 2 - pl.y);
+    const angleY = Math.abs(pl.y - PITCH_H / 2);
+
+    // 1. SAFE GOALKEEPER:
+    //    - In Highlights mode after a save: NEVER kick blindly into strikers; hold safely until outro ends!
+    //    - In Full Match mode: ONLY pass to a completely unmarked wide defender OR boot a high lofted clearance past halfway!
+    if (pl.pos === 'KL') {
+      if (this.highlightActive && pl.side !== this.highlightSide) {
+        this.gkHoldSafe = true;
+        pl.holdTimer = 3.0;
+        if (this.highlightOutro <= 0) this.highlightOutro = 1.05;
+        return;
+      }
+      // Boot a high lofted clearance past halfway over all opponent forwards!
+      const clearX = isHome ? (58 + Math.random() * 14) : (47 - Math.random() * 14);
+      const clearY = 14 + Math.random() * (PITCH_H - 28);
+      this.kickBall(pl, clearX, clearY, 'long_pass', null);
+      this.ball.vz = 11.2; // High arc over strikers' heads!
+      return;
+    }
+
+    // 2. REALISTIC SHOOTING INSIDE/EDGE OF BOX
+    const inBox = distGoal <= 18.5 && angleY <= 15.5;
+    const edgeOfBox = distGoal <= 22.5 && angleY <= 13.5 && this.highlightPasses >= 2;
+    if ((inBox && Math.random() < 0.90) || (edgeOfBox && Math.random() < 0.36)) {
+      const cornerBias = (Math.random() < 0.5 ? -1 : 1) * (0.9 + Math.random() * 2.3);
+      const aimY = PITCH_H / 2 + cornerBias;
+      this.kickBall(pl, goalX, aimY, 'shot', null);
+      if (isHome) this.aiMetrics.shotsHome++; else this.aiMetrics.shotsAway++;
+      const xg = inBox
+        ? Number(Math.max(0.14, Math.min(0.56, (20.5 - distGoal) * 0.032 * (1 - angleY / 28))).toFixed(2))
+        : Number(Math.max(0.04, Math.min(0.11, (25 - distGoal) * 0.015)).toFixed(2));
+      this.ball.shotDist = distGoal;
+      this.emit2DEvent({ type: 'shot', side: pl.side, player: pl, xg, distGoal });
+      return;
+    }
+
+    // 3. WING CROSS / CUTBACK INTO THE BOX
+    const inFinalThird = isHome ? (pl.x > 76) : (pl.x < 29);
+    const isWide = pl.y < 16 || pl.y > PITCH_H - 16;
+    if (inFinalThird && isWide && Math.random() < 0.84) {
+      const boxMates = this.players.filter(m => m.side === pl.side && m.id !== pl.id && !m.sentOff && ['SNT','OOS','SLK','SĞK','OS'].includes(m.pos));
+      boxMates.sort((a, b) => ((b.x - a.x) * dir));
+      const target = boxMates[0];
+      const bx = target ? Math.max(8, Math.min(PITCH_W - 8, target.x + dir * 3.0)) : (isHome ? PITCH_W - 11 : 11);
+      const by = target ? Math.max(21, Math.min(47, target.y)) : (PITCH_H / 2 + (Math.random() - 0.5) * 8);
+      this.kickBall(pl, bx, by, 'cross', target);
+      this.highlightPasses++;
+      if (isHome) this.aiMetrics.passesHome++; else this.aiMetrics.passesAway++;
+      this.emit2DEvent({ type: 'pass', side: pl.side, player: pl, passType: 'cross' });
+      return;
+    }
+
+    // 4. INTELLIGENT PASS & THROUGH-BALL SELECTION (WITH LANE CHECK!)
+    const mates = this.players.filter(m => m.side === pl.side && m.id !== pl.id && !m.sentOff && m.pos !== 'KL');
+    if (!mates.length) return;
+    let bestTarget = null, bestScore = -999;
+
+    for (let i = 0; i < mates.length; i++) {
+      const m = mates[i];
+      const dist = Math.hypot(m.x - pl.x, m.y - pl.y);
+      if (dist < 6.0 || dist > 46) continue;
+      const fwdGain = (m.x - pl.x) * dir;
+
+      // Check how open the receiver is AND whether an opponent is blocking the passing lane!
+      let minOppD = 16, laneBlocked = 0;
+      const ux = (m.x - pl.x) / dist, uy = (m.y - pl.y) / dist;
+      for (let j = 0; j < this.players.length; j++) {
+        const op = this.players[j];
+        if (op.side !== pl.side && !op.sentOff) {
+          const od = Math.hypot(op.x - m.x, op.y - m.y);
+          if (od < minOppD) minOppD = od;
+          // Project opponent onto pass segment
+          const proj = (op.x - pl.x) * ux + (op.y - pl.y) * uy;
+          if (proj > 2 && proj < dist - 2) {
+            const perp = Math.abs((op.x - pl.x) * (-uy) + (op.y - pl.y) * ux);
+            if (perp < 2.2) laneBlocked += 1;
+          }
+        }
+      }
+
+      let score = fwdGain * 1.18 + Math.min(10, minOppD) * 1.3 - laneBlocked * 9.5 + (Math.random() - 0.5) * 3.5;
+      if (fwdGain < -4) score -= 12;
+      if (m.state === 'run' && fwdGain > 4) score += 11; // Love feeding through-ball runners!
+      if (['SNT','OOS','SLK','SĞK'].includes(m.pos) && fwdGain > 3) score += 8;
+      if (tp.passing === 'kisa' && dist <= 18) score += 5;
+      if ((tp.passing === 'uzun' || tp.passing === 'direkt') && dist >= 22) score += 6;
+      if (score > bestScore) { bestScore = score; bestTarget = m; }
+    }
+
+    if (!bestTarget) bestTarget = mates[0];
+    const d = Math.hypot(bestTarget.x - pl.x, bestTarget.y - pl.y);
+    const fwd = (bestTarget.x - pl.x) * dir;
+    const isThrough = (bestTarget.state === 'run' || ['SNT','SLK','SĞK','OOS'].includes(bestTarget.pos)) && fwd > 5 && d > 10;
+    const pType = isThrough ? 'through_ball' : ((d > 27 && tp.passing !== 'kisa') ? 'long_pass' : 'short_pass');
+
+    // Through-ball leads runner cleanly into open space ahead!
+    const leadX = isThrough ? (bestTarget.x + dir * 6.5) : (bestTarget.x + bestTarget.vx * 0.28);
+    const leadY = isThrough ? (bestTarget.y + (PITCH_H / 2 - bestTarget.y) * 0.15) : (bestTarget.y + bestTarget.vy * 0.28);
+    const tx = Math.max(4, Math.min(PITCH_W - 4, leadX));
+    const ty = Math.max(4, Math.min(PITCH_H - 4, leadY));
+    this.kickBall(pl, tx, ty, pType, bestTarget);
+    this.highlightPasses++;
+    if (isHome) this.aiMetrics.passesHome++; else this.aiMetrics.passesAway++;
+    this.emit2DEvent({ type: 'pass', side: pl.side, player: pl, passType: pType });
+  };
+
+  // Let intended pass receiver actively sprint toward incoming pass/through-ball!
+  const _v41StepPlayers = eng.stepPlayers.bind(eng);
+  eng.stepPlayers = function(dt) {
+    if (this.gkHoldSafe && this.owner && this.owner.pos === 'KL') {
+      // GK holds ball calmly after save; players jog smoothly back without swarming GK!
+      for (let i = 0; i < this.players.length; i++) {
+        const pl = this.players[i];
+        if (pl.sentOff || pl.id === this.owner.id) continue;
+        pl.vx *= 0.92; pl.vy *= 0.92;
+        pl.x = Math.max(2, Math.min(PITCH_W - 2, pl.x + pl.vx * dt));
+        pl.y = Math.max(2, Math.min(PITCH_H - 2, pl.y + pl.vy * dt));
+      }
+      return;
+    }
+    _v41StepPlayers(dt);
+    // Boost intended receiver to run cleanly onto the pass/through-ball!
+    if (!this.owner && this.passTargetId && !this.ball.isShot) {
+      const rec = this.players.find(p => p.id === this.passTargetId && !p.sentOff);
+      if (rec) {
+        const dx = this.ball.x - rec.x, dy = this.ball.y - rec.y;
+        const d = Math.hypot(dx, dy);
+        if (d > 0.5 && d < 28) {
+          const spd = this.getMaxSpeed(rec) * 1.04;
+          rec.vx = (dx / d) * spd;
+          rec.vy = (dy / d) * spd;
+          rec.x = Math.max(2, Math.min(PITCH_W - 2, rec.x + rec.vx * dt * 0.45));
+          rec.y = Math.max(2, Math.min(PITCH_H - 2, rec.y + rec.vy * dt * 0.45));
+        }
+      }
+    }
+  };
+
+  // 4. REAL VISIBLE CENTER-SPOT KICKOFF SEQUENCE AFTER EVERY GOAL!
+  eng.beginRealKickoffSequence = function(concedingSide) {
+    this.kickoffStage = 1;
+    this.kickoffSide = concedingSide;
+    this.kickoffTimer = 0.65; // Pause 0.65s at center spot for referee whistle!
+    this.gkHoldSafe = false;
+    this.owner = null;
+    this.ballTrail = [];
+    this.ball = { x: PITCH_W / 2, y: PITCH_H / 2, z: 0, vx: 0, vy: 0, vz: 0, isShot: false };
+
+    // Place ALL 22 players strictly in their own halves (true FIFA kickoff alignment!)
+    for (let i = 0; i < this.players.length; i++) {
+      const pl = this.players[i];
+      if (pl.sentOff) continue;
+      pl.vx = 0; pl.vy = 0; pl.recoverTimer = 0;
+      const isH = pl.side === 'home';
+      pl.x = isH ? Math.min(PITCH_W / 2 - 4, pl.baseX) : Math.max(PITCH_W / 2 + 4, pl.baseX);
+      pl.y = pl.baseY;
+      pl.state = 'idle';
+    }
+
+    // Place conceding team's striker right at the center spot!
+    const kicker = this.players.find(p => p.side === concedingSide && !p.sentOff && p.pos === 'SNT')
+      || this.players.find(p => p.side === concedingSide && !p.sentOff && p.pos !== 'KL');
+    if (kicker) {
+      kicker.x = PITCH_W / 2 + (concedingSide === 'home' ? -0.9 : 0.9);
+      kicker.y = PITCH_H / 2;
+      this.owner = kicker;
+    }
+
+    const hud = document.getElementById('live2dHudTag');
+    const cClub = concedingSide === 'home' ? (liveState && liveState.home) : (liveState && liveState.away);
+    if (hud && cClub) {
+      hud.textContent = `⚽ SANTRA · ${cClub.short}`;
+      hud.style.background = 'rgba(15,23,42,0.85)';
+      hud.style.color = '#fbbf24';
+    }
+  };
+
+  eng.stepKickoffSequence = function(dt) {
+    if (this.kickoffStage === 1) {
+      this.kickoffTimer -= dt;
+      if (this.kickoffTimer <= 0) {
+        // Referee blows whistle -> Kicker taps crisp kickoff pass back to midfielder!
+        const kicker = this.owner;
+        const mid = this.players.find(p => p.side === this.kickoffSide && !p.sentOff && ['OS','DOS','OOS'].includes(p.pos))
+          || this.players.find(p => p.side === this.kickoffSide && !p.sentOff && p !== kicker && p.pos !== 'KL');
+        if (kicker && mid) {
+          this.kickBall(kicker, mid.x, mid.y, 'short_pass', mid);
+        }
+        this.kickoffsExecuted++;
+        this.kickoffStage = 2;
+        this.kickoffTimer = 1.05; // Watch the kickoff pass arrive & players jog into play!
+      }
+      return true;
+    }
+    if (this.kickoffStage === 2) {
+      this.stepPlayers(dt);
+      this.stepBall(dt);
+      this.kickoffTimer -= dt;
+      if (this.kickoffTimer <= 0) {
+        this.kickoffStage = 0;
+        if (this.viewMode === 'highlights' && this.highlightActive) {
+          this.endHighlightSequence();
+        }
+      }
+      return true;
+    }
+    return false;
+  };
+
+  // 5. CURATED DANGEROUS HIGHLIGHTS ONLY (6-10 REAL THREATS/MATCH) + CALMER FM MOBILE PACE!
+  const _v41StartHL = eng.startHighlightSequence.bind(eng);
+  eng.startHighlightSequence = function(attSide) {
+    this.gkHoldSafe = false;
+    this.pendingKickoffSide = null;
+    this.kickoffStage = 0;
+    _v41StartHL(attSide);
+    // Give calm 12.5s window so build-up feels unhurried and tactical!
+    this.highlightTimer = 12.5;
+  };
+
+  // Override stepPhysics: Calmer 0.72x simulation pace during live 2D play + Real Post-Goal Kickoff + Curated Highlights!
+  eng.stepPhysics = function(dt) {
+    if (this.goalBannerTimer > 0) {
+      this.goalBannerTimer = Math.max(0, this.goalBannerTimer - dt);
+      if (this.goalBannerTimer === 0) {
+        const b = document.getElementById('live2dGoalBanner');
+        if (b) b.classList.add('hidden');
+      }
+    }
+    if (!liveState || liveState.finished || liveState.paused) return;
+
+    // Smooth, calmer playback speed (0.74x of raw dt) so every pass & run is easy and pleasant to follow!
+    const calmDt = dt * 0.74;
+
+    // Handle active Center-Spot Kickoff sequence (in BOTH Highlights & Full Match modes!)
+    if (this.kickoffStage > 0) {
+      this.stepKickoffSequence(calmDt);
+      return;
+    }
+
+    if (this.viewMode === 'full') {
+      const ov = document.getElementById('live2dFastOverlay');
+      if (ov) ov.style.opacity = '0';
+      if (this.pendingKickoffSide) {
+        const ks = this.pendingKickoffSide;
+        this.pendingKickoffSide = null;
+        this.beginRealKickoffSequence(ks);
+        return;
+      }
+      this.stepPlayers(calmDt);
+      this.stepBall(calmDt);
+      liveState.totalPossTicks = (liveState.totalPossTicks || 0) + 1;
+      if (this.lastTouchSide === 'home') liveState.hPossTicks = (liveState.hPossTicks || 0) + 1;
+      liveState.hPoss = Math.max(25, Math.min(75, Math.round((liveState.hPossTicks / Math.max(1, liveState.totalPossTicks)) * 100)));
+      this.simSeconds += dt;
+      const curMin = Math.min(90, Math.floor(this.simSeconds));
+      if (curMin > this.lastRecordedMin) {
+        for (let m = this.lastRecordedMin + 1; m <= curMin; m++) {
+          this.lastRecordedMin = m;
+          this.onMatchMinuteAdvance(m);
+          if (!liveState || liveState.paused || liveState.finished) break;
+        }
+      }
+      return;
+    }
+
+    // FM MOBILE "ÖNEMLİ ANLAR" MODE (CURATED DANGEROUS CHANCES ONLY!)
+    if (this.highlightActive) {
+      if (this.highlightOutro > 0) {
+        this.highlightOutro -= calmDt;
+        // Smooth follow-through movement during outro (zero frozen dots!)
+        if (!this.gkHoldSafe) {
+          this.owner = null;
+          this.ball.isShot = false;
+          this.ball.vx *= 0.93; this.ball.vy *= 0.93;
+          this.ball.x = Math.max(1.5, Math.min(PITCH_W - 1.5, this.ball.x + this.ball.vx * calmDt));
+          this.ball.y = Math.max(1.5, Math.min(PITCH_H - 1.5, this.ball.y + this.ball.vy * calmDt));
+        }
+        for (let i = 0; i < this.players.length; i++) {
+          const pl = this.players[i];
+          if (pl.sentOff) continue;
+          pl.vx *= 0.95; pl.vy *= 0.95;
+          pl.x = Math.max(2, Math.min(PITCH_W - 2, pl.x + pl.vx * calmDt));
+          pl.y = Math.max(2, Math.min(PITCH_H - 2, pl.y + pl.vy * calmDt));
+        }
+        if (this.highlightOutro <= 0) {
+          // If a goal was just scored, transition straight into REAL CENTER-SPOT KICKOFF!
+          if (this.pendingKickoffSide) {
+            const ks = this.pendingKickoffSide;
+            this.pendingKickoffSide = null;
+            this.beginRealKickoffSequence(ks);
+          } else {
+            this.gkHoldSafe = false;
+            this.endHighlightSequence();
+          }
+        }
+        return;
+      }
+
+      this.stepPlayers(calmDt);
+      this.stepBall(calmDt);
+
+      this.highlightTimer -= calmDt;
+      const defWonClean = this.owner && this.owner.side !== this.highlightSide && this.highlightTimer < 8.5;
+      if (defWonClean) {
+        this.highlightOutro = 1.05;
+        return;
+      }
+      if (this.highlightTimer <= 0) {
+        this.highlightOutro = 0.75;
+      }
+      return;
+    }
+
+    // BETWEEN HIGHLIGHTS: Calm fast-flow clock (~2.6 mins/sec at 1x) with ~7-10 curated real chances per match!
+    this.fastMinAccum += dt * 2.6;
+    while (this.fastMinAccum >= 1.0 && !this.highlightActive && !liveState.paused && !liveState.finished) {
+      this.fastMinAccum -= 1.0;
+      const nextMin = Math.min(90, this.lastRecordedMin + 1);
+      if (nextMin > this.lastRecordedMin) {
+        this.lastRecordedMin = nextMin;
+        const hb = getTacticalBonus(liveState.home), ab = getTacticalBonus(liveState.away);
+        const hPow = getClubEffectiveOvr(liveState.home) + 1.5 + hb.att - ab.def - (liveState.hReds * 4.5);
+        const aPow = getClubEffectiveOvr(liveState.away) + ab.att - hb.def - (liveState.aReds * 4.5);
+        const homeShare = Math.max(0.32, Math.min(0.68, 0.50 + (hPow - aPow) * 0.018));
+        liveState.totalPossTicks = (liveState.totalPossTicks || 0) + 1;
+        if (Math.random() < homeShare) {
+          liveState.hPossTicks = (liveState.hPossTicks || 0) + 1;
+          liveState.hPasses += randInt(4, 7); liveState.aPasses += randInt(2, 4);
+        } else {
+          liveState.aPasses += randInt(4, 7); liveState.hPasses += randInt(2, 4);
+        }
+        liveState.hPoss = Math.max(25, Math.min(75, Math.round((liveState.hPossTicks / Math.max(1, liveState.totalPossTicks)) * 100)));
+
+        const ov = document.getElementById('live2dFastOverlay');
+        const sEl = document.getElementById('live2dFastStatus');
+        const subEl = document.getElementById('live2dFastSub');
+        const mh = document.getElementById('live2dMomBarH');
+        const ma = document.getElementById('live2dMomBarA');
+        if (ov) ov.style.opacity = '1';
+        if (sEl) sEl.textContent = `⚡ MAÇ AKIYOR · ${nextMin}'`;
+        if (subEl) subEl.textContent = `${liveState.home.short} %${liveState.hPoss} — %${100 - liveState.hPoss} ${liveState.away.short} · Tehlikeli atak bekleniyor...`;
+        if (mh) mh.style.width = `${liveState.hPoss}%`;
+        if (ma) ma.style.width = `${100 - liveState.hPoss}%`;
+
+        this.onMatchMinuteAdvance(nextMin);
+        if (liveState.paused || liveState.finished) break;
+
+        if (this.highlightCooldownMin > 0) this.highlightCooldownMin--;
+        // Curated frequency: min 6-min spacing, ~14% chance -> 7-10 genuinely exciting highlights per match!
+        if (nextMin >= 4 && nextMin <= 88 && this.highlightCooldownMin === 0 && Math.random() < 0.15) {
+          const attSide = Math.random() < homeShare ? 'home' : 'away';
+          this.highlightCooldownMin = 6;
+          this.startHighlightSequence(attSide);
+          break;
+        }
+      }
+    }
+  };
+
+  // Reset v42 fields on initForMatch
+  const _v41Init = eng.initForMatch.bind(eng);
+  eng.initForMatch = function(home, away) {
+    this.passTargetId = null;
+    this.kickoffStage = 0;
+    this.pendingKickoffSide = null;
+    this.kickoffsExecuted = 0;
+    this.gkHoldSafe = false;
+    _v41Init(home, away);
   };
 })();
 
