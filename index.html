@@ -743,9 +743,7 @@ white-space: nowrap;
 
 
 /* v32 Atmospheric Scene Backdrops & Harder Transfer Badges */
-#sceneBackdrop { position:fixed; inset:0; z-index:0; pointer-events:none; overflow:hidden; opacity:0.15; transition:opacity 0.35s ease; }
-body[data-theme="light"] #sceneBackdrop { opacity:0.08; }
-body[data-theme="glass"] #sceneBackdrop { opacity:0.0; }
+#sceneBackdrop { display:none !important; }
 #sceneBackdrop svg { width:100%; height:100%; object-fit:cover; }
 .tab-scene-banner { position:relative; border-radius:14px; padding:11px 14px; overflow:hidden; border:1px solid var(--border-strong); display:flex; align-items:center; justify-content:space-between; gap:10px; }
 .tab-scene-banner svg.scene-art { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; opacity:0.38; pointer-events:none; }
@@ -819,7 +817,7 @@ body[data-theme="glass"] #sceneBackdrop { opacity:0.0; }
 <div class="menu-logo-ring">
 <svg class="svg-icon" style="width:28px;height:28px;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m12 6 3 4-1 5H10l-1-5 3-4Z"/><path d="M12 2v4"/><path d="m4.93 10.93 4.07-.93"/><path d="m19.07 10.93-4.07-.93"/><path d="m6.5 18.5 3.5-3.5"/><path d="m17.5 18.5-3.5-3.5"/></svg>
 </div>
-<div class="btn-soft" style="display:inline-flex;padding:3px 10px;border-radius:999px;font-size:10px;font-weight:700;margin-bottom:6px;">2026–27 DÜNYA SÜRÜMÜ · 7 LİG · v35</div>
+<div class="btn-soft" style="display:inline-flex;padding:3px 10px;border-radius:999px;font-size:10px;font-weight:700;margin-bottom:6px;">2026–27 DÜNYA SÜRÜMÜ · 7 LİG · v36</div>
 <h1 style="font-size:24px;font-weight:800;margin:0 0 4px;letter-spacing:-0.02em;">Soccer Simulator</h1>
 <p style="font-size:12px;color:var(--muted);margin:0;">Kendi teknik direktörlük kariyerini kur ve yönet.</p>
 </div>
@@ -9213,6 +9211,8 @@ const POS_LINE_GROUP = {
 
 function autoRotateUserLineupForBulkSim(club) {
   if (!club || !Array.isArray(club.lineup) || !Array.isArray(club.squad)) return 0;
+  const rows = FORMATIONS[club.formation] || FORMATIONS['4-2-3-1'];
+  const slotPositions = rows.flatMap(r => r.slots);
   let swaps = 0;
   const starterSet = new Set(club.lineup);
   const bench = club.squad.filter(p => !starterSet.has(p.id) && (p.injuredWeeks || 0) === 0 && (p.suspendedWeeks || 0) === 0);
@@ -9221,23 +9221,25 @@ function autoRotateUserLineupForBulkSim(club) {
     const curId = club.lineup[i];
     const cur = club.squad.find(x => x.id === curId);
     if (!cur) continue;
+    const slotPos = slotPositions[i] || cur.pos;
+    const slotGroup = POS_LINE_GROUP[slotPos] || 'MID';
     const isUnavailable = (cur.injuredWeeks || 0) > 0 || (cur.suspendedWeeks || 0) > 0;
-    const isTired = (cur.stamina ?? 100) < 74;
-    const curGroup = POS_LINE_GROUP[cur.pos] || 'MID';
+    const isTired = (cur.stamina ?? 100) < 72;
+    const curFitsSlot = cur.pos === slotPos || (Array.isArray(cur.altPos) && cur.altPos.includes(slotPos));
 
-    // Find best eligible bench replacement (STRICT position match by default; sameLine ONLY in extreme injury/suspension emergency!)
+    // STRICTLY match against the FORMATION SLOT's required position (slotPos), NEVER cur.pos!
     const findReplacement = (minStamina, minOvrDelta, allowSameLineEmergency) => {
       const cands = bench.filter(b => {
         if ((b.stamina ?? 100) < minStamina) return false;
-        if (cur.pos === 'KL') return b.pos === 'KL';
+        if (slotPos === 'KL') return b.pos === 'KL';
         if (b.pos === 'KL') return false;
-        const exact = b.pos === cur.pos || (Array.isArray(b.altPos) && b.altPos.includes(cur.pos));
-        const sameLine = allowSameLineEmergency && (POS_LINE_GROUP[b.pos] || 'MID') === curGroup;
-        if (!exact && !sameLine) return false;
+        const fitsSlot = b.pos === slotPos || (Array.isArray(b.altPos) && b.altPos.includes(slotPos));
+        const sameLine = allowSameLineEmergency && (POS_LINE_GROUP[b.pos] || 'MID') === slotGroup;
+        if (!fitsSlot && !sameLine) return false;
         return b.ovr >= (cur.ovr + minOvrDelta);
       }).sort((a, b) => {
-        const aPrim = a.pos === cur.pos ? 10 : ((Array.isArray(a.altPos) && a.altPos.includes(cur.pos)) ? 6 : 0);
-        const bPrim = b.pos === cur.pos ? 10 : ((Array.isArray(b.altPos) && b.altPos.includes(cur.pos)) ? 6 : 0);
+        const aPrim = a.pos === slotPos ? 12 : ((Array.isArray(a.altPos) && a.altPos.includes(slotPos)) ? 7 : 0);
+        const bPrim = b.pos === slotPos ? 12 : ((Array.isArray(b.altPos) && b.altPos.includes(slotPos)) ? 7 : 0);
         return (b.ovr * 0.65 + (b.stamina ?? 100) * 0.35 + bPrim) - (a.ovr * 0.65 + (a.stamina ?? 100) * 0.35 + aPrim);
       });
       return cands[0] || null;
@@ -9245,13 +9247,16 @@ function autoRotateUserLineupForBulkSim(club) {
 
     let rep = null;
     if (isUnavailable) {
-      // Extreme emergency: injured or suspended -> try exact/secondary pos first, same-line ONLY if zero natural backup!
+      // Extreme emergency: injured/suspended -> exact/secondary slotPos first, same-line ONLY if zero natural backup!
       rep = findReplacement(45, -20, false) || findReplacement(45, -25, true);
+    } else if (!curFitsSlot) {
+      // If an out-of-position player was in this slot from an earlier emergency, restore a natural slotPos player!
+      rep = findReplacement(70, -10, false);
     } else if (isTired) {
-      // Fatigue rotation: STRICTLY exact or real secondary position ONLY! Never play out of position just for fatigue.
-      rep = findReplacement(76, -8, false);
-    } else if ((cur.stamina ?? 100) < 90) {
-      // Bring back rested stronger star ONLY in their natural/secondary position
+      // Fatigue rotation: STRICTLY natural/secondary slotPos ONLY! Never put someone out of position for fatigue.
+      rep = findReplacement(78, -7, false);
+    } else if ((cur.stamina ?? 100) < 92) {
+      // Bring back rested stronger natural starter for this exact slotPos
       rep = findReplacement(88, 2, false);
     }
 
@@ -9267,6 +9272,7 @@ function autoRotateUserLineupForBulkSim(club) {
   }
   return swaps;
 }
+window.autoRotateUserLineupForBulkSim = autoRotateUserLineupForBulkSim;
 
 // Wrap simulateUntilWeek so every simulated week auto-rotates tired players & recovers rested bench players!
 const _v32SimulateUntilWeek = simulateUntilWeek;
@@ -9387,6 +9393,198 @@ renderCalendar = function() {
       simulateUntilWeek(targetWeek);
     }
   }));
+};
+
+})();
+
+
+// =========================================================================
+// v36: CUP-ONLY SIM STOP (NO NEXT LEAGUE MATCH) + EURO/CUP CAREER STATS!
+// =========================================================================
+(function initV36Patch() {
+
+function ensureCupStatsObj(g) {
+  if (!g || !g.managerMeta) return null;
+  if (!g.managerMeta.cupStats || g.managerMeta.cupStats.clubId !== g.myClubId) {
+    g.managerMeta.cupStats = { clubId: g.myClubId, p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0 };
+  }
+  return g.managerMeta.cupStats;
+}
+
+function recordUserCupMatchForCareer(clubId, gf, ga) {
+  if (!game || game.isUnemployed || !clubId || clubId !== game.myClubId) return;
+  const cs = ensureCupStatsObj(game);
+  if (!cs) return;
+  cs.p++;
+  cs.gf += gf;
+  cs.ga += ga;
+  if (gf > ga) { cs.w++; cs.pts += 3; }
+  else if (gf === ga) { cs.d++; cs.pts += 1; }
+  else { cs.l++; }
+}
+
+// Backfill cupStats from already-played European & Domestic Cup matches for existing saves
+function backfillUserCupStatsIfNeeded() {
+  if (!game || !game.managerMeta || game.isUnemployed || !game.myClubId || !game.cups) return;
+  if (game.managerMeta.cupStats && game.managerMeta.cupStats.clubId === game.myClubId && game.managerMeta.cupStats.p > 0) return;
+  const cs = { clubId: game.myClubId, p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0 };
+  const addM = (m) => {
+    if (!m || !m.played) return;
+    if (m.home !== game.myClubId && m.away !== game.myClubId) return;
+    const isH = m.home === game.myClubId;
+    const gf = isH ? m.hg : m.ag, ga = isH ? m.ag : m.hg;
+    cs.p++; cs.gf += gf; cs.ga += ga;
+    if (gf > ga) { cs.w++; cs.pts += 3; }
+    else if (gf === ga) { cs.d++; cs.pts += 1; }
+    else { cs.l++; }
+  };
+  Object.values(game.cups).forEach(cup => {
+    if (cup.matchdays) cup.matchdays.forEach(md => (md || []).forEach(addM));
+    if (cup.rounds) cup.rounds.forEach(r => (r || []).forEach(addM));
+  });
+  game.managerMeta.cupStats = cs;
+}
+
+// Hook applyEuroLeagueMatchResult & resolveCupMatch to record user's European & Domestic Cup matches into Career History!
+const _v35ApplyEuroLP = applyEuroLeagueMatchResult;
+applyEuroLeagueMatchResult = function(cup, mdIdx, mIdx, hg, ag, reportObj) {
+  const m = cup && cup.matchdays && cup.matchdays[mdIdx] && cup.matchdays[mdIdx][mIdx];
+  const wasPlayed = m && m.played;
+  _v35ApplyEuroLP(cup, mdIdx, mIdx, hg, ag, reportObj);
+  if (!wasPlayed && m && m.played && !game.isUnemployed) {
+    if (m.home === game.myClubId) recordUserCupMatchForCareer(m.home, m.hg, m.ag);
+    else if (m.away === game.myClubId) recordUserCupMatchForCareer(m.away, m.ag, m.hg);
+  }
+};
+
+const _v35ResolveCup = resolveCupMatch;
+resolveCupMatch = function(cupId, roundIdx, matchIdx, hg, ag, winnerId, penTxt, isEuroLP, reportObj) {
+  const cup = game && game.cups && game.cups[cupId];
+  const m = (!isEuroLP && cup && cup.rounds && cup.rounds[roundIdx]) ? cup.rounds[roundIdx][matchIdx] : null;
+  const wasPlayed = m && m.played;
+  _v35ResolveCup(cupId, roundIdx, matchIdx, hg, ag, winnerId, penTxt, isEuroLP, reportObj);
+  if (!isEuroLP && !wasPlayed && m && m.played && !game.isUnemployed) {
+    if (m.home === game.myClubId) recordUserCupMatchForCareer(m.home, m.hg, m.ag);
+    else if (m.away === game.myClubId) recordUserCupMatchForCareer(m.away, m.ag, m.hg);
+  }
+};
+
+// Include cupStats in getManagedStatsForCurrentClub() so BOTH Career Totals & Season History include European + Domestic Cup matches!
+const _v35GetManagedStats = getManagedStatsForCurrentClub;
+getManagedStatsForCurrentClub = function() {
+  const base = _v35GetManagedStats();
+  const cs = game && game.managerMeta && game.managerMeta.cupStats;
+  const club = myClub();
+  if (cs && club && cs.clubId === club.id && cs.p > 0) {
+    return {
+      p: base.p + cs.p,
+      w: base.w + cs.w,
+      d: base.d + cs.d,
+      l: base.l + cs.l,
+      gf: base.gf + cs.gf,
+      ga: base.ga + cs.ga,
+      pts: base.pts + cs.pts
+    };
+  }
+  return base;
+};
+
+// Reset cupStats cleanly when switching clubs or starting a new season
+const _v35SetBaseline = setBaselineForClub;
+setBaselineForClub = function(club) {
+  _v35SetBaseline(club);
+  if (game && game.managerMeta && club) {
+    game.managerMeta.cupStats = { clubId: club.id, p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0 };
+  }
+};
+
+const _v35CompleteSeason = completeNewSeasonTransition;
+completeNewSeasonTransition = function() {
+  _v35CompleteSeason();
+  if (game && game.managerMeta) {
+    game.managerMeta.cupStats = { clubId: game.myClubId, p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0 };
+  }
+};
+
+const _v35EnterCareer = enterCareer;
+enterCareer = function(careerObj) {
+  _v35EnterCareer(careerObj);
+  backfillUserCupStatsIfNeeded();
+};
+
+// Dedicated Cup-Only Sim Function: simulates up to targetWeek - 1, then plays ONLY the Cup/European match on targetWeek
+// and STOPS BEFORE the league match of targetWeek!
+function simulateUntilCupMatch(targetWeekIdx) {
+  if (!game || game.week >= getTotalWeeks() || targetWeekIdx < game.week) return;
+  if (game.managerMeta && game.managerMeta.meetingPending) { showToast('Önce yönetim toplantısına katılmalısın!'); openBoardMeetingModal(); return; }
+  snapshotPrevRanks();
+  const club = myClub();
+  const results = [];
+  let totalRotations = 0;
+
+  // 1. Simulate full weeks BEFORE targetWeekIdx (game.week .. targetWeekIdx - 1)
+  for (let w = game.week; w < targetWeekIdx; w++) {
+    if (club && !game.isUnemployed) totalRotations += window.autoRotateUserLineupForBulkSim(club);
+    processAllCupsForWeek(w, true);
+    if (club) collectUserCupResultsForWeek(w, club.id).forEach(line => results.push(line));
+    const weekMatches = game.schedule[w];
+    if (weekMatches) {
+      weekMatches.forEach(m => { if (!m.played) simulateSingleMatch(m); });
+      const myM = club ? weekMatches.find(m => m.home === club.id || m.away === club.id) : null;
+      if (myM) results.push(`Hafta ${w + 1} (${game.weekDates[w] || ''}): ${getClub(myM.home).name} ${myM.hg} - ${myM.ag} ${getClub(myM.away).name}`);
+    }
+    simulateOtherLeaguesWeek(w);
+    game.clubs.forEach(c => {
+      const stSet = new Set(c.lineup || []);
+      c.squad.forEach(p => { p.stamina = Math.min(100, (p.stamina ?? 100) + (stSet.has(p.id) ? 6 : 14)); });
+    });
+    game.week = w + 1;
+    processWeeklyCycle();
+    pruneOldAiReports();
+    checkBoardStatusAfterWeek();
+    if (game.managerMeta && game.managerMeta.meetingPending) {
+      saveActiveCareer(); renderHeader();
+      if (currentTab === 'calendar') renderCalendar(); else renderHome();
+      return;
+    }
+  }
+
+  // 2. Now we are at targetWeekIdx: play ONLY the European / Domestic Cup match(es) for targetWeekIdx,
+  //    and DO NOT simulate the league match of targetWeekIdx!
+  game.week = targetWeekIdx;
+  if (club && !game.isUnemployed) totalRotations += window.autoRotateUserLineupForBulkSim(club);
+  processAllCupsForWeek(targetWeekIdx, true);
+  if (club) collectUserCupResultsForWeek(targetWeekIdx, club.id).forEach(line => results.push(line));
+
+  saveActiveCareer();
+  renderHeader();
+  if (currentTab === 'calendar') renderCalendar(); else renderHome();
+
+  const rotBanner = totalRotations > 0
+    ? [`<div class="elevated" style="padding:8px 10px;font-size:11.5px;border-left:3px solid #10b981;color:#34d399;font-weight:700;">🔄 Otomatik Rotasyon: Yorgunluğu önlemek için ${totalRotations} kadro değişikliği yapıldı.</div>`]
+    : [];
+  const nextLeagueNote = `<div class="elevated" style="padding:8px 10px;font-size:11.5px;border-left:3px solid #38bdf8;color:#7dd3fc;">⏸️ Kupa maçı oynandı; Hafta ${targetWeekIdx + 1} lig maçı seni bekliyor.</div>`;
+  document.getElementById('simSummaryList').innerHTML = rotBanner.concat(
+    results.map(r => `<div class="elevated" style="padding:8px 10px;font-size:12px;">${r}</div>`),
+    [nextLeagueNote]
+  ).join('');
+  document.getElementById('simSummaryModal').classList.remove('hidden');
+}
+
+// Re-bind calendar's European/Cup buttons to use simulateUntilCupMatch instead of simulateUntilWeek!
+const _v35RenderCalendar = renderCalendar;
+renderCalendar = function() {
+  _v35RenderCalendar();
+  const list = document.getElementById('fixtureList');
+  if (!list) return;
+  list.querySelectorAll('[data-sim-to-cup]').forEach(btn => {
+    const clone = btn.cloneNode(true);
+    btn.parentNode.replaceChild(clone, btn);
+    clone.addEventListener('click', () => {
+      const targetWeek = Number(clone.dataset.simToCup);
+      if (targetWeek >= game.week) simulateUntilCupMatch(targetWeek);
+    });
+  });
 };
 
 })();
