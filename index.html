@@ -756,6 +756,16 @@ white-space: nowrap;
 .scene-office-bg { background: linear-gradient(135deg, #18181b 0%, #27272a 52%, #1e293b 100%); color:#fafafa; }
 .free-pill { display:inline-block; padding:1px 6px; border-radius:5px; font-size:9.5px; font-weight:800; background:rgba(16,185,129,0.22); color:#34d399; margin-left:4px; }
 .exp-pill { display:inline-block; padding:1px 6px; border-radius:5px; font-size:9.5px; font-weight:800; background:rgba(245,158,11,0.2); color:#fbbf24; margin-left:4px; }
+
+/* v37: Hide ALL scrollbars globally, zero tap/focus sticky highlight, & Custom In-Game Select Picker */
+html, body, * { scrollbar-width: none !important; -ms-overflow-style: none !important; -webkit-tap-highlight-color: transparent !important; }
+*::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; background: transparent !important; }
+html, body { overscroll-behavior-y: none; }
+select:focus, select:active, button:focus, button:active, input:focus, a:focus { outline: none !important; box-shadow: none !important; }
+#customSelectModal .modal-box { max-width: 420px; max-height: 76dvh; display: flex; flex-direction: column; padding: 14px; }
+#customSelectList { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding: 2px 0; }
+.csel-opt { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border-strong); background: var(--elevated); color: var(--text); font-size: 13px; font-weight: 600; text-align: left; cursor: pointer; }
+.csel-opt.selected { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-text); font-weight: 800; }
 </style>
 </head>
 <body data-theme="dark" data-accent="emerald" data-pitch="striped">
@@ -817,7 +827,7 @@ white-space: nowrap;
 <div class="menu-logo-ring">
 <svg class="svg-icon" style="width:28px;height:28px;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m12 6 3 4-1 5H10l-1-5 3-4Z"/><path d="M12 2v4"/><path d="m4.93 10.93 4.07-.93"/><path d="m19.07 10.93-4.07-.93"/><path d="m6.5 18.5 3.5-3.5"/><path d="m17.5 18.5-3.5-3.5"/></svg>
 </div>
-<div class="btn-soft" style="display:inline-flex;padding:3px 10px;border-radius:999px;font-size:10px;font-weight:700;margin-bottom:6px;">2026–27 DÜNYA SÜRÜMÜ · 7 LİG · v36</div>
+<div class="btn-soft" style="display:inline-flex;padding:3px 10px;border-radius:999px;font-size:10px;font-weight:700;margin-bottom:6px;">2026–27 DÜNYA SÜRÜMÜ · 7 LİG · v37</div>
 <h1 style="font-size:24px;font-weight:800;margin:0 0 4px;letter-spacing:-0.02em;">Soccer Simulator</h1>
 <p style="font-size:12px;color:var(--muted);margin:0;">Kendi teknik direktörlük kariyerini kur ve yönet.</p>
 </div>
@@ -2328,6 +2338,16 @@ Kalecin kırmızı kart gördü! Devam etmek için sahadan bir oyuncuyu seçip y
 </div>
 </div>
 
+<!-- MODAL: CUSTOM IN-GAME SELECT PICKER (REPLACES NATIVE ANDROID/GOOGLE DROPDOWN) -->
+<div id="customSelectModal" class="modal-backdrop hidden" style="z-index:120;">
+<div class="modal-box stack-sm">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding-bottom:4px;border-bottom:1px solid var(--border);">
+<h3 id="customSelectTitle" style="font-size:14px;font-weight:800;margin:0;">Seçenek Belirle</h3>
+<button id="closeCustomSelectBtn" type="button" class="btn btn-ghost" style="padding:4px 10px;font-size:11.5px;">Kapat</button>
+</div>
+<div id="customSelectList"></div>
+</div>
+</div>
 <script>
 (function () {
 const CAREERS_KEY = 'soccer_simulator_careers_v4';
@@ -3595,14 +3615,14 @@ return getLineupPlayers(club).map(p => ({ name: p.name, pos: p.pos, ovr: p.ovr }
 function simulateSingleMatch(match) {
 const home = getClub(match.home), away = getClub(match.away);
 const hb = getTacticalBonus(home), ab = getTacticalBonus(away);
-const myEdgeH = home.id === game.myClubId ? 1.35 : 0;
-const myEdgeA = away.id === game.myClubId ? 1.35 : 0;
-const rawDiff = (getClubEffectiveOvr(home) + 1.55 + myEdgeH + hb.att - ab.def) - (getClubEffectiveOvr(away) + myEdgeA + ab.att - hb.def);
-const diff = Math.sign(rawDiff) * Math.pow(Math.abs(rawDiff), 0.91) / 5.25;
+const myEdgeH = home.id === game.myClubId ? 1.0 : 0;
+const myEdgeA = away.id === game.myClubId ? 1.0 : 0;
+const rawDiff = (getClubEffectiveOvr(home) + 1.4 + myEdgeH + hb.att - ab.def) - (getClubEffectiveOvr(away) + myEdgeA + ab.att - hb.def);
+const diff = Math.tanh(rawDiff / 9.8) * 1.34;
 let hg = 0, ag = 0;
 for (let i = 0; i < 6; i++) {
-if (Math.random() < Math.max(0.05, Math.min(0.50, 0.215 + diff * 0.13))) hg++;
-if (Math.random() < Math.max(0.045, Math.min(0.46, 0.162 - diff * 0.13))) ag++;
+if (Math.random() < Math.max(0.07, Math.min(0.42, 0.215 + diff * 0.112))) hg++;
+if (Math.random() < Math.max(0.065, Math.min(0.39, 0.175 - diff * 0.112))) ag++;
 }
 const isMyMatch = true;
 const events = [];
@@ -5993,12 +6013,12 @@ function simulateVirtualRoundForLeague(clubs) {
 const sh = clubs.slice().sort(() => Math.random() - 0.5);
 for (let i = 0; i + 1 < sh.length; i += 2) {
 const h = sh[i], a = sh[i + 1];
-const rawDiff = (h.ovr || 74) + 1.45 - (a.ovr || 74);
-const diff = Math.sign(rawDiff) * Math.pow(Math.abs(rawDiff), 0.80) / 5.6;
+const rawDiff = (h.ovr || 74) + 1.3 - (a.ovr || 74);
+const diff = Math.tanh(rawDiff / 10.5) * 1.28;
 let hg = 0, ag = 0;
 for (let c = 0; c < 6; c++) {
-if (Math.random() < Math.max(0.065, Math.min(0.47, 0.215 + diff * 0.114))) hg++;
-if (Math.random() < Math.max(0.06, Math.min(0.43, 0.172 - diff * 0.114))) ag++;
+if (Math.random() < Math.max(0.075, Math.min(0.41, 0.215 + diff * 0.108))) hg++;
+if (Math.random() < Math.max(0.07, Math.min(0.38, 0.178 - diff * 0.108))) ag++;
 }
 h.stats.p++; a.stats.p++;
 h.stats.gf += hg; h.stats.ga += ag;
@@ -9585,6 +9605,301 @@ renderCalendar = function() {
       if (targetWeek >= game.week) simulateUntilCupMatch(targetWeek);
     });
   });
+};
+
+})();
+
+
+// =========================================================================
+// v37: CUSTOM IN-GAME SELECT PICKER, CAREER HISTORY FIX & REALISTIC SACKINGS
+// =========================================================================
+(function initV37Patch() {
+
+// 1. CUSTOM IN-GAME SELECT PICKER (REPLACES NATIVE ANDROID/GOOGLE DROPDOWN!)
+let activeCustomSelect = null;
+
+function getSelectFriendlyTitle(sel) {
+  if (!sel) return 'Seçenek Belirle';
+  const id = sel.id || '';
+  const map = {
+    tableLeagueSelect: 'Lig Seç',
+    transferLeagueFilter: 'Lig Filtresi',
+    transferClubFilter: 'Kulüp Filtresi',
+    transferSortSelect: 'Sıralama',
+    simTargetWeekSelect: 'Simülasyon Haftası Seç',
+    formationSelect: 'Diziliş Seç',
+    mentalitySelect: 'Oyun Anlayışı',
+    tempoSelect: 'Maç Temposu',
+    pressSelect: 'Pres Şiddeti',
+    passingSelect: 'Pas Stili',
+    attackSideSelect: 'Hücum Yönü',
+    liveFormationSelect: 'Canlı Diziliş',
+    liveMentalitySelect: 'Canlı Oyun Anlayışı',
+    liveTempoSelect: 'Canlı Tempo',
+    livePressSelect: 'Canlı Pres',
+    livePassingSelect: 'Canlı Pas Stili',
+    liveAttackSideSelect: 'Canlı Hücum Yönü',
+    negYearsSelect: 'Sözleşme Süresi',
+    seLeagueSelect: 'Lig Tablosu Seç',
+    setMatchSpeed: 'Maç Hızı',
+    setCurrency: 'Para Birimi',
+    setPitchStyle: 'Saha Görünümü'
+  };
+  if (map[id]) return map[id];
+  const lbl = id ? document.querySelector(`label[for="${id}"]`) : null;
+  if (lbl && lbl.textContent) return lbl.textContent.trim();
+  return 'Seçenek Belirle';
+}
+
+function closeCustomSelectModal() {
+  const modal = document.getElementById('customSelectModal');
+  if (modal) modal.classList.add('hidden');
+  if (activeCustomSelect && typeof activeCustomSelect.blur === 'function') {
+    activeCustomSelect.blur();
+  }
+  activeCustomSelect = null;
+}
+
+function openCustomSelectModal(sel) {
+  if (!sel || sel.disabled) return;
+  const opts = Array.from(sel.options || []);
+  if (!opts.length) return;
+  activeCustomSelect = sel;
+  const titleEl = document.getElementById('customSelectTitle');
+  const listEl = document.getElementById('customSelectList');
+  const modal = document.getElementById('customSelectModal');
+  if (!titleEl || !listEl || !modal) return;
+  titleEl.textContent = getSelectFriendlyTitle(sel);
+  listEl.innerHTML = opts.map((o, idx) => {
+    const isSel = o.value === sel.value;
+    return `<button type="button" class="csel-opt ${isSel ? 'selected' : ''}" data-csel-idx="${idx}"><span class="truncate">${o.textContent}</span>${isSel ? '<span style="flex-shrink:0;">✓</span>' : ''}</button>`;
+  }).join('');
+  listEl.querySelectorAll('[data-csel-idx]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const chosen = opts[Number(btn.dataset.cselIdx)];
+      if (chosen && activeCustomSelect) {
+        const target = activeCustomSelect;
+        target.value = chosen.value;
+        target.dispatchEvent(new Event('change', { bubbles: true }));
+        target.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+      closeCustomSelectModal();
+    });
+  });
+  modal.classList.remove('hidden');
+}
+
+const closeCsBtn = document.getElementById('closeCustomSelectBtn');
+if (closeCsBtn) closeCsBtn.addEventListener('click', closeCustomSelectModal);
+const csModalBackdrop = document.getElementById('customSelectModal');
+if (csModalBackdrop) {
+  csModalBackdrop.addEventListener('click', (e) => {
+    if (e.target === csModalBackdrop) closeCustomSelectModal();
+  });
+}
+
+// Intercept ALL native <select> taps/clicks globally so Google/Android system popup NEVER opens!
+['mousedown', 'touchstart'].forEach(evName => {
+  document.addEventListener(evName, (e) => {
+    const sel = e.target && e.target.closest ? e.target.closest('select') : null;
+    if (sel && !sel.disabled) {
+      e.preventDefault();
+      sel.blur();
+      openCustomSelectModal(sel);
+    }
+  }, { capture: true, passive: false });
+});
+
+// Clear sticky focus highlight after tapping any button or select
+document.addEventListener('click', (e) => {
+  const el = e.target && e.target.closest ? e.target.closest('button, select') : null;
+  if (el && typeof el.blur === 'function') {
+    setTimeout(() => el.blur(), 30);
+  }
+}, true);
+
+// 2. FIX CAREER HISTORY BUG ON SEASON TRANSITION (NEVER RECORD UNPLAYED MATCHES!)
+let isAutoFinishingSeason = false;
+const _v36FinishWorld = finishAllRemainingWorldCompetitions;
+finishAllRemainingWorldCompetitions = function() {
+  isAutoFinishingSeason = true;
+  try {
+    _v36FinishWorld();
+  } finally {
+    isAutoFinishingSeason = false;
+  }
+};
+
+// Guard applyEuroLeagueMatchResult & resolveCupMatch so auto-finished unplayed matches NEVER enter user's cupStats!
+const _v36ApplyEuro2 = applyEuroLeagueMatchResult;
+applyEuroLeagueMatchResult = function(cup, mdIdx, mIdx, hg, ag, reportObj) {
+  const prevCup = game && game.managerMeta && game.managerMeta.cupStats ? Object.assign({}, game.managerMeta.cupStats) : null;
+  _v36ApplyEuro2(cup, mdIdx, mIdx, hg, ag, reportObj);
+  if (isAutoFinishingSeason && prevCup && game && game.managerMeta) {
+    game.managerMeta.cupStats = prevCup;
+  }
+};
+
+const _v36ResolveCup2 = resolveCupMatch;
+resolveCupMatch = function(cupId, roundIdx, matchIdx, hg, ag, winnerId, penTxt, isEuroLP, reportObj) {
+  const prevCup = game && game.managerMeta && game.managerMeta.cupStats ? Object.assign({}, game.managerMeta.cupStats) : null;
+  _v36ResolveCup2(cupId, roundIdx, matchIdx, hg, ag, winnerId, penTxt, isEuroLP, reportObj);
+  if (isAutoFinishingSeason && prevCup && game && game.managerMeta) {
+    game.managerMeta.cupStats = prevCup;
+  }
+};
+
+// Guard recordSeasonIfFinished: never record when unemployed or 0 played matches, and immediately reset cupStats once recorded!
+const _v36RecordSeason = recordSeasonIfFinished;
+recordSeasonIfFinished = function() {
+  if (!game || game.isUnemployed || !myClub()) return;
+  const wasRecorded = !!(game.managerMeta && game.managerMeta.seasonRecorded);
+  _v36RecordSeason();
+  if (!wasRecorded && game.managerMeta && game.managerMeta.seasonRecorded) {
+    // Freeze & clear current-season cupStats so it can NEVER double-count or leak into the next season!
+    game.managerMeta.cupStats = { clubId: game.myClubId, p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0 };
+  }
+};
+
+// Cleanly reset cupStats & clubBaseline on new season transition BEFORE rendering, plus realistic summer AI manager changes!
+const _v36CompleteSeason = completeNewSeasonTransition;
+completeNewSeasonTransition = function() {
+  // Record current season cleanly BEFORE finishing remaining background world competitions
+  if (!game.isUnemployed && myClub() && !game.managerMeta.seasonRecorded) {
+    recordSeasonIfFinished();
+  }
+  // Reset cupStats BEFORE transitioning so next season starts at strict 0!
+  if (game && game.managerMeta) {
+    game.managerMeta.cupStats = { clubId: game.myClubId, p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0 };
+  }
+  // Capture underperforming AI clubs for realistic summer manager changes (4-7 changes across 7 leagues)
+  const summerSackIds = [];
+  LEAGUES_META.forEach(lm => {
+    const st = getSortedStandings(lm.id);
+    st.forEach((c, idx) => {
+      if (c.id === game.myClubId) return;
+      const rank = idx + 1;
+      const expected = Math.max(1, Math.round(st.length * (1 - ((c.ovr - 66) / 26))));
+      if (rank - expected >= 4 || rank > st.length - 3) {
+        summerSackIds.push({ id: c.id, diff: rank - expected });
+      }
+    });
+  });
+
+  _v36CompleteSeason();
+
+  // Guarantee strict zero stats & zero cupStats at start of new season!
+  if (game && game.managerMeta) {
+    game.managerMeta.cupStats = { clubId: game.myClubId, p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0 };
+    game.managerMeta.clubBaseline = { clubId: game.myClubId, p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0 };
+  }
+
+  // Execute realistic summer manager changes (up to 6 clubs)
+  summerSackIds.sort((a, b) => b.diff - a.diff);
+  let summerDone = 0;
+  for (const item of summerSackIds) {
+    if (summerDone >= 6) break;
+    if (Math.random() > 0.55) continue;
+    const c = getClub(item.id);
+    const oldMgr = c ? getManagerForClub(c.id) : null;
+    if (!c || !oldMgr || oldMgr.isUser) continue;
+    archiveManagerStint(oldMgr);
+    oldMgr.clubId = null;
+    c.managerId = null;
+    hireReplacementManagerForClub(c, oldMgr.id);
+    summerDone++;
+  }
+  saveActiveCareer();
+};
+
+// 3. REALISTIC AI MANAGER SACKING FREQUENCY (~25-35 SACKINGS PER SEASON ACROSS 7 LEAGUES!)
+processAiManagerCarousel = function() {
+  if (!game || !game.managers || game.week < 5) return;
+  // A. User Board Trust Kulis Leak when trust < 52%
+  if (!game.isUnemployed && myClub() && !game.managerMeta.meetingPending) {
+    const myTrust = computeBoardTrust();
+    const lastLeak = game.managerMeta.lastTrustLeakWeek || -10;
+    if (myTrust < 52 && (game.week - lastLeak) >= 4 && Math.random() < 0.65) {
+      game.managerMeta.lastTrustLeakWeek = game.week;
+      const mc = myClub();
+      const leakLines = [
+        `KULİS: ${mc.name} yönetiminde ${game.managerName} için sabır tükeniyor! Önümüzdeki maçlarda çıkış gelmezse acil toplantı kapıda.`,
+        `SICAK GELİŞME: ${mc.name} kulislerinden sızan bilgilere göre yönetim kurulu ${game.managerName}'nın performansından memnun değil (Güven %${myTrust}).`,
+        `ÖZEL HABER: ${mc.name} taraftarı ve yönetim kanadında ${game.managerName}'nın koltuğu sallanıyor; alternatif hoca isimleri konuşulmaya başlandı.`
+      ];
+      pushSocialPost('pundit', 'Kulis Haber', '@KulisHaberTR', pick(leakLines), '#1c1917', '#f59e0b', 'KH', true);
+    }
+  }
+
+  // B. Gather ALL underperforming / relegation-threatened AI clubs across all 7 leagues
+  const candidates = [];
+  LEAGUES_META.forEach(lm => {
+    const st = getSortedStandings(lm.id);
+    st.forEach((c, idx) => {
+      if (c.id === game.myClubId) return;
+      const m = getManagerForClub(c.id);
+      if (!m || m.isUser) return;
+      if ((game.week - (m.hiredWeek || 0)) < 6) return; // 6-week grace period for newly hired managers
+      const rank = idx + 1;
+      const expected = Math.max(1, Math.round(st.length * (1 - ((c.ovr - 66) / 26))));
+      const underperf = rank - expected;
+      const lossStreak = (c.form || []).slice(-4).filter(x => x === 'L').length;
+      const winless5 = (c.form || []).length >= 5 && !(c.form || []).slice(-5).includes('W');
+      const inRelZone = rank > st.length - 3 && game.week >= 9;
+      if (underperf >= 3 || lossStreak >= 3 || winless5 || inRelZone) {
+        const pressure = Math.max(0, underperf) + lossStreak * 1.2 + (winless5 ? 2 : 0) + (inRelZone ? 2 : 0) + (lm.id === game.activeLeagueId ? 2.5 : 0);
+        candidates.push({ club: c, mgr: m, score: pressure });
+      }
+    });
+  });
+  if (!candidates.length) return;
+  candidates.sort((a, b) => b.score - a.score);
+
+  // Process up to 2 pressured clubs per week for realistic global football tempo (~25-35 changes/season across 7 leagues)
+  const maxActions = Math.min(2, candidates.length);
+  for (let k = 0; k < maxActions; k++) {
+    const top = candidates[k];
+    const sackProb = k === 0 ? (top.score >= 8 ? 0.68 : 0.48) : (top.score >= 7 ? 0.40 : 0.25);
+
+    // If not sacked this week, leak a kulis rumor (only for active league or big club)
+    if (Math.random() > sackProb) {
+      if ((game.week - (top.mgr.leakedWeek || -10)) >= 5 && Math.random() < 0.45) {
+        top.mgr.leakedWeek = game.week;
+        if (top.club.leagueId === game.activeLeagueId || (top.club.ovr || 74) >= 80) {
+          pushSocialPost('pundit', 'Kulis Haber', '@KulisHaberTR',
+            `KULİS: ${top.club.name} yönetimi ${top.mgr.name}'dan memnun değil. Alınan sonuçlar sonrası koltuğu ciddi şekilde sallanıyor!`, '#1c1917', '#f59e0b', 'KH', true);
+        }
+      }
+      continue;
+    }
+
+    const victimClub = top.club, oldMgr = top.mgr;
+    const resigned = Math.random() < 0.20;
+    archiveManagerStint(oldMgr);
+    oldMgr.clubId = null;
+    victimClub.managerId = null;
+
+    const totals = getManagerTotals();
+    const userRep = 72 + Math.round((totals.ppg - 1.2) * 8) + (game.trophies || []).length * 4;
+    const alreadyOffered = (game.inbox || []).some(m => m.offerClubId === victimClub.id && !m.offerResolved);
+    if (game.isUnemployed && !alreadyOffered && Math.abs((victimClub.ovr || 74) - userRep) <= 11 && Math.random() < 0.70) {
+      const lName = getLeagueMeta(victimClub.leagueId).name;
+      const st = getSortedStandings(victimClub.leagueId);
+      const r = st.findIndex(x => x.id === victimClub.id) + 1;
+      pushInboxMsg('Yönetim', `${victimClub.name} Başkanı`, `📩 Resmi Teklif: ${victimClub.name}`,
+        `${game.managerName}, ${oldMgr.name} ile yollarımızı ayırdık. ${lName}'de ${r}. sıradayız (Güç ${getClubEffectiveOvr(victimClub)}, Bütçe ${fmtMoney(victimClub.budget)}). Takımımızın başına geçmeni istiyoruz!`);
+      if (game.inbox[0]) { game.inbox[0].offerClubId = victimClub.id; game.inbox[0].offerResolved = false; }
+    }
+
+    const newMgr = hireReplacementManagerForClub(victimClub, oldMgr.id);
+    if (victimClub.leagueId === game.activeLeagueId || (victimClub.ovr || 74) >= 80) {
+      pushSocialPost('pundit', 'Transfer Muhabiri', '@TransferHaber',
+        resigned
+          ? `🚨 SON DAKİKA: ${oldMgr.name}, ${victimClub.name} görevinden istifa etti!` + (newMgr ? ` Yeni hoca ${newMgr.name} (${newMgr.prefFormation} · ${newMgr.style}) oldu.` : '')
+          : `🚨 SON DAKİKA: ${victimClub.name}, ${oldMgr.name} ile yollarını ayırdı!` + (newMgr ? ` Kulüp ${newMgr.name} (${newMgr.prefFormation}) ile anlaşmaya vardı.` : ''),
+        '#0f172a', '#f87171', 'TH', true);
+    }
+  }
 };
 
 })();
