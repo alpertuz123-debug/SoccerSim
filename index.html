@@ -740,6 +740,23 @@ white-space: nowrap;
 .wdl-d { background:rgba(245,158,11,0.18); color:#fbbf24; }
 .wdl-l { background:rgba(239,68,68,0.18); color:#f87171; }
 
+
+/* v32 Atmospheric Scene Backdrops & Harder Transfer Badges */
+#sceneBackdrop { position:fixed; inset:0; z-index:0; pointer-events:none; overflow:hidden; opacity:0.15; transition:opacity 0.35s ease; }
+body[data-theme="light"] #sceneBackdrop { opacity:0.08; }
+body[data-theme="glass"] #sceneBackdrop { opacity:0.0; }
+#sceneBackdrop svg { width:100%; height:100%; object-fit:cover; }
+.tab-scene-banner { position:relative; border-radius:14px; padding:11px 14px; overflow:hidden; border:1px solid var(--border-strong); display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.tab-scene-banner svg.scene-art { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; opacity:0.38; pointer-events:none; }
+.tab-scene-banner > .scene-fg { position:relative; z-index:2; min-width:0; }
+.scene-stadium-bg { background: linear-gradient(135deg, #071925 0%, #0f2f28 55%, #163a28 100%); color:#f8fafc; }
+.scene-tactics-bg { background: linear-gradient(135deg, #063d2d 0%, #0f2430 58%, #1e293b 100%); color:#ecfdf5; }
+.scene-calendar-bg { background: linear-gradient(135deg, #0b1630 0%, #172554 55%, #0f172a 100%); color:#eff6ff; }
+.scene-trophy-bg { background: linear-gradient(135deg, #1f160b 0%, #3b260b 52%, #1c1917 100%); color:#fef3c7; }
+.scene-transfer-bg { background: linear-gradient(135deg, #0f172a 0%, #1e293b 52%, #0c4a6e 100%); color:#f0f9ff; }
+.scene-office-bg { background: linear-gradient(135deg, #18181b 0%, #27272a 52%, #1e293b 100%); color:#fafafa; }
+.free-pill { display:inline-block; padding:1px 6px; border-radius:5px; font-size:9.5px; font-weight:800; background:rgba(16,185,129,0.22); color:#34d399; margin-left:4px; }
+.exp-pill { display:inline-block; padding:1px 6px; border-radius:5px; font-size:9.5px; font-weight:800; background:rgba(245,158,11,0.2); color:#fbbf24; margin-left:4px; }
 </style>
 </head>
 <body data-theme="dark" data-accent="emerald" data-pitch="striped">
@@ -775,6 +792,23 @@ white-space: nowrap;
 <circle cx="160" cy="192" r="10" fill="#fef3c7" fill-opacity="0.82"/>
 <circle cx="640" cy="192" r="10" fill="#e0f2fe" fill-opacity="0.80"/>
 <rect width="800" height="1200" fill="#050b12" fill-opacity="0.28"/>
+</svg>
+</div>
+<div id="sceneBackdrop" aria-hidden="true">
+<svg viewBox="0 0 800 1200" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<radialGradient id="sbL1" cx="18%" cy="12%" r="42%"><stop offset="0%" stop-color="#fef3c7" stop-opacity="0.55"/><stop offset="100%" stop-color="#0b1726" stop-opacity="0"/></radialGradient>
+<radialGradient id="sbL2" cx="82%" cy="12%" r="42%"><stop offset="0%" stop-color="#38bdf8" stop-opacity="0.45"/><stop offset="100%" stop-color="#0b1726" stop-opacity="0"/></radialGradient>
+</defs>
+<rect width="800" height="1200" fill="#07111d"/>
+<rect width="800" height="1200" fill="url(#sbL1)"/>
+<rect width="800" height="1200" fill="url(#sbL2)"/>
+<path d="M0 520 Q400 390 800 520 L800 1200 L0 1200 Z" fill="#0f293a" opacity="0.7"/>
+<path d="M0 640 Q400 535 800 640 L800 1200 L0 1200 Z" fill="#103d27" opacity="0.8"/>
+<ellipse cx="400" cy="870" rx="340" ry="118" fill="none" stroke="#ffffff" stroke-opacity="0.22" stroke-width="2.5"/>
+<circle cx="400" cy="870" r="56" fill="none" stroke="#ffffff" stroke-opacity="0.24" stroke-width="2.5"/>
+<circle cx="150" cy="150" r="9" fill="#fef3c7" fill-opacity="0.85"/>
+<circle cx="650" cy="150" r="9" fill="#bae6fd" fill-opacity="0.85"/>
 </svg>
 </div>
 <!-- SCREEN 0: MAIN MENU -->
@@ -945,6 +979,20 @@ white-space: nowrap;
 <main class="app-main">
 <!-- TAB 1: HOME -->
 <section id="tab-home" class="stack-lg">
+<div class="tab-scene-banner scene-stadium-bg">
+<svg class="scene-art" viewBox="0 0 600 130" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+<defs><radialGradient id="stG1" cx="15%" cy="10%" r="45%"><stop offset="0%" stop-color="#fef08a" stop-opacity="0.85"/><stop offset="100%" stop-color="#071925" stop-opacity="0"/></radialGradient><radialGradient id="stG2" cx="85%" cy="10%" r="45%"><stop offset="0%" stop-color="#7dd3fc" stop-opacity="0.75"/><stop offset="100%" stop-color="#071925" stop-opacity="0"/></radialGradient></defs>
+<rect width="600" height="130" fill="url(#stG1)"/><rect width="600" height="130" fill="url(#stG2)"/>
+<path d="M0 78 Q300 48 600 78 L600 130 L0 130 Z" fill="#14532d" opacity="0.9"/>
+<path d="M0 98 Q300 74 600 98 L600 130 L0 130 Z" fill="#166534" opacity="0.85"/>
+<ellipse cx="300" cy="112" rx="140" ry="26" fill="none" stroke="#ffffff" stroke-opacity="0.35" stroke-width="2"/>
+<line x1="300" y1="68" x2="300" y2="130" stroke="#ffffff" stroke-opacity="0.28" stroke-width="2"/>
+<rect x="78" y="14" width="34" height="12" rx="3" fill="#fef08a" opacity="0.8"/><rect x="488" y="14" width="34" height="12" rx="3" fill="#bae6fd" opacity="0.8"/>
+<line x1="95" y1="26" x2="95" y2="66" stroke="#cbd5e1" stroke-opacity="0.4" stroke-width="3"/><line x1="505" y1="26" x2="505" y2="66" stroke="#cbd5e1" stroke-opacity="0.4" stroke-width="3"/>
+</svg>
+<div class="scene-fg"><div style="font-size:10px;font-weight:800;letter-spacing:0.08em;color:#86efac;">STADYUM &amp; MAÇ MERKEZİ</div><div style="font-size:14px;font-weight:800;">Tribünler Hazır, Sahaya Çıkış Vakti</div></div>
+<div class="scene-fg" style="font-size:20px;">🏟️</div>
+</div>
 <div id="unemployedHomeCard" class="surface unemp-hero hidden stack-sm">
 <div style="font-size:10.5px;font-weight:800;color:var(--accent-text);letter-spacing:0.08em;">BOŞTA TEKNİK DİREKTÖR</div>
 <div id="unempTitle" style="font-size:18px;font-weight:800;">Yeni Kulüp Teklifleri Bekleniyor</div>
@@ -1070,6 +1118,18 @@ white-space: nowrap;
 </section>
 <!-- TAB 2: TACTICS -->
 <section id="tab-tactics" class="hidden stack-md">
+<div class="tab-scene-banner scene-tactics-bg">
+<svg class="scene-art" viewBox="0 0 600 130" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+<rect x="20" y="12" width="560" height="106" rx="10" fill="none" stroke="#86efac" stroke-opacity="0.35" stroke-width="2"/>
+<line x1="300" y1="12" x2="300" y2="118" stroke="#86efac" stroke-opacity="0.3" stroke-width="2"/>
+<circle cx="300" cy="65" r="28" fill="none" stroke="#86efac" stroke-opacity="0.35" stroke-width="2"/>
+<circle cx="150" cy="48" r="7" fill="#34d399" opacity="0.8"/><circle cx="220" cy="82" r="7" fill="#34d399" opacity="0.8"/><circle cx="390" cy="45" r="7" fill="#38bdf8" opacity="0.8"/><circle cx="450" cy="84" r="7" fill="#38bdf8" opacity="0.8"/>
+<path d="M160 48 Q260 22 375 44" fill="none" stroke="#fde047" stroke-width="2.2" stroke-dasharray="6 5" opacity="0.75"/>
+<path d="M230 82 Q330 105 436 84" fill="none" stroke="#fde047" stroke-width="2.2" stroke-dasharray="6 5" opacity="0.75"/>
+</svg>
+<div class="scene-fg"><div style="font-size:10px;font-weight:800;letter-spacing:0.08em;color:#6ee7b7;">SOYUNMA ODASI &amp; TAKTİK TAHTASI</div><div style="font-size:14px;font-weight:800;">Diziliş, Oyun Planı &amp; Antrenman</div></div>
+<div class="scene-fg" style="font-size:20px;">📋</div>
+</div>
 <div class="surface stack-sm" style="padding:10px 12px;">
 <div style="display:flex;align-items:center;justify-content:space-between;">
 <span style="font-size:11.5px;font-weight:800;">Haftalık Antrenman Odağı</span>
@@ -1174,6 +1234,16 @@ white-space: nowrap;
 </section>
 <!-- TAB 3: CALENDAR -->
 <section id="tab-calendar" class="hidden stack-md">
+<div class="tab-scene-banner scene-calendar-bg">
+<svg class="scene-art" viewBox="0 0 600 130" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+<circle cx="480" cy="65" r="54" fill="none" stroke="#60a5fa" stroke-opacity="0.32" stroke-width="2"/>
+<polygon points="480,26 490,52 518,52 495,68 504,95 480,78 456,95 465,68 442,52 470,52" fill="#93c5fd" opacity="0.35"/>
+<path d="M0 110 L180 40 L360 110 L540 30 L600 60 L600 130 L0 130 Z" fill="#1d4ed8" opacity="0.25"/>
+<circle cx="110" cy="30" r="3" fill="#e0f2fe" opacity="0.8"/><circle cx="260" cy="22" r="2.5" fill="#e0f2fe" opacity="0.7"/><circle cx="370" cy="36" r="3" fill="#bae6fd" opacity="0.7"/>
+</svg>
+<div class="scene-fg"><div style="font-size:10px;font-weight:800;letter-spacing:0.08em;color:#93c5fd;">FİKSTÜR &amp; AVRUPA GECELERİ</div><div style="font-size:14px;font-weight:800;">Lig, Kupa &amp; UEFA Maç Takvimi</div></div>
+<div class="scene-fg" style="font-size:20px;">📅</div>
+</div>
 <div class="surface stack-sm" style="padding:12px;">
 <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
 <div style="font-size:13px;font-weight:800;">Sezon Takvimi &amp; Hızlı Simülasyon</div>
@@ -1193,6 +1263,17 @@ white-space: nowrap;
 </section>
 <!-- TAB 4: LEAGUE TABLE -->
 <section id="tab-table" class="hidden stack-md">
+<div class="tab-scene-banner scene-trophy-bg">
+<svg class="scene-art" viewBox="0 0 600 130" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+<defs><linearGradient id="trBeam" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#fde047" stop-opacity="0.55"/><stop offset="100%" stop-color="#fde047" stop-opacity="0"/></linearGradient></defs>
+<polygon points="430,0 530,0 570,130 390,130" fill="url(#trBeam)"/>
+<path d="M460 32 H500 V58 C500 72 490 82 480 82 C470 82 460 72 460 58 Z" fill="#fbbf24" opacity="0.72"/>
+<rect x="475" y="82" width="10" height="18" fill="#f59e0b" opacity="0.72"/><rect x="462" y="100" width="36" height="9" rx="3" fill="#fbbf24" opacity="0.75"/>
+<rect x="80" y="92" width="46" height="38" rx="3" fill="#f59e0b" opacity="0.22"/><rect x="134" y="72" width="46" height="58" rx="3" fill="#fbbf24" opacity="0.28"/><rect x="188" y="100" width="46" height="30" rx="3" fill="#d97706" opacity="0.2"/>
+</svg>
+<div class="scene-fg"><div style="font-size:10px;font-weight:800;letter-spacing:0.08em;color:#fcd34d;">KUPA MÜZESİ &amp; ZİRVE YARIŞI</div><div style="font-size:14px;font-weight:800;">Puan Durumu, Krallık &amp; Avrupa</div></div>
+<div class="scene-fg" style="font-size:20px;">🏆</div>
+</div>
 <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
 <div style="display:flex;gap:6px;flex-wrap:wrap;">
 <button id="subTabStandingsBtn" type="button" class="btn btn-primary">Puan Durumu</button>
@@ -1237,6 +1318,19 @@ white-space: nowrap;
 </section>
 <!-- TAB 5: TRANSFER -->
 <section id="tab-transfer" class="hidden stack-md">
+<div class="tab-scene-banner scene-transfer-bg">
+<svg class="scene-art" viewBox="0 0 600 130" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+<circle cx="485" cy="65" r="46" fill="none" stroke="#38bdf8" stroke-opacity="0.35" stroke-width="1.8"/>
+<circle cx="485" cy="65" r="28" fill="none" stroke="#38bdf8" stroke-opacity="0.28" stroke-width="1.5"/>
+<line x1="485" y1="15" x2="485" y2="115" stroke="#38bdf8" stroke-opacity="0.25" stroke-width="1.5"/>
+<line x1="435" y1="65" x2="535" y2="65" stroke="#38bdf8" stroke-opacity="0.25" stroke-width="1.5"/>
+<path d="M485 65 L520 35 A46 46 0 0 1 531 65 Z" fill="#38bdf8" opacity="0.3"/>
+<rect x="65" y="78" width="180" height="40" rx="6" fill="#0ea5e9" opacity="0.18"/>
+<rect x="82" y="90" width="90" height="6" rx="3" fill="#bae6fd" opacity="0.4"/><rect x="82" y="102" width="60" height="5" rx="2.5" fill="#7dd3fc" opacity="0.32"/>
+</svg>
+<div class="scene-fg"><div style="font-size:10px;font-weight:800;letter-spacing:0.08em;color:#7dd3fc;">TRANSFER MASASI &amp; GÖZLEMCİ OFİSİ</div><div style="font-size:14px;font-weight:800;">Pazarlık, Serbest Pazar &amp; Tesisler</div></div>
+<div class="scene-fg" style="font-size:20px;">✍️</div>
+</div>
 <div class="surface" style="padding:14px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;">
 <div>
 <div style="font-size:11px;color:var(--muted);">Transfer Bütçesi</div>
@@ -1301,6 +1395,18 @@ white-space: nowrap;
 </section>
 <!-- TAB 6: MANAGER / TEKNİK DİREKTÖR -->
 <section id="tab-manager" class="hidden stack-lg">
+<div class="tab-scene-banner scene-office-bg">
+<svg class="scene-art" viewBox="0 0 600 130" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+<rect x="380" y="18" width="170" height="84" rx="6" fill="#0f172a" stroke="#64748b" stroke-opacity="0.45" stroke-width="2"/>
+<line x1="465" y1="18" x2="465" y2="102" stroke="#475569" stroke-opacity="0.4" stroke-width="1.5"/>
+<circle cx="465" cy="60" r="18" fill="none" stroke="#10b981" stroke-opacity="0.45" stroke-width="1.5"/>
+<rect x="60" y="94" width="240" height="36" rx="6" fill="#78350f" opacity="0.45"/>
+<rect x="115" y="64" width="52" height="30" rx="4" fill="#334155" opacity="0.55"/>
+<circle cx="240" cy="78" r="11" fill="#fbbf24" opacity="0.4"/>
+</svg>
+<div class="scene-fg"><div style="font-size:10px;font-weight:800;letter-spacing:0.08em;color:#cbd5e1;">TEKNİK DİREKTÖR OFİSİ</div><div style="font-size:14px;font-weight:800;">Kariyer Özgeçmişi, İtibar &amp; Yönetim</div></div>
+<div class="scene-fg" style="font-size:20px;">👔</div>
+</div>
 <!-- Hero Profile Card -->
 <div class="surface" style="padding:16px;">
 <div class="mgr-hero">
@@ -3471,13 +3577,14 @@ return getLineupPlayers(club).map(p => ({ name: p.name, pos: p.pos, ovr: p.ovr }
 function simulateSingleMatch(match) {
 const home = getClub(match.home), away = getClub(match.away);
 const hb = getTacticalBonus(home), ab = getTacticalBonus(away);
-const myEdgeH = home.id === game.myClubId ? 2.2 : 0;
-const myEdgeA = away.id === game.myClubId ? 2.2 : 0;
-const diff = ((getClubEffectiveOvr(home) + 1.8 + myEdgeH + hb.att - ab.def) - (getClubEffectiveOvr(away) + myEdgeA + ab.att - hb.def)) / 5.0;
+const myEdgeH = home.id === game.myClubId ? 1.25 : 0;
+const myEdgeA = away.id === game.myClubId ? 1.25 : 0;
+const rawDiff = (getClubEffectiveOvr(home) + 1.55 + myEdgeH + hb.att - ab.def) - (getClubEffectiveOvr(away) + myEdgeA + ab.att - hb.def);
+const diff = Math.sign(rawDiff) * Math.pow(Math.abs(rawDiff), 0.90) / 5.4;
 let hg = 0, ag = 0;
 for (let i = 0; i < 6; i++) {
-if (Math.random() < Math.max(0.02, Math.min(0.58, 0.21 + diff * 0.155))) hg++;
-if (Math.random() < Math.max(0.02, Math.min(0.52, 0.15 - diff * 0.155))) ag++;
+if (Math.random() < Math.max(0.055, Math.min(0.49, 0.215 + diff * 0.125))) hg++;
+if (Math.random() < Math.max(0.05, Math.min(0.45, 0.165 - diff * 0.125))) ag++;
 }
 const isMyMatch = true;
 const events = [];
@@ -3684,7 +3791,7 @@ else delta = -randInt(1, 2);
 const newOvr = Math.max(58, Math.min(93, p.ovr + delta));
 p.lastOvrChange = newOvr - p.ovr;
 p.ovr = newOvr;
-p.value = Number((Math.max(0.6, (p.ovr - 62) * 0.62 * (p.age < 25 ? 1.25 : 0.9))).toFixed(1));
+p.value = computeRealisticMarketValue(p.ovr, p.age);
 p.injuredWeeks = 0; p.suspendedWeeks = 0; p.yellowCount = 0;
 });
 });
@@ -5868,11 +5975,12 @@ function simulateVirtualRoundForLeague(clubs) {
 const sh = clubs.slice().sort(() => Math.random() - 0.5);
 for (let i = 0; i + 1 < sh.length; i += 2) {
 const h = sh[i], a = sh[i + 1];
-const diff = ((h.ovr || 74) + 1.8 - (a.ovr || 74)) / 5.2;
+const rawDiff = (h.ovr || 74) + 1.4 - (a.ovr || 74);
+const diff = Math.sign(rawDiff) * Math.pow(Math.abs(rawDiff), 0.72) / 6.4;
 let hg = 0, ag = 0;
 for (let c = 0; c < 6; c++) {
-if (Math.random() < Math.max(0.02, Math.min(0.56, 0.21 + diff * 0.15))) hg++;
-if (Math.random() < Math.max(0.02, Math.min(0.50, 0.15 - diff * 0.15))) ag++;
+if (Math.random() < Math.max(0.09, Math.min(0.42, 0.215 + diff * 0.095))) hg++;
+if (Math.random() < Math.max(0.085, Math.min(0.39, 0.18 - diff * 0.095))) ag++;
 }
 h.stats.p++; a.stats.p++;
 h.stats.gf += hg; h.stats.ga += ag;
@@ -8522,35 +8630,35 @@ showToast(`${p.name} ile ${p.contractUntil} yılına kadar yeni sözleşme imzal
 openPlayerModal(playerId, clubId);
 };
 }
-} else if (srcClub) {
-// Bosman Free Signing if contract expires at season end!
-const isBosman = (p.contractUntil || 2029) <= game.seasonYear + 1;
-if (isBosman && offerBtn) {
-offerBtn.textContent = 'Bedelsiz İmza (Bosman · €0)';
-offerBtn.onclick = () => {
-srcClub.squad = srcClub.squad.filter(x => x.id !== p.id);
-p.contractUntil = game.seasonYear + 4;
-mc.squad.push(p);
-saveActiveCareer();
-document.getElementById('playerModal').classList.add('hidden');
-showToast(`✍️ ${p.name} bedelsiz (Bosman) olarak kadrona katıldı!`);
-renderHeader(); if (currentTab === 'transfer') renderTransfer();
-};
-} else if (offerBtn) {
-offerBtn.textContent = 'Transfer Görüşmesi';
+} else if (clubId === 'market') {
+if (offerBtn) {
+offerBtn.onclick = null;
+offerBtn.textContent = 'Maaş Teklifi Yap (Serbest · €0)';
 }
-// 1-Season Loan-In button!
-if (srcClub.squad.length > 15 && !p.loanFrom) {
-const loanFee = Number(Math.max(0.4, p.value * 0.14).toFixed(1));
+} else if (srcClub) {
+if (offerBtn) {
+offerBtn.onclick = null;
+const expiringSoon = (p.contractUntil || 2029) <= game.seasonYear + 1;
+offerBtn.textContent = expiringSoon ? 'Transfer Görüşmesi (Son Yıl)' : 'Transfer Görüşmesi';
+}
+// Harder 1-Season Loan-In: clubs don't loan out top starters (OVR >= 83) or top 3 squad stars!
+const sortedSrc = srcClub.squad.slice().sort((a, b) => b.ovr - a.ovr);
+const isTop3Star = sortedSrc.slice(0, 3).some(x => x.id === p.id);
+const isStarter = Array.isArray(srcClub.lineup) && srcClub.lineup.includes(p.id);
+const loanAllowed = srcClub.squad.length > 16 && !p.loanFrom && !isTop3Star && !(isStarter && p.ovr >= 82);
+if (loanAllowed) {
+const loanFee = Number(Math.max(0.6, p.value * 0.18).toFixed(1));
 loanBtn.classList.remove('hidden');
 loanBtn.textContent = `1 Sezon Kirala (${fmtMoney(loanFee)})`;
 loanBtn.onclick = () => {
+const myOvr = getClubEffectiveOvr(mc);
+if (p.ovr >= myOvr + 11) { showToast(`${p.name} kiralık olarak ${mc.name} ekibine gelmek istemiyor.`); return; }
 if (mc.budget < loanFee) { showToast(`Yetersiz bütçe! Kiralama bedeli: ${fmtMoney(loanFee)}`); return; }
 mc.budget = Number((mc.budget - loanFee).toFixed(1));
 srcClub.budget = Number((srcClub.budget + loanFee).toFixed(1));
 srcClub.squad = srcClub.squad.filter(x => x.id !== p.id);
 p.loanFrom = srcClub.id;
-p.loanBuyOption = Number((p.value * 1.05).toFixed(1));
+p.loanBuyOption = Number((p.value * 1.22).toFixed(1));
 mc.squad.push(p);
 pickBestAiFormationAndLineup(srcClub);
 saveActiveCareer();
@@ -8764,6 +8872,293 @@ document.querySelectorAll('[data-train-focus]').forEach(b => b.classList.toggle(
 saveActiveCareer();
 showToast(`Haftalık antrenman odağı: ${names[game.trainingFocus]}`);
 }));
+
+
+// =========================================================================
+// v32: HARDER TRANSFERS, FREE AGENT WAGE NEGOTIATION & MARKET VALUE GUARD
+// =========================================================================
+(function initV32Patch() {
+
+// 1. OVERRIDE startNegotiation:
+//    - Free Agents ('market'): Skip Stage 1 (€0 fee), jump directly to Stage 2 (Maaş Teklifi)!
+//    - Contracted players: Harder asking prices (starter/young/star/big-club premiums) + Club prestige check!
+startNegotiation = function(player, sourceClubId) {
+  const club = myClub();
+  if (!club || game.isUnemployed) { showToast('Önce bir kulübün başına geçmelisin.'); return; }
+  const isFreeAgent = (sourceClubId === 'market');
+  const sellerClub = isFreeAgent ? null : getClub(sourceClubId);
+  const myOvr = getClubEffectiveOvr(club);
+
+  // Prestige / willingness check: superstars won't join much weaker clubs easily
+  if (!isFreeAgent && player.ovr >= myOvr + 13) {
+    showToast(`${player.name} şu an ${club.name} seviyesinde bir kulübe gitmek istemiyor (İtibar yetersiz).`);
+    return;
+  }
+  if (isFreeAgent && player.ovr >= myOvr + 15) {
+    showToast(`${player.name} daha üst düzey bir lig/kulüp teklifi bekliyor.`);
+    return;
+  }
+
+  // Ensure player has realistic market value
+  player.value = computeRealisticMarketValue(player.ovr, player.age);
+  const baseWage = Math.max(0.6, Number((player.wage || Math.max(0.8, player.value * 0.085)).toFixed(1)));
+  const prestigeWageMult = player.ovr >= myOvr + 7 ? 1.32 : (player.ovr >= myOvr + 3 ? 1.18 : 1.12);
+  const desiredWage = Number((baseWage * prestigeWageMult * (isFreeAgent ? 1.12 : 1.05)).toFixed(1));
+
+  document.getElementById('playerModal').classList.add('hidden');
+  document.getElementById('negPlayerTitle').textContent = `${player.name} (${player.pos} · Güç ${player.ovr})`;
+
+  if (isFreeAgent) {
+    // FREE AGENT -> DIRECTLY TO STAGE 2 (WAGE OFFER ONLY, €0 TRANSFER FEE!)
+    negState = {
+      player, sourceClubId, sellerClub: null, isFreeAgent: true,
+      stage: 2, askFee: 0, minFee: 0, agreedFee: 0, roundsLeft: 0,
+      desiredWage, wageRoundsLeft: 3
+    };
+    document.getElementById('negStageBadge').textContent = 'SERBEST OYUNCU · MAAŞ TEKLİFİ (€0 Bonservis)';
+    document.getElementById('negStage1Wrap').classList.add('hidden');
+    document.getElementById('negStage2Wrap').classList.remove('hidden');
+    const wRange = document.getElementById('negWageRange');
+    wRange.min = 0.4;
+    wRange.max = Math.max(12, Number((desiredWage * 2.2).toFixed(1)));
+    wRange.value = Math.max(0.4, Number((desiredWage * 0.95).toFixed(1)));
+    document.getElementById('negWageVal').textContent = `${fmtMoney(wRange.value)} / yıl`;
+    document.getElementById('negDialogueBox').textContent = `${player.name} (Serbest · Menajer): "Bonservisim elimde. ${club.name} için yıllık yaklaşık ${fmtMoney(desiredWage)} maaş civarı bir teklif bekliyorum."`;
+    document.getElementById('negotiationModal').classList.remove('hidden');
+    return;
+  }
+
+  // HARDER CONTRACTED CLUB NEGOTIATION
+  const isStarter = sellerClub && Array.isArray(sellerClub.lineup) && sellerClub.lineup.includes(player.id);
+  const isYoungStar = player.age <= 23 && player.ovr >= 79;
+  const isSuperstar = player.ovr >= 85;
+  const isStrongerSeller = sellerClub && ((sellerClub.ovr || 74) > myOvr + 3);
+  const isExpiring = (player.contractUntil || 2029) <= game.seasonYear + 1;
+
+  let askMult = 1.24;
+  let minMult = 1.06;
+  if (isStarter) { askMult += 0.20; minMult += 0.14; }
+  if (isYoungStar) { askMult += 0.18; minMult += 0.12; }
+  if (isSuperstar) { askMult += 0.16; minMult += 0.12; }
+  if (isStrongerSeller) { askMult += 0.10; minMult += 0.06; }
+  if (isExpiring) { askMult -= 0.18; minMult -= 0.16; }
+
+  const askFee = Number(Math.max(0.8, player.value * askMult).toFixed(1));
+  const minFee = Number(Math.max(0.6, player.value * Math.max(0.86, minMult)).toFixed(1));
+
+  negState = {
+    player, sourceClubId, sellerClub, isFreeAgent: false,
+    stage: 1, askFee, minFee, agreedFee: 0, roundsLeft: 3,
+    desiredWage, wageRoundsLeft: 2
+  };
+  document.getElementById('negStageBadge').textContent = 'AŞAMA 1 / 2 · KULÜP PAZARLIĞI';
+  document.getElementById('negStage1Wrap').classList.remove('hidden');
+  document.getElementById('negStage2Wrap').classList.add('hidden');
+  const range = document.getElementById('negFeeRange');
+  range.min = Math.max(0.5, Number((player.value * 0.65).toFixed(1)));
+  range.max = Math.max(Number((askFee * 1.35).toFixed(1)), club.budget, 15);
+  const initOffer = Math.min(club.budget, Number((player.value * 1.05).toFixed(1)));
+  range.value = Math.max(Number(range.min), initOffer);
+  document.getElementById('negFeeVal').textContent = fmtMoney(range.value);
+  document.getElementById('negBudgetHint').textContent = `Bütçen: ${fmtMoney(club.budget)}`;
+  document.getElementById('negRoundsHint').textContent = `Kalan Tur: ${negState.roundsLeft}`;
+  const reasonNote = isExpiring
+    ? 'Sözleşmesinin son yılında olduğu için makul bir indirim yapabiliriz.'
+    : (isStarter || isSuperstar ? 'Kadromuzun kilit ismi, ucuza bırakmayız.' : 'Teklifini görelim.');
+  document.getElementById('negDialogueBox').textContent = `${sellerClub.name}: "${player.name} için kapıyı ${fmtMoney(askFee)} seviyesinden açıyoruz. ${reasonNote}"`;
+  document.getElementById('negotiationModal').classList.remove('hidden');
+};
+
+// 2. HARDER handleClubOffer (lowball penalty & firm negotiation)
+handleClubOffer = function() {
+  if (!negState || negState.stage !== 1) return;
+  const club = myClub(), offer = Number(document.getElementById('negFeeRange').value);
+  if (offer > club.budget) { showToast('Transfer bütçen bu teklife yetmiyor!'); return; }
+  if (offer >= negState.minFee) {
+    negState.agreedFee = offer; negState.stage = 2;
+    document.getElementById('negStageBadge').textContent = 'AŞAMA 2 / 2 · MAAŞ & SÖZLEŞME';
+    document.getElementById('negStage1Wrap').classList.add('hidden');
+    document.getElementById('negStage2Wrap').classList.remove('hidden');
+    const wRange = document.getElementById('negWageRange');
+    wRange.min = 0.4; wRange.max = Math.max(12, Number((negState.desiredWage * 2.2).toFixed(1)));
+    wRange.value = Math.max(0.4, Number((negState.desiredWage * 0.96).toFixed(1)));
+    document.getElementById('negWageVal').textContent = `${fmtMoney(wRange.value)} / yıl`;
+    document.getElementById('negDialogueBox').textContent = `${negState.sellerClub.name} ile ${fmtMoney(offer)} bonserviste el sıkıştın! Şimdi ${negState.player.name} yıllık yaklaşık ${fmtMoney(negState.desiredWage)} maaş bekliyor.`;
+  } else {
+    // Drastic lowball loses 2 rounds of patience!
+    const isInsulting = offer < negState.minFee * 0.78;
+    negState.roundsLeft -= isInsulting ? 2 : 1;
+    if (negState.roundsLeft <= 0) {
+      document.getElementById('negotiationModal').classList.add('hidden');
+      showToast(isInsulting ? `${negState.sellerClub.name} düşük teklife sinirlenip masadan kalktı!` : 'Kulüp masadan kalktı, görüşme iptal oldu');
+      return;
+    }
+    const counter = Number(Math.max(negState.minFee, (negState.askFee * 0.65 + negState.minFee * 0.35)).toFixed(1));
+    negState.askFee = counter;
+    document.getElementById('negRoundsHint').textContent = `Kalan Tur: ${negState.roundsLeft}`;
+    document.getElementById('negDialogueBox').textContent = isInsulting
+      ? `${negState.sellerClub.name}: "Bu rakam ciddiyetten çok uzak! En az ${fmtMoney(counter)} civarına çıkmalısın."`
+      : `${negState.sellerClub.name}: "Bu teklif beklentimizin altında. ${fmtMoney(counter)} verirsen masada kalırız."`;
+  }
+};
+
+// 3. ENHANCED handleWageOffer (Free Agent €0 signing news + harder wage floor)
+handleWageOffer = function() {
+  if (!negState || negState.stage !== 2) return;
+  const wage = Number(document.getElementById('negWageRange').value);
+  const years = Number(document.getElementById('negYearsSelect').value);
+  const minAcceptWage = Number((negState.desiredWage * (years >= 4 ? 0.94 : 0.98)).toFixed(1));
+  if (wage >= minAcceptWage) {
+    const club = myClub(), p = negState.player;
+    const isFA = !!negState.isFreeAgent;
+    if (!isFA) club.budget = Number((club.budget - negState.agreedFee).toFixed(1));
+    p.wage = wage;
+    p.contractUntil = game.seasonYear + years;
+    delete p.isFreeAgent; delete p.prevClub;
+    if (negState.sourceClubId === 'market') {
+      game.market = game.market.filter(x => x.id !== p.id);
+    } else if (negState.sellerClub) {
+      negState.sellerClub.squad = negState.sellerClub.squad.filter(x => x.id !== p.id);
+      negState.sellerClub.budget = Number((negState.sellerClub.budget + negState.agreedFee).toFixed(1));
+      negState.sellerClub.lineup = autoAssignLineup(negState.sellerClub.squad, negState.sellerClub.formation);
+    }
+    club.squad.push(p);
+    saveActiveCareer();
+    document.getElementById('negotiationModal').classList.add('hidden');
+    document.getElementById('clubModal').classList.add('hidden');
+    if (isFA) {
+      showToast(`✍️ ${p.name} serbest statüden ${fmtMoney(wage)}/yıl maaşla imzaladı!`);
+      pushInboxMsg('Transfer', p.name, `${club.name} İçin İmzayı Attım!`,
+        `Hocam boşta kaldığım dönemde bana güvendiğin ve yıllık ${fmtMoney(wage)} teklif ettiğin için teşekkürler. ${club.name} formasıyla elimden geleni yapacağım!`);
+      pushSocialPost('club', club.name, '@' + club.id + 'resmi',
+        `RESMİ AÇIKLAMA | Serbest oyuncu ${p.name} (${p.pos}) ile ${years} yıllık sözleşme imzalandı! Hoş geldin!`, club.bg, club.fg, club.short, true);
+    } else {
+      showToast(`${p.name} ${fmtMoney(negState.agreedFee)} karşılığında imzaladı!`);
+      pushInboxMsg('Transfer', p.name, `${club.name} Forması İçin Sabırsızlanıyorum`,
+        `Hocam beni kadroda görmek istediğin için teşekkürler! ${club.name} taraftarının önünde sahaya çıkmak ve hedeflerimize katkı vermek için hazırım.`);
+      pushSocialPost('club', club.name, '@' + club.id + 'resmi',
+        `RESMİ AÇIKLAMA | ${p.name} (${p.pos}), ${fmtMoney(negState.agreedFee)} bonservis bedeliyle ${club.name} kadrosuna katıldı! Hoş geldin!`, club.bg, club.fg, club.short, true);
+      pushSocialPost('fan', 'Transfer Fırtınası', '@TransferFirtina',
+        `SON DAKİKA! ${club.name}, ${p.name} transferini ${fmtMoney(negState.agreedFee)} karşılığında resmen bitirdi! ${game.managerName} kadroyu güçlendirdi.`, '#0f172a', '#fbbf24', 'TF', true);
+    }
+    renderHeader();
+    if (currentTab === 'transfer') renderTransfer(); else renderHome();
+  } else {
+    negState.wageRoundsLeft--;
+    if (negState.wageRoundsLeft <= 0) {
+      document.getElementById('negotiationModal').classList.add('hidden');
+      showToast(`${negState.player.name} maaş teklifini reddetti ve masadan kalktı`);
+      return;
+    }
+    document.getElementById('negDialogueBox').textContent = `${negState.player.name}: "Bu maaş beklentimin altında. En az ${fmtMoney(minAcceptWage)} civarı bir teklif yaparsan imza atarım."`;
+  }
+};
+
+// 4. ENHANCE renderTransfer: Free Agent €0 pills + "Maaş Teklif Et" button + Expiring contract indicator
+const _v31RenderTransfer = renderTransfer;
+renderTransfer = function() {
+  _v31RenderTransfer();
+  if (transferMode !== 'buy' || !game || game.isUnemployed) return;
+  const list = document.getElementById('transferMarketList');
+  if (!list) return;
+  list.querySelectorAll('[data-negotiate-id]').forEach(btn => {
+    const src = btn.dataset.sourceId;
+    const pid = btn.dataset.negotiateId;
+    if (src === 'market') {
+      btn.textContent = 'Maaş Teklif Et';
+      btn.className = 'btn btn-soft';
+      btn.style.padding = '6px 10px';
+      const row = btn.closest('.player-list-row');
+      const titleEl = row && row.querySelector('.wrap-text');
+      if (titleEl && !titleEl.querySelector('.free-pill')) {
+        titleEl.insertAdjacentHTML('beforeend', '<span class="free-pill">SERBEST · €0</span>');
+      }
+    } else {
+      const sc = getClub(src);
+      const p = sc && sc.squad.find(x => x.id === pid);
+      if (p && (p.contractUntil || 2029) <= game.seasonYear + 1) {
+        const row = btn.closest('.player-list-row');
+        const titleEl = row && row.querySelector('.wrap-text');
+        if (titleEl && !titleEl.querySelector('.exp-pill')) {
+          titleEl.insertAdjacentHTML('beforeend', '<span class="exp-pill">Son Yıl</span>');
+        }
+      }
+    }
+  });
+};
+
+// 5. SEASON TRANSITION: EXPIRING CONTRACTS DROP INTO FREE AGENT MARKET (game.market) + MARKET VALUE GUARD!
+const _v31CompleteSeason = completeNewSeasonTransition;
+completeNewSeasonTransition = function() {
+  _v31CompleteSeason();
+  // 1) Guarantee realistic market values on EVERY player after new season transition!
+  game.clubs.forEach(c => {
+    c.squad.forEach(p => { p.value = computeRealisticMarketValue(p.ovr, p.age); });
+  });
+  // 2) Process expired contracts (contractUntil <= new game.seasonYear) -> drop into Free Agent Market!
+  const newFreeAgents = [];
+  const myExpired = [];
+  game.clubs.forEach(c => {
+    const isMy = c.id === game.myClubId;
+    const starterSet = new Set(c.lineup || []);
+    c.squad = c.squad.filter(p => {
+      if ((p.contractUntil || (game.seasonYear + 2)) <= game.seasonYear && c.squad.length > 16) {
+        if (!isMy) {
+          // AI clubs renew ~65% of starters and ~45% of bench players; the rest hit Free Agency!
+          const renewChance = starterSet.has(p.id) ? 0.68 : 0.45;
+          if (Math.random() < renewChance) {
+            p.contractUntil = game.seasonYear + randInt(2, 4);
+            return true;
+          }
+        } else {
+          myExpired.push(p.name);
+        }
+        p.isFreeAgent = true;
+        p.prevClub = c.name;
+        p.value = computeRealisticMarketValue(p.ovr, p.age);
+        newFreeAgents.push(p);
+        return false;
+      }
+      return true;
+    });
+    if (!isMy) pickBestAiFormationAndLineup(c);
+  });
+
+  // Merge newly expired players into game.market (deduped by id, sorted by OVR, capped at 45)
+  const seenIds = new Set();
+  const merged = [];
+  newFreeAgents.concat(game.market || []).forEach(p => {
+    if (!seenIds.has(p.id)) {
+      seenIds.add(p.id);
+      p.value = computeRealisticMarketValue(p.ovr, p.age);
+      merged.push(p);
+    }
+  });
+  game.market = merged.sort((a, b) => b.ovr - a.ovr).slice(0, 45);
+
+  if (myExpired.length) {
+    pushInboxMsg('Yönetim', 'Kulüp Sekreterliği', 'Sözleşmesi Biten Oyuncular Ayrıldı',
+      `Sözleşmesi yenilenmeyen oyuncular serbest kalarak boş pazara düştü: ${myExpired.join(', ')}.`);
+  }
+  const notableFA = newFreeAgents.slice().sort((a, b) => b.ovr - a.ovr).slice(0, 5);
+  if (notableFA.length) {
+    pushInboxMsg('Transfer', 'Gözlemci Ekibi', 'Boş Pazara Düşen Yıldızlar!',
+      `Yeni sezonda sözleşmesi bitip serbest kalan dikkat çekici oyuncular (bonservissiz, maaş teklifiyle alınabilir): ${notableFA.map(x => `${x.name} (${x.ovr}, eski: ${x.prevClub})`).join(', ')}.`);
+  }
+  saveActiveCareer();
+};
+
+// 6. ALSO FIX EXISTING SAVES ON LOAD (if any player still has reverted old market value)
+const _v31EnterCareer = enterCareer;
+enterCareer = function(careerObj) {
+  _v31EnterCareer(careerObj);
+  if (game && game.clubs) {
+    game.clubs.forEach(c => c.squad.forEach(p => { p.value = computeRealisticMarketValue(p.ovr, p.age); }));
+    (game.market || []).forEach(p => { p.value = computeRealisticMarketValue(p.ovr, p.age); });
+  }
+};
+
+})();
 
 })();
 </script>
