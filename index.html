@@ -760,7 +760,6 @@ white-space: nowrap;
 /* v37: Hide ALL scrollbars globally, zero tap/focus sticky highlight, & Custom In-Game Select Picker */
 html, body, * { scrollbar-width: none !important; -ms-overflow-style: none !important; -webkit-tap-highlight-color: transparent !important; }
 *::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; background: transparent !important; }
-html, body { overscroll-behavior-y: none; }
 select:focus, select:active, button:focus, button:active, input:focus, a:focus { outline: none !important; box-shadow: none !important; }
 #customSelectModal .modal-box { max-width: 420px; max-height: 76dvh; display: flex; flex-direction: column; padding: 14px; }
 #customSelectList { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding: 2px 0; }
@@ -827,7 +826,7 @@ select:focus, select:active, button:focus, button:active, input:focus, a:focus {
 <div class="menu-logo-ring">
 <svg class="svg-icon" style="width:28px;height:28px;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m12 6 3 4-1 5H10l-1-5 3-4Z"/><path d="M12 2v4"/><path d="m4.93 10.93 4.07-.93"/><path d="m19.07 10.93-4.07-.93"/><path d="m6.5 18.5 3.5-3.5"/><path d="m17.5 18.5-3.5-3.5"/></svg>
 </div>
-<div class="btn-soft" style="display:inline-flex;padding:3px 10px;border-radius:999px;font-size:10px;font-weight:700;margin-bottom:6px;">2026–27 DÜNYA SÜRÜMÜ · 7 LİG · v37</div>
+<div class="btn-soft" style="display:inline-flex;padding:3px 10px;border-radius:999px;font-size:10px;font-weight:700;margin-bottom:6px;">2026–27 DÜNYA SÜRÜMÜ · 7 LİG · v37.1</div>
 <h1 style="font-size:24px;font-weight:800;margin:0 0 4px;letter-spacing:-0.02em;">Soccer Simulator</h1>
 <p style="font-size:12px;color:var(--muted);margin:0;">Kendi teknik direktörlük kariyerini kur ve yönet.</p>
 </div>
@@ -9698,17 +9697,24 @@ if (csModalBackdrop) {
   });
 }
 
-// Intercept ALL native <select> taps/clicks globally so Google/Android system popup NEVER opens!
-['mousedown', 'touchstart'].forEach(evName => {
-  document.addEventListener(evName, (e) => {
-    const sel = e.target && e.target.closest ? e.target.closest('select') : null;
-    if (sel && !sel.disabled) {
-      e.preventDefault();
-      sel.blur();
-      openCustomSelectModal(sel);
-    }
-  }, { capture: true, passive: false });
-});
+// Intercept native <select> ONLY on mousedown/click (NEVER on touchstart, so mobile scrolling stays 100% smooth!)
+document.addEventListener('mousedown', (e) => {
+  const sel = e.target && e.target.closest ? e.target.closest('select') : null;
+  if (sel && !sel.disabled) {
+    e.preventDefault();
+    sel.blur();
+    openCustomSelectModal(sel);
+  }
+}, true);
+document.addEventListener('click', (e) => {
+  const sel = e.target && e.target.closest ? e.target.closest('select') : null;
+  if (sel && !sel.disabled) {
+    e.preventDefault();
+    sel.blur();
+    const modal = document.getElementById('customSelectModal');
+    if (modal && modal.classList.contains('hidden')) openCustomSelectModal(sel);
+  }
+}, true);
 
 // Clear sticky focus highlight after tapping any button or select
 document.addEventListener('click', (e) => {
