@@ -847,7 +847,7 @@ select:focus, select:active, button:focus, button:active, input:focus, a:focus {
 <div class="menu-logo-ring">
 <svg class="svg-icon" style="width:28px;height:28px;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m12 6 3 4-1 5H10l-1-5 3-4Z"/><path d="M12 2v4"/><path d="m4.93 10.93 4.07-.93"/><path d="m19.07 10.93-4.07-.93"/><path d="m6.5 18.5 3.5-3.5"/><path d="m17.5 18.5-3.5-3.5"/></svg>
 </div>
-<div class="btn-soft" style="display:inline-flex;padding:3px 10px;border-radius:999px;font-size:10px;font-weight:700;margin-bottom:6px;">2026–27 DÜNYA SÜRÜMÜ · 7 LİG · v38</div>
+<div class="btn-soft" style="display:inline-flex;padding:3px 10px;border-radius:999px;font-size:10px;font-weight:700;margin-bottom:6px;">2026–27 DÜNYA SÜRÜMÜ · 7 LİG · v39</div>
 <h1 style="font-size:24px;font-weight:800;margin:0 0 4px;letter-spacing:-0.02em;">Soccer Simulator</h1>
 <p style="font-size:12px;color:var(--muted);margin:0;">Kendi teknik direktörlük kariyerini kur ve yönet.</p>
 </div>
@@ -1792,9 +1792,11 @@ select:focus, select:active, button:focus, button:active, input:focus, a:focus {
 </button>
 <div id="clubModalStats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:7px;text-align:center;"></div>
 <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
-<div style="display:flex;gap:6px;">
-<button id="clubTabPitchBtn" type="button" class="btn btn-primary" style="padding:5px 10px;font-size:11px;">İlk 11 (Saha)</button>
-<button id="clubTabSquadBtn" type="button" class="btn btn-ghost" style="padding:5px 10px;font-size:11px;">Tüm Kadro</button>
+<div style="display:flex;gap:5px;flex-wrap:wrap;">
+<button id="clubTabPitchBtn" type="button" class="btn btn-primary" style="padding:5px 9px;font-size:10.5px;">İlk 11</button>
+<button id="clubTabSquadBtn" type="button" class="btn btn-ghost" style="padding:5px 9px;font-size:10.5px;">Kadro</button>
+<button id="clubTabTransfersBtn" type="button" class="btn btn-ghost" style="padding:5px 9px;font-size:10.5px;">Transferler</button>
+<button id="clubTabManagersBtn" type="button" class="btn btn-ghost" style="padding:5px 9px;font-size:10.5px;">Hoca Geçmişi</button>
 </div>
 <span id="clubModalForm" style="display:flex;gap:4px;"></span>
 </div>
@@ -1803,6 +1805,8 @@ select:focus, select:active, button:focus, button:active, input:focus, a:focus {
 <div id="clubModalPitch" class="pitch-2d"></div>
 </div>
 <div id="clubModalSquad" class="hidden stack-sm" style="max-height:46vh;overflow-y:auto;"></div>
+<div id="clubModalTransfers" class="hidden stack-sm" style="max-height:46vh;overflow-y:auto;"></div>
+<div id="clubModalManagers" class="hidden stack-sm" style="max-height:46vh;overflow-y:auto;"></div>
 </div>
 </div>
 <!-- MODAL: PLAYER PROFILE -->
@@ -2510,14 +2514,23 @@ Kalecin kırmızı kart gördü! Devam etmek için sahadan bir oyuncuyu seçip y
 </select>
 </div>
 </div>
+<div style="display:grid;grid-template-columns:1fr;gap:6px;">
 <div>
-<label for="jobNegAmbitionSelect" style="display:block;font-size:10.5px;color:var(--muted);margin-bottom:3px;">Sezon Hedefi Taahhüdü</label>
-<select id="jobNegAmbitionSelect">
-<option value="temkinli">Temkinli (Daha rahat hedef, standart bütçe)</option>
-<option value="standart" selected>Standart (Kulüp beklentisi)</option>
-<option value="iddiali">İddialı (Zorlu hedef + %15 Ekstra Bütçe!)</option>
-</select>
+<label for="jobNegLeagueObj" style="display:block;font-size:10.5px;color:#34d399;font-weight:700;margin-bottom:2px;">🏆 Lig Hedefi</label>
+<select id="jobNegLeagueObj" style="font-size:11.5px;"></select>
 </div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+<div>
+<label for="jobNegEuroObj" style="display:block;font-size:10.5px;color:#60a5fa;font-weight:700;margin-bottom:2px;">⭐ Avrupa Hedefi</label>
+<select id="jobNegEuroObj" style="font-size:11px;"></select>
+</div>
+<div>
+<label for="jobNegCupObj" style="display:block;font-size:10.5px;color:#fbbf24;font-weight:700;margin-bottom:2px;">🏅 Yerel Kupa Hedefi</label>
+<select id="jobNegCupObj" style="font-size:11px;"></select>
+</div>
+</div>
+</div>
+<select id="jobNegAmbitionSelect" class="hidden"><option value="standart" selected>standart</option></select>
 <div id="jobNegObjPreview" class="elevated" style="padding:8px 10px;font-size:11px;color:var(--muted);"></div>
 <div style="display:flex;justify-content:space-between;font-size:10.5px;color:var(--muted);">
 <span id="jobNegBudgetPreview">Teklif Edilen Bütçe: €20M</span>
@@ -2722,7 +2735,7 @@ return Number(raw >= 20 ? raw.toFixed(0) : raw.toFixed(1));
 function makePlayer(name, pos, ovr, age, altPos, potential) {
 const value = computeRealisticMarketValue(ovr, age);
 const wage = Number((Math.max(0.2, value * 0.085)).toFixed(1));
-const obj = { id: uid(), name, pos, altPos: Array.isArray(altPos) ? altPos.slice() : [], ovr, age, value, wage, contractUntil: 2026 + randInt(2, 4), stamina: 100, goals: 0, assists: 0, injuredWeeks: 0, suspendedWeeks: 0, yellowCount: 0, lastOvrChange: 0, morale: 72, motmCount: 0 };
+const obj = { id: uid(), name, pos, altPos: Array.isArray(altPos) ? altPos.slice() : [], ovr, age, value, wage, contractUntil: 2026 + (age <= 24 ? randInt(2, 5) : (age <= 30 ? randInt(1, 4) : randInt(1, 2))), stamina: 100, goals: 0, assists: 0, injuredWeeks: 0, suspendedWeeks: 0, yellowCount: 0, lastOvrChange: 0, morale: 72, motmCount: 0 };
 if (potential) obj.potential = potential;
 return obj;
 }
@@ -3769,7 +3782,7 @@ if (diff > 0) {
 const prev = game.managerMeta.biggestWin;
 if (!prev || diff > prev.diff || (diff === prev.diff && myG > prev.myG)) {
 game.managerMeta.biggestWin = {
-diff, myG, opG, oppName: opp.name,
+diff, myG, opG, myClubName: (myClub() ? myClub().name : ''), oppName: opp.name,
 season: `${game.seasonYear}-${String(game.seasonYear + 1).slice(2)}`
 };
 }
@@ -3794,14 +3807,14 @@ return getLineupPlayers(club).map(p => ({ name: p.name, pos: p.pos, ovr: p.ovr }
 function simulateSingleMatch(match) {
 const home = getClub(match.home), away = getClub(match.away);
 const hb = getTacticalBonus(home), ab = getTacticalBonus(away);
-const myEdgeH = home.id === game.myClubId ? 1.0 : 0;
-const myEdgeA = away.id === game.myClubId ? 1.0 : 0;
-const rawDiff = (getClubEffectiveOvr(home) + 1.4 + myEdgeH + hb.att - ab.def) - (getClubEffectiveOvr(away) + myEdgeA + ab.att - hb.def);
-const diff = Math.tanh(rawDiff / 9.8) * 1.34;
+const myEdgeH = home.id === game.myClubId ? 1.25 : 0;
+const myEdgeA = away.id === game.myClubId ? 1.25 : 0;
+const rawDiff = (getClubEffectiveOvr(home) + 1.5 + myEdgeH + hb.att - ab.def) - (getClubEffectiveOvr(away) + myEdgeA + ab.att - hb.def);
+const diff = Math.tanh(rawDiff / 7.8) * 1.50;
 let hg = 0, ag = 0;
 for (let i = 0; i < 6; i++) {
-if (Math.random() < Math.max(0.07, Math.min(0.42, 0.215 + diff * 0.112))) hg++;
-if (Math.random() < Math.max(0.065, Math.min(0.39, 0.175 - diff * 0.112))) ag++;
+if (Math.random() < Math.max(0.055, Math.min(0.46, 0.215 + diff * 0.126))) hg++;
+if (Math.random() < Math.max(0.05, Math.min(0.42, 0.166 - diff * 0.126))) ag++;
 }
 const isMyMatch = true;
 const events = [];
@@ -5494,7 +5507,7 @@ const bwEl = document.getElementById('mgrBiggestWinRow');
 if (game.managerMeta.biggestWin) {
 const bw = game.managerMeta.biggestWin;
 bwEl.style.display = 'block';
-bwEl.textContent = `En farklı galibiyet: ${club.name} ${bw.myG}-${bw.opG} ${bw.oppName} (${bw.season})`;
+bwEl.textContent = `En farklı galibiyet: ${bw.myClubName || club.name} ${bw.myG}-${bw.opG} ${bw.oppName} (${bw.season})`;
 } else {
 bwEl.style.display = 'none';
 }
@@ -6192,12 +6205,12 @@ function simulateVirtualRoundForLeague(clubs) {
 const sh = clubs.slice().sort(() => Math.random() - 0.5);
 for (let i = 0; i + 1 < sh.length; i += 2) {
 const h = sh[i], a = sh[i + 1];
-const rawDiff = (h.ovr || 74) + 1.3 - (a.ovr || 74);
-const diff = Math.tanh(rawDiff / 10.5) * 1.28;
+const rawDiff = (h.ovr || 74) + 1.4 - (a.ovr || 74);
+const diff = Math.tanh(rawDiff / 8.5) * 1.42;
 let hg = 0, ag = 0;
 for (let c = 0; c < 6; c++) {
-if (Math.random() < Math.max(0.075, Math.min(0.41, 0.215 + diff * 0.108))) hg++;
-if (Math.random() < Math.max(0.07, Math.min(0.38, 0.178 - diff * 0.108))) ag++;
+if (Math.random() < Math.max(0.06, Math.min(0.445, 0.215 + diff * 0.120))) hg++;
+if (Math.random() < Math.max(0.055, Math.min(0.405, 0.170 - diff * 0.120))) ag++;
 }
 h.stats.p++; a.stats.p++;
 h.stats.gf += hg; h.stats.ga += ag;
@@ -11233,6 +11246,867 @@ enterCareer = function(careerObj) {
       }
     });
     if (myClub()) ensureClubRoles(myClub());
+  }
+};
+
+})();
+
+
+// =========================================================================
+// v39: 3-COMPETITION OBJECTIVES, CLUB HISTORY TABS, EXPIRING JOB OFFERS,
+//      EXIT REASONS, PREV CLUB MANAGER SEARCH & ULTRA-RICH DIALOGUES!
+// =========================================================================
+(function initV39Patch() {
+
+// -------------------------------------------------------------------------
+// 1. 3-COMPETITION OBJECTIVES (LİG HEDEFİ · AVRUPA HEDEFİ · YEREL KUPA HEDEFİ)
+// -------------------------------------------------------------------------
+function getClubEuroCupInfo(clubId) {
+  if (!game || !game.cups || !clubId) return null;
+  for (const cid of ['ucl', 'uel', 'uecl']) {
+    const cup = game.cups[cid];
+    if (cup && cup.table && cup.table[clubId]) return cup;
+  }
+  return null;
+}
+
+function getDefaultObjectivesForClub(club) {
+  const r = (club && (club.ovr || club.rating)) || 74;
+  const lm = getLeagueMeta((club && club.leagueId) || 'super_lig');
+  const totalTeams = Math.max(18, getLeagueClubs((club && club.leagueId) || 'super_lig').length);
+  const euroCup = club ? getClubEuroCupInfo(club.id) : null;
+  const domCup = DOMESTIC_CUPS_META.find(d => d.leagues.includes(club ? club.leagueId : 'super_lig'));
+  const cupName = domCup ? domCup.name : 'Yerel Kupa';
+
+  // League default
+  let lgRank, lgTitle;
+  if (lm.tier === 2) {
+    if (r >= 71) { lgRank = 2; lgTitle = `${lm.name} İlk 2 (Üst Lige Çık)`; }
+    else if (r >= 68) { lgRank = 6; lgTitle = `${lm.name} Play-Off (İlk 6)`; }
+    else { lgRank = Math.max(12, totalTeams - 4); lgTitle = `${lm.name}'de Kümede Kal`; }
+  } else if (r >= 81) { lgRank = 1; lgTitle = `${lm.name} Şampiyonluğu (1. Sıra)`; }
+  else if (r >= 77) { lgRank = 3; lgTitle = `${lm.name} Zirve Yarışı (İlk 3)`; }
+  else if (r >= 74) { lgRank = 6; lgTitle = `${lm.name} Avrupa Potası (İlk 6)`; }
+  else if (r >= 71) { lgRank = 11; lgTitle = `${lm.name} Orta Sıralar (İlk 11)`; }
+  else { lgRank = Math.max(14, totalTeams - 3); lgTitle = `${lm.name}'de Kümede Kal (İlk ${lgRank})`; }
+
+  // Europe default
+  let euroStage, euroTitle;
+  if (euroCup) {
+    if (r >= 84) { euroStage = 'sf'; euroTitle = `${euroCup.short}: En Az Yarı Final`; }
+    else if (r >= 79) { euroStage = 'qf'; euroTitle = `${euroCup.short}: Çeyrek Final`; }
+    else if (r >= 75) { euroStage = 'r16'; euroTitle = `${euroCup.short}: Son 16 Turu`; }
+    else { euroStage = 'po'; euroTitle = `${euroCup.short}: İlk 24 (Play-Off)`; }
+  } else {
+    euroStage = 'qualify';
+    euroTitle = lm.tier === 2 ? 'Avrupa: Üst Lig Sonrası Hedef' : (r >= 75 ? 'Avrupa: Gelecek Sezon Avrupa Bileti' : 'Avrupa: Katılım Şartı Yok');
+  }
+
+  // Domestic Cup default
+  let cupStage, cupTitle;
+  if (r >= 80) { cupStage = 'final'; cupTitle = `${cupName}: Final / Şampiyonluk`; }
+  else if (r >= 75) { cupStage = 'sf'; cupTitle = `${cupName}: Yarı Final`; }
+  else { cupStage = 'qf'; cupTitle = `${cupName}: Çeyrek Final`; }
+
+  return [
+    { id: 'rank', type: 'rank', comp: 'Lig Hedefi', title: lgTitle, target: lgRank },
+    { id: 'euro', type: 'euro', comp: 'Avrupa Hedefi', title: euroTitle, target: euroStage, cupId: euroCup ? euroCup.id : null },
+    { id: 'cup', type: 'cup', comp: 'Yerel Kupa Hedefi', title: cupTitle, target: cupStage, cupId: domCup ? domCup.id : null }
+  ];
+}
+
+buildSeasonObjectives = function(club, customArr) {
+  if (Array.isArray(customArr) && customArr.length >= 3) return customArr;
+  return getDefaultObjectivesForClub(club);
+};
+
+// Upgrade renderManager so Lig / Avrupa / Yerel Kupa objectives display cleanly with live progress!
+const _v38RenderManager = renderManager;
+renderManager = function() {
+  _v38RenderManager();
+  if (!game || !myClub() || game.isUnemployed) return;
+  const club = myClub();
+  const objList = document.getElementById('mgrObjectivesList');
+  if (!objList || !Array.isArray(game.objectives)) return;
+  const has3Comp = game.objectives.some(o => o.type === 'euro' || o.type === 'cup');
+  if (!has3Comp) {
+    game.objectives = getDefaultObjectivesForClub(club);
+  }
+  const standings = getSortedStandings();
+  const rank = standings.findIndex(c => c.id === club.id) + 1;
+
+  objList.innerHTML = game.objectives.map(obj => {
+    let pct = 55, statusText = 'Devam Ediyor', statusCls = 'obj-track', detailText = '';
+    if (obj.type === 'rank') {
+      const onTrack = rank <= obj.target;
+      const close = rank <= obj.target + 2;
+      pct = onTrack ? 100 : Math.max(15, Math.round(100 - (rank - obj.target) * 14));
+      statusText = onTrack ? 'Hedefte' : (close ? 'Yakın' : 'Riskli');
+      statusCls = onTrack ? 'obj-done' : (close ? 'obj-track' : 'obj-risk');
+      detailText = `Şu an: ${rank}. Sıra · Hedef: İlk ${obj.target}`;
+    } else if (obj.type === 'euro') {
+      const eCup = getClubEuroCupInfo(club.id);
+      if (!eCup) {
+        const qual = rank <= (getLeagueMeta(club.leagueId).uecl || 4);
+        pct = obj.target === 'qualify' ? (qual ? 100 : 45) : 100;
+        statusText = qual ? 'Hedefte' : 'Takipte';
+        statusCls = qual ? 'obj-done' : 'obj-track';
+        detailText = 'Bu sezon Avrupa liginde yer almıyor';
+      } else {
+        const sorted = getSortedEuroTable(eCup);
+        const eRank = sorted.findIndex(x => x.id === club.id) + 1;
+        const inKo = (eCup.rounds || []).some(r => (r || []).some(m => m.home === club.id || m.away === club.id));
+        const wonIt = eCup.championId === club.id;
+        pct = wonIt ? 100 : (inKo ? 80 : (eRank <= 24 ? 65 : 28));
+        statusText = wonIt ? 'Şampiyon! 🏆' : (eRank <= 24 || inKo ? 'Hedefte' : 'Riskli');
+        statusCls = (wonIt || eRank <= 24 || inKo) ? 'obj-done' : 'obj-risk';
+        detailText = `${eCup.short} Lig Sırası: ${eRank > 0 ? eRank + '.' : '-'} ${inKo ? '· Eleme Turunda' : ''}`;
+      }
+    } else if (obj.type === 'cup') {
+      const dCup = obj.cupId && game.cups ? game.cups[obj.cupId] : null;
+      if (!dCup) {
+        pct = 50; detailText = 'Kupa kura aşamasında';
+      } else {
+        const wonCup = dCup.championId === club.id;
+        let maxR = -1;
+        (dCup.rounds || []).forEach((r, ri) => { if ((r || []).some(m => m.home === club.id || m.away === club.id)) maxR = ri; });
+        pct = wonCup ? 100 : (maxR >= 2 ? 80 : (maxR >= 1 ? 55 : 30));
+        statusText = wonCup ? 'Şampiyon! 🏆' : (maxR >= 0 ? 'Devam Ediyor' : 'Beklemede');
+        statusCls = wonCup ? 'obj-done' : 'obj-track';
+        detailText = maxR >= 0 ? `Ulaşılan Tur: ${CUP_ROUND_NAMES[maxR] || (maxR + 1) + '. Tur'}` : 'Henüz maç oynanmadı';
+      }
+    }
+    const compTag = obj.comp ? `<span style="font-size:9.5px;font-weight:800;color:var(--accent-text);text-transform:uppercase;letter-spacing:0.04em;">${obj.comp}</span>` : '';
+    return `<div class="elevated" style="padding:9px 11px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+        <div>${compTag}<div style="font-size:12px;font-weight:700;">${obj.title}</div></div>
+        <span class="obj-badge ${statusCls}">${statusText}</span>
+      </div>
+      <div style="font-size:10.5px;color:var(--muted);margin-top:3px;">${detailText}</div>
+      <div class="trust-bar-wrap" style="margin-top:5px;"><div class="trust-bar-fill" style="width:${pct}%;background:${statusCls === 'obj-risk' ? '#ef4444' : 'var(--accent)'};"></div></div>
+    </div>`;
+  }).join('');
+
+  // Also ensure biggestWin in mgrRecordsGrid shows myClubName!
+  const recGrid = document.getElementById('mgrRecordsGrid');
+  if (recGrid && game.managerMeta && game.managerMeta.biggestWin) {
+    const bw = game.managerMeta.biggestWin;
+    if (bw.myClubName) {
+      recGrid.innerHTML = recGrid.innerHTML.replace(
+        `${bw.myG}-${bw.opG} vs ${bw.oppName}`,
+        `${bw.myClubName} ${bw.myG}-${bw.opG} ${bw.oppName}`
+      );
+    }
+  }
+};
+
+// -------------------------------------------------------------------------
+// 2. CLUB TRANSFER HISTORY & MANAGER HISTORY IN #clubModal (4 TABS!)
+// -------------------------------------------------------------------------
+function logClubTransfer(clubId, type, player, fee, otherClubName, isLoan) {
+  const c = getClub(clubId);
+  if (!c || !player) return;
+  if (!Array.isArray(c.transferHistory)) c.transferHistory = [];
+  c.transferHistory.unshift({
+    season: `${game.seasonYear}-${String(game.seasonYear + 1).slice(2)}`,
+    week: Math.min(getTotalWeeks(), (game.week || 0) + 1),
+    type, // 'in' or 'out'
+    playerName: player.name,
+    pos: player.pos,
+    ovr: player.ovr,
+    fee: Number((fee || 0).toFixed(1)),
+    otherClub: otherClubName || 'Serbest Pazar',
+    isLoan: !!isLoan
+  });
+  if (c.transferHistory.length > 60) c.transferHistory.length = 60;
+}
+
+function logClubManagerHistory(clubId, mgrName, mgrId, statsObj, season, exitReason) {
+  const c = getClub(clubId);
+  if (!c) return;
+  if (!Array.isArray(c.managerHistory)) c.managerHistory = [];
+  const p = (statsObj && statsObj.p) || 0;
+  const w = (statsObj && statsObj.w) || 0;
+  const d = (statsObj && statsObj.d) || 0;
+  const l = (statsObj && statsObj.l) || 0;
+  const pts = (statsObj && statsObj.pts) || (w * 3 + d);
+  const ppg = p > 0 ? (pts / p).toFixed(2) : '0.00';
+  c.managerHistory.unshift({
+    mgrId: mgrId || null,
+    name: mgrName,
+    season: season || `${game.seasonYear}-${String(game.seasonYear + 1).slice(2)}`,
+    p, w, d, l, ppg,
+    exitReason: exitReason || 'Görevden Alındı'
+  });
+  if (c.managerHistory.length > 25) c.managerHistory.length = 25;
+}
+
+// Hook handleWageOffer (user buys), finalizeIncomingOffer (user sells/loans), & runAiTransfers to log transfers!
+const _v38HandleWage = handleWageOffer;
+handleWageOffer = function() {
+  const snapP = negState ? negState.player : null;
+  const snapSeller = negState ? negState.sellerClub : null;
+  const snapFee = negState ? negState.agreedFee : 0;
+  const snapSwap = negState ? negState.swapPlayer : null;
+  const mc = myClub();
+  const prevLen = mc ? mc.squad.length : 0;
+  _v38HandleWage();
+  if (mc && mc.squad.length > prevLen && snapP) {
+    logClubTransfer(mc.id, 'in', snapP, snapFee, snapSeller ? snapSeller.name : 'Serbest Pazar', false);
+    if (snapSeller) {
+      logClubTransfer(snapSeller.id, 'out', snapP, snapFee, mc.name, false);
+      if (snapSwap) {
+        logClubTransfer(mc.id, 'out', snapSwap, Number((snapSwap.value * 0.85).toFixed(1)), `${snapSeller.name} (Takas)`, false);
+        logClubTransfer(snapSeller.id, 'in', snapSwap, Number((snapSwap.value * 0.85).toFixed(1)), `${mc.name} (Takas)`, false);
+      }
+    }
+  }
+};
+
+// Also hook runAiTransfers so AI club-to-club transfers are logged in BOTH clubs' transferHistory!
+const _v38RunAiTransfers = runAiTransfers;
+runAiTransfers = function(count) {
+  const beforeNewsLen = (game.transferNews || []).length;
+  const beforeMap = new Map();
+  game.clubs.forEach(c => beforeMap.set(c.id, new Set(c.squad.map(p => p.id))));
+  _v38RunAiTransfers(count);
+  // Detect moved players between AI clubs & log cleanly
+  const movedOut = new Map(); // pid -> { fromClub, player }
+  game.clubs.forEach(c => {
+    const prevSet = beforeMap.get(c.id);
+    if (!prevSet) return;
+    c.squad.forEach(p => {
+      if (!prevSet.has(p.id)) {
+        // p moved INTO c! Find where p came from
+        for (const [fromId, fSet] of beforeMap.entries()) {
+          if (fromId !== c.id && fSet.has(p.id)) {
+            const fromC = getClub(fromId);
+            if (fromC) {
+              logClubTransfer(c.id, 'in', p, p.value, fromC.name, false);
+              logClubTransfer(fromC.id, 'out', p, p.value, c.name, false);
+            }
+            break;
+          }
+        }
+      }
+    });
+  });
+};
+
+// Upgrade openClubModal with 4 tabs: İlk 11 | Kadro | Transferler | Hoca Geçmişi!
+const _v38OpenClubModal = openClubModal;
+openClubModal = function(clubId) {
+  _v38OpenClubModal(clubId);
+  const c = getClub(clubId);
+  if (!c) return;
+  const pBtn = document.getElementById('clubTabPitchBtn');
+  const sBtn = document.getElementById('clubTabSquadBtn');
+  const tBtn = document.getElementById('clubTabTransfersBtn');
+  const mBtn = document.getElementById('clubTabManagersBtn');
+  const pWrap = document.getElementById('clubModalPitchWrap');
+  const sWrap = document.getElementById('clubModalSquad');
+  const tWrap = document.getElementById('clubModalTransfers');
+  const mWrap = document.getElementById('clubModalManagers');
+  if (!tBtn || !mBtn || !tWrap || !mWrap) return;
+
+  // Populate Transfers Tab
+  const trs = c.transferHistory || [];
+  tWrap.innerHTML = trs.length ? trs.map(tr => {
+    const isIn = tr.type === 'in';
+    const tag = isIn
+      ? `<span class="wdl-pill wdl-w">${tr.isLoan ? 'Kiralık Geldi' : 'Gelen'}</span>`
+      : `<span class="wdl-pill wdl-l">${tr.isLoan ? 'Kiralık Gitti' : 'Giden'}</span>`;
+    return `<div class="elevated" style="padding:8px 10px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+      <div style="min-width:0;">
+        <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
+          ${tag}
+          <span class="pos-pill pos-${tr.pos}" style="font-size:9px;padding:1px 5px;">${tr.pos}</span>
+          <strong class="truncate" style="font-size:12px;">${tr.playerName} (${tr.ovr})</strong>
+        </div>
+        <div style="font-size:10.5px;color:var(--muted);margin-top:2px;">${isIn ? 'Geldiği yer' : 'Gittiği yer'}: ${tr.otherClub} · ${tr.season} (H${tr.week})</div>
+      </div>
+      <div style="font-size:12px;font-weight:800;color:${isIn ? '#34d399' : '#fbbf24'};white-space:nowrap;">${tr.fee > 0 ? fmtMoney(tr.fee) : 'Bedelsiz'}</div>
+    </div>`;
+  }).join('') : '<div style="text-align:center;font-size:11.5px;color:var(--muted);padding:16px;">Bu kulüpte henüz kayıtlı transfer hareketi yok.</div>';
+
+  // Populate Manager History Tab (Current manager + Past managers with stats & exit reason!)
+  const curMgr = getManagerForClub(c.id);
+  const rows = [];
+  if (curMgr) {
+    const st = curMgr.isUser ? getManagedStatsForCurrentClub() : (curMgr.currentStint || { p:0, w:0, d:0, l:0, pts:0 });
+    const ppg = st.p > 0 ? ((st.w * 3 + st.d) / st.p).toFixed(2) : '0.00';
+    rows.push(`<div class="mgr-stint-card" style="border-left:4px solid var(--accent);">
+      <div style="min-width:0;flex:1;">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;">
+          <strong class="truncate" style="font-size:12.5px;">${curMgr.name} <span style="color:var(--accent-text);font-size:10px;">● Aktif</span></strong>
+          <span style="font-size:10px;color:var(--muted);">${curMgr.prefFormation || c.formation}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:5px;margin-top:4px;">
+          <span class="wdl-pill wdl-w">${st.w}G</span><span class="wdl-pill wdl-d">${st.d}B</span><span class="wdl-pill wdl-l">${st.l}M</span>
+          <span style="font-size:10.5px;color:var(--muted);">${st.p} Maç · <strong style="color:var(--accent-text);">${ppg}</strong> PO</span>
+        </div>
+      </div>
+    </div>`);
+  }
+  (c.managerHistory || []).forEach(mh => {
+    const rCls = mh.exitReason === 'İstifa Etti' ? 'wdl-d' : (mh.exitReason === 'Başka Kulübe Geçti' ? 'loan-badge' : 'wdl-l');
+    rows.push(`<div class="mgr-stint-card" style="border-left:4px solid var(--border-strong);">
+      <div style="min-width:0;flex:1;">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;">
+          <strong class="truncate" style="font-size:12px;">${mh.name}</strong>
+          <span class="wdl-pill ${rCls}" style="font-size:9.5px;">${mh.exitReason || 'Ayrıldı'}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:5px;margin-top:4px;">
+          <span class="wdl-pill wdl-w">${mh.w}G</span><span class="wdl-pill wdl-d">${mh.d}B</span><span class="wdl-pill wdl-l">${mh.l}M</span>
+          <span style="font-size:10.5px;color:var(--muted);">${mh.p} Maç · <strong>${mh.ppg}</strong> PO · ${mh.season}</span>
+        </div>
+      </div>
+    </div>`);
+  });
+  mWrap.innerHTML = rows.length ? rows.join('') : '<div style="text-align:center;font-size:11.5px;color:var(--muted);padding:16px;">Geçmiş hoca kaydı bulunmuyor.</div>';
+
+  const setTab4 = (t) => {
+    pBtn.className = t === 'pitch' ? 'btn btn-primary' : 'btn btn-ghost';
+    sBtn.className = t === 'squad' ? 'btn btn-primary' : 'btn btn-ghost';
+    tBtn.className = t === 'transfers' ? 'btn btn-primary' : 'btn btn-ghost';
+    mBtn.className = t === 'managers' ? 'btn btn-primary' : 'btn btn-ghost';
+    pWrap.classList.toggle('hidden', t !== 'pitch');
+    sWrap.classList.toggle('hidden', t !== 'squad');
+    tWrap.classList.toggle('hidden', t !== 'transfers');
+    mWrap.classList.toggle('hidden', t !== 'managers');
+  };
+  pBtn.onclick = () => setTab4('pitch');
+  sBtn.onclick = () => setTab4('squad');
+  tBtn.onclick = () => setTab4('transfers');
+  mBtn.onclick = () => setTab4('managers');
+  setTab4('pitch');
+};
+
+// -------------------------------------------------------------------------
+// 3. EXIT REASONS ON AI MANAGER CAREER HISTORY (KOVULDU / İSTİFA ETTİ / TRANSFER OLDU)
+// -------------------------------------------------------------------------
+const _v38ArchiveStint = archiveManagerStint;
+archiveManagerStint = function(m, exitReason) {
+  const prevClubId = m && m.clubId;
+  const stSnap = m && m.currentStint ? Object.assign({}, m.currentStint) : null;
+  _v38ArchiveStint(m);
+  const reason = exitReason || 'Görevden Alındı';
+  if (m && m.history && m.history.length && stSnap && stSnap.p > 0) {
+    m.history[0].exitReason = reason;
+  }
+  if (prevClubId && m) {
+    logClubManagerHistory(prevClubId, m.name, m.id, stSnap, stSnap ? stSnap.season : null, reason);
+  }
+};
+
+// Upgrade openAiManagerModal to display the clean exit reason pill on past stints!
+const _v38OpenAiMgr = openAiManagerModal;
+openAiManagerModal = function(mgrId) {
+  _v38OpenAiMgr(mgrId);
+  const m = (game.managers || []).find(x => x.id === mgrId);
+  const histEl = document.getElementById('aiMgrHistory');
+  if (!m || !histEl || !(m.history || []).length) return;
+  const c = m.clubId ? getClub(m.clubId) : null;
+  const renderStint = (s, isActive) => {
+    const sppg = s.p > 0 ? ((s.w * 3 + s.d) / s.p).toFixed(2) : '0.00';
+    const bg = s.clubBg || '#1e293b', fg = s.clubFg || '#ffffff', sh = s.clubShort || (s.clubName || 'KLB').slice(0, 3).toUpperCase();
+    const rTxt = !isActive && s.exitReason ? s.exitReason : '';
+    const rCls = rTxt === 'İstifa Etti' ? 'wdl-d' : (rTxt === 'Başka Kulübe Geçti' ? 'loan-badge' : 'wdl-l');
+    return `<div class="mgr-stint-card" style="border-left:4px solid ${isActive ? 'var(--accent)' : bg};">
+      <div class="club-crest" style="width:34px;height:34px;font-size:10.5px;background:${bg};color:${fg};flex-shrink:0;">${sh}</div>
+      <div style="min-width:0;flex:1;">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;">
+          <strong class="truncate" style="font-size:12.5px;">${s.clubName} ${isActive ? '<span style="color:var(--accent-text);font-size:10px;">● Aktif</span>' : ''}</strong>
+          <span style="font-size:10px;color:var(--muted);flex-shrink:0;">${s.season}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-top:4px;">
+          <span class="wdl-pill wdl-w">${s.w}G</span>
+          <span class="wdl-pill wdl-d">${s.d}B</span>
+          <span class="wdl-pill wdl-l">${s.l}M</span>
+          <span style="font-size:10.5px;color:var(--muted);">${s.p} Maç · <strong style="color:var(--accent-text);">${sppg}</strong> PO</span>
+          ${rTxt ? `<span class="wdl-pill ${rCls}" style="font-size:9px;">${rTxt}</span>` : ''}
+        </div>
+      </div>
+    </div>`;
+  };
+  const rows = [];
+  if (m.currentStint && c) rows.push(renderStint(m.currentStint, true));
+  (m.history || []).slice(0, 8).forEach(h => rows.push(renderStint(h, false)));
+  histEl.innerHTML = rows.length ? rows.join('') : '<div style="font-size:11px;color:var(--muted);">Kariyer yeni başladı (0 maç).</div>';
+};
+
+// -------------------------------------------------------------------------
+// 4. PREVIOUS CLUB SEARCHES FOR NEW MANAGER WHEN USER LEAVES!
+// -------------------------------------------------------------------------
+const _v38SwitchClub = switchUserToClub;
+switchUserToClub = function(targetClub, oldClub, isDirectOffer) {
+  const prevClub = oldClub || (myClub() && myClub().id !== targetClub.id ? myClub() : null);
+  const prevStats = prevClub ? getManagedStatsForCurrentClub() : null;
+  _v38SwitchClub(targetClub, prevClub, isDirectOffer);
+  if (prevClub && prevClub.id !== targetClub.id) {
+    // Log user's departed stint into old club's managerHistory
+    logClubManagerHistory(prevClub.id, game.managerName, 'USER', prevStats, `${game.seasonYear}-${String(game.seasonYear + 1).slice(2)}`, 'Başka Kulübe Geçti');
+    // Old club is now vacant & searches for a new manager!
+    prevClub.managerId = null;
+    prevClub.pendingHire = { announceWeek: game.week + 1, excludeMgrId: 'USER' };
+    const cands = (game.managers || []).filter(x => !x.clubId).sort((a, b) => Math.abs(a.rep - (prevClub.ovr || 74)) - Math.abs(b.rep - (prevClub.ovr || 74))).slice(0, 3).map(x => x.name);
+    pushSocialPost('club', prevClub.name, '@' + prevClub.short.toLowerCase() + 'resmi',
+      `TEŞEKKÜRLER ${game.managerName.toUpperCase()} | Teknik direktörümüz görevinden ayrılmıştır. Yeni teknik direktör arayışlarımız başlamıştır.`,
+      prevClub.bg, prevClub.fg, prevClub.short, true);
+    if (cands.length) {
+      pushSocialPost('pundit', 'Transfer Muhabiri', '@TransferHaber',
+        `🔥 KULİS: ${prevClub.name}, ${game.managerName} sonrası koltuğu doldurmak için harekete geçti! Öne çıkan adaylar: ${cands.join(', ')}.`,
+        '#0f172a', '#fbbf24', 'TH', true);
+    }
+    saveActiveCareer();
+  }
+};
+
+// -------------------------------------------------------------------------
+// 5. NEGOTIATE 3 SEPARATE OBJECTIVES (LİG / AVRUPA / YEREL KUPA) BEFORE SIGNING ANY CLUB!
+//    + ROUTE EVERY CLUB SWITCH (INCLUDING FREE AGENT PICKER) THROUGH #jobNegotiationModal!
+// -------------------------------------------------------------------------
+let v39JobNeg = null;
+
+function buildJobNegObjectiveOptions(club) {
+  const lm = getLeagueMeta(club.leagueId || 'super_lig');
+  const totalTeams = Math.max(18, getLeagueClubs(club.leagueId || 'super_lig').length);
+  const eCup = getClubEuroCupInfo(club.id);
+  const dCup = DOMESTIC_CUPS_META.find(d => d.leagues.includes(club.leagueId || 'super_lig'));
+  const cupName = dCup ? dCup.name : 'Yerel Kupa';
+  const def = getDefaultObjectivesForClub(club);
+
+  const lgOpts = lm.tier === 2
+    ? [
+        { val: '1', label: `${lm.name} Şampiyonluğu`, diff: 2 },
+        { val: '2', label: `${lm.name} İlk 2 (Üst Lig)`, diff: 1 },
+        { val: '6', label: `${lm.name} Play-Off (İlk 6)`, diff: 0 },
+        { val: String(Math.max(12, totalTeams - 4)), label: `${lm.name}'de Kümede Kal`, diff: -1 }
+      ]
+    : [
+        { val: '1', label: `${lm.name} Şampiyonluğu (1. Sıra)`, diff: 2 },
+        { val: '3', label: `${lm.name} İlk 3 (Zirve & ŞL)`, diff: 1 },
+        { val: '6', label: `${lm.name} İlk 6 (Avrupa)`, diff: 0 },
+        { val: '10', label: `${lm.name} İlk 10 (Orta Sıra)`, diff: -1 },
+        { val: String(Math.max(14, totalTeams - 3)), label: `${lm.name}'de Kümede Kal`, diff: -2 }
+      ];
+
+  const euOpts = eCup
+    ? [
+        { val: 'win', label: `${eCup.short} Şampiyonluğu`, diff: 2 },
+        { val: 'sf', label: `${eCup.short} Yarı Final`, diff: 1 },
+        { val: 'qf', label: `${eCup.short} Çeyrek Final`, diff: 0 },
+        { val: 'r16', label: `${eCup.short} Son 16`, diff: -1 },
+        { val: 'po', label: `${eCup.short} İlk 24 (Play-Off)`, diff: -2 }
+      ]
+    : [
+        { val: 'qualify', label: 'Gelecek Sezon Avrupa Bileti', diff: 1 },
+        { val: 'none', label: 'Avrupa Şartı Yok', diff: 0 }
+      ];
+
+  const cpOpts = [
+    { val: 'win', label: `${cupName} Şampiyonluğu`, diff: 2 },
+    { val: 'final', label: `${cupName} Final`, diff: 1 },
+    { val: 'sf', label: `${cupName} Yarı Final`, diff: 0 },
+    { val: 'qf', label: `${cupName} Çeyrek Final`, diff: -1 }
+  ];
+
+  return { lgOpts, euOpts, cpOpts, def, eCup, dCup };
+}
+
+function openV39JobNegotiation(targetClub, inboxMsgId) {
+  if (!targetClub) return;
+  const baseWage = Number(Math.max(0.8, ((targetClub.ovr || 74) - 65) * 0.28).toFixed(1));
+  const maxWage = Number((baseWage * 1.38).toFixed(1));
+  const optData = buildJobNegObjectiveOptions(targetClub);
+  v39JobNeg = { club: targetClub, inboxMsgId, baseWage, maxWage, roundsLeft: 3, optData };
+
+  document.getElementById('jobNegClubTitle').textContent = `${targetClub.name} (${getLeagueMeta(targetClub.leagueId).name})`;
+  const rng = document.getElementById('jobNegWageRange');
+  rng.min = Number(Math.max(0.4, baseWage * 0.6).toFixed(1));
+  rng.max = Number(Math.max(5, baseWage * 2.1).toFixed(1));
+  rng.value = baseWage;
+  document.getElementById('jobNegWageVal').textContent = `${fmtMoney(baseWage)} / yıl`;
+  document.getElementById('jobNegYearsSelect').value = '2';
+  document.getElementById('jobNegBonusSelect').value = 'mid';
+
+  const lgSel = document.getElementById('jobNegLeagueObj');
+  const euSel = document.getElementById('jobNegEuroObj');
+  const cpSel = document.getElementById('jobNegCupObj');
+  if (lgSel && euSel && cpSel) {
+    lgSel.innerHTML = optData.lgOpts.map(o => `<option value="${o.val}">${o.label}</option>`).join('');
+    euSel.innerHTML = optData.euOpts.map(o => `<option value="${o.val}">${o.label}</option>`).join('');
+    cpSel.innerHTML = optData.cpOpts.map(o => `<option value="${o.val}">${o.label}</option>`).join('');
+    // Select club's realistic defaults
+    const defLg = optData.lgOpts.find(o => Number(o.val) >= optData.def[0].target) || optData.lgOpts[0];
+    lgSel.value = defLg.val;
+    euSel.value = optData.euOpts.some(o => o.val === optData.def[1].target) ? optData.def[1].target : optData.euOpts[0].val;
+    cpSel.value = optData.cpOpts.some(o => o.val === optData.def[2].target) ? optData.def[2].target : optData.cpOpts[0].val;
+  }
+
+  const refreshPreview = () => {
+    if (!v39JobNeg) return;
+    const lgO = optData.lgOpts.find(x => x.val === lgSel.value) || optData.lgOpts[0];
+    const euO = optData.euOpts.find(x => x.val === euSel.value) || optData.euOpts[0];
+    const cpO = optData.cpOpts.find(x => x.val === cpSel.value) || optData.cpOpts[0];
+    const ambScore = (lgO.diff || 0) + (euO.diff || 0) + (cpO.diff || 0);
+    const mult = ambScore >= 3 ? 1.15 : (ambScore <= -2 ? 0.92 : 1.0);
+    document.getElementById('jobNegObjPreview').innerHTML = `<strong style="color:var(--text);">Seçilen Hedefler:</strong> 🏆 ${lgO.label} · ⭐ ${euO.label} · 🏅 ${cpO.label}`;
+    document.getElementById('jobNegBudgetPreview').textContent = `Başlangıç Bütçesi: ${fmtMoney(Number((targetClub.budget * mult).toFixed(1)))}`;
+  };
+  [lgSel, euSel, cpSel].forEach(el => { if (el) el.onchange = refreshPreview; });
+  refreshPreview();
+
+  document.getElementById('jobNegRoundsHint').textContent = 'Kalan Görüşme Hakkı: 3';
+  document.getElementById('jobNegDialogue').textContent = `${targetClub.name} Başkanı: "Hoş geldin ${game.managerName}. Maaş, süre ve lig/Avrupa/kupa hedeflerini tek tek konuşup anlaşalım."`;
+  ['inboxModal','jobOffersModal','freeAgentModal'].forEach(id => { const el = document.getElementById(id); if (el) el.classList.add('hidden'); });
+  document.getElementById('jobNegotiationModal').classList.remove('hidden');
+}
+
+// Re-bind Submit button of #jobNegotiationModal cleanly for 3-objective signing!
+const oldJnSub = document.getElementById('jobNegSubmitBtn');
+if (oldJnSub && oldJnSub.parentNode) {
+  const newJnSub = oldJnSub.cloneNode(true);
+  oldJnSub.parentNode.replaceChild(newJnSub, oldJnSub);
+  newJnSub.addEventListener('click', () => {
+    if (!v39JobNeg) return;
+    const { club: target, inboxMsgId, optData } = v39JobNeg;
+    const wage = Number(document.getElementById('jobNegWageRange').value);
+    const years = Number(document.getElementById('jobNegYearsSelect').value);
+    const bonus = document.getElementById('jobNegBonusSelect').value;
+    const lgSel = document.getElementById('jobNegLeagueObj');
+    const euSel = document.getElementById('jobNegEuroObj');
+    const cpSel = document.getElementById('jobNegCupObj');
+    const lgO = optData.lgOpts.find(x => x.val === lgSel.value) || optData.lgOpts[0];
+    const euO = optData.euOpts.find(x => x.val === euSel.value) || optData.euOpts[0];
+    const cpO = optData.cpOpts.find(x => x.val === cpSel.value) || optData.cpOpts[0];
+    const ambScore = (lgO.diff || 0) + (euO.diff || 0) + (cpO.diff || 0);
+
+    // Big club rejects overly timid league targets (e.g., asking Real Madrid for "Kümede Kal")!
+    if ((target.ovr || 74) >= 81 && Number(lgO.val) > 6) {
+      v39JobNeg.roundsLeft--;
+      if (v39JobNeg.roundsLeft <= 0) {
+        document.getElementById('jobNegotiationModal').classList.add('hidden');
+        showToast(`${target.name} yönetimi hedeflerini yetersiz bulup masadan kalktı!`);
+        return;
+      }
+      document.getElementById('jobNegRoundsHint').textContent = `Kalan Görüşme Hakkı: ${v39JobNeg.roundsLeft}`;
+      document.getElementById('jobNegDialogue').textContent = `${target.name} Başkanı: "Bizim gibi büyük bir kulüpte lig hedefi en az İlk 6 / Zirve olmalı! Hedefini yükselt."`;
+      return;
+    }
+
+    const bonusTol = bonus === 'high' ? 0.90 : (bonus === 'low' ? 1.08 : 1.0);
+    const ambTol = ambScore >= 2 ? 1.15 : (ambScore <= -2 ? 0.88 : 1.0);
+    const maxAcceptWage = Number((v39JobNeg.maxWage * bonusTol * ambTol).toFixed(1));
+
+    if (wage <= maxAcceptWage) {
+      if (inboxMsgId) {
+        const msg = (game.inbox || []).find(m => m.id === inboxMsgId);
+        if (msg) msg.offerResolved = true;
+      }
+      const prevMgr = getManagerForClub(target.id);
+      if (prevMgr && !prevMgr.isUser) {
+        archiveManagerStint(prevMgr, 'Görevden Alındı');
+        prevMgr.clubId = null;
+      }
+      target.managerId = 'USER';
+      delete target.pendingHire;
+      if (ambScore >= 3) target.budget = Number((target.budget * 1.15).toFixed(1));
+      else if (ambScore <= -2) target.budget = Number((target.budget * 0.92).toFixed(1));
+
+      game.isUnemployed = false;
+      game.unemployedWeeks = 0;
+      const oldClub = myClub();
+      switchUserToClub(target, oldClub && oldClub.id !== target.id ? oldClub : null, false);
+      game.objectives = [
+        { id: 'rank', type: 'rank', comp: 'Lig Hedefi', title: lgO.label, target: Number(lgO.val) },
+        { id: 'euro', type: 'euro', comp: 'Avrupa Hedefi', title: euO.label, target: euO.val, cupId: optData.eCup ? optData.eCup.id : null },
+        { id: 'cup', type: 'cup', comp: 'Yerel Kupa Hedefi', title: cpO.label, target: cpO.val, cupId: optData.dCup ? optData.dCup.id : null }
+      ];
+      game.managerMeta.contract = { clubId: target.id, wage, years, until: game.seasonYear + years, bonus };
+      saveActiveCareer();
+      document.getElementById('jobNegotiationModal').classList.add('hidden');
+      showToast(`✍️ ${target.name} ile ${years} yıllık (${fmtMoney(wage)}/yıl) sözleşme imzaladın!`);
+      switchTab('home');
+    } else {
+      v39JobNeg.roundsLeft--;
+      if (v39JobNeg.roundsLeft <= 0) {
+        if (inboxMsgId) { const msg = (game.inbox || []).find(m => m.id === inboxMsgId); if (msg) msg.offerResolved = true; }
+        saveActiveCareer();
+        document.getElementById('jobNegotiationModal').classList.add('hidden');
+        showToast(`${target.name} yönetimi şartlarını kabul etmedi; anlaşma sağlanamadı!`);
+        return;
+      }
+      document.getElementById('jobNegRoundsHint').textContent = `Kalan Görüşme Hakkı: ${v39JobNeg.roundsLeft}`;
+      document.getElementById('jobNegDialogue').textContent = `${target.name} Başkanı: "Yıllık ${fmtMoney(wage)} talebin bütçemizi aşıyor. En fazla ${fmtMoney(maxAcceptWage)} verebiliriz."`;
+    }
+  });
+}
+
+// Intercept ALL club-joining paths so ZERO direct teleports exist!
+acceptInboxJobOffer = function(clubId, msgId) {
+  const msg = (game.inbox || []).find(m => m.id === msgId);
+  if (msg && msg.expiresWeek !== undefined && game.week > msg.expiresWeek) {
+    msg.offerResolved = true; saveActiveCareer(); renderInboxModal();
+    showToast('Bu iş teklifinin süresi doldu!');
+    return;
+  }
+  const target = getClub(clubId);
+  if (target) openV39JobNegotiation(target, msgId);
+};
+
+// Also intercept Free Agent Club Picker (after sacking/resigning) -> routes to #jobNegotiationModal!
+const _v38OpenFreeAgentPicker = openFreeAgentClubPicker;
+openFreeAgentClubPicker = function(reasonType, oldClub) {
+  _v38OpenFreeAgentPicker(reasonType, oldClub);
+  const faList = document.getElementById('faClubList');
+  if (!faList) return;
+  faList.querySelectorAll('button').forEach(btn => {
+    const cid = btn.dataset.pickClub || btn.dataset.joinClub;
+    if (cid) {
+      const clone = btn.cloneNode(true);
+      btn.parentNode.replaceChild(clone, btn);
+      clone.addEventListener('click', () => {
+        const tc = getClub(cid);
+        if (tc) openV39JobNegotiation(tc, null);
+      });
+    }
+  });
+};
+
+// -------------------------------------------------------------------------
+// 6. ONLY STRUGGLING / VACANT CLUBS OFFER JOBS + STRICT EXPIRATION DEADLINE!
+// -------------------------------------------------------------------------
+openJobOffersModal = function() {
+  ensureManagerCareerData(game);
+  const curClub = myClub();
+  const totals = getManagerTotals();
+  const userRep = 72 + Math.round((totals.ppg - 1.2) * 8) + (game.trophies || []).length * 4;
+  const listEl = document.getElementById('jobOffersList');
+  if (!listEl) return;
+
+  // Persist current active job offers with expiration week so offers expire after 2-3 weeks!
+  if (!Array.isArray(game.activeJobOffers)) game.activeJobOffers = [];
+  game.activeJobOffers = game.activeJobOffers.filter(o => o.expiresWeek >= game.week && o.clubId !== game.myClubId);
+
+  // Add ONLY clubs that actually have manager trouble (vacant, pendingHire, underperforming >= 3, or 2+ recent losses)!
+  const struggling = [];
+  LEAGUES_META.forEach(lm => {
+    const st = getSortedStandings(lm.id);
+    st.forEach((c, idx) => {
+      if (curClub && c.id === curClub.id) return;
+      if (game.activeJobOffers.some(o => o.clubId === c.id)) return;
+      const rank = idx + 1;
+      const expected = Math.max(1, Math.round(st.length * (1 - ((c.ovr - 66) / 26))));
+      const isVacant = !c.managerId || !!c.pendingHire;
+      const underperf = rank - expected;
+      const recentLosses = (c.form || []).slice(-4).filter(x => x === 'L').length;
+      const repFit = Math.abs((c.ovr || 74) - userRep) <= 11;
+      if (repFit && (isVacant || underperf >= 3 || recentLosses >= 2)) {
+        struggling.push({ club: c, rank, reason: isVacant ? 'Hocası Yok (Acil)' : (underperf >= 3 ? `${rank}. Sırada (Hoca Baskıda)` : 'Kötü Seri (Arayışta)'), score: (isVacant ? 10 : 0) + underperf + recentLosses });
+      }
+    });
+  });
+  struggling.sort((a, b) => b.score - a.score);
+  while (game.activeJobOffers.length < 4 && struggling.length) {
+    const item = struggling.shift();
+    game.activeJobOffers.push({ clubId: item.club.id, reason: item.reason, expiresWeek: game.week + randInt(2, 3) });
+  }
+  saveActiveCareer();
+
+  if (!game.activeJobOffers.length) {
+    listEl.innerHTML = '<div class="elevated" style="padding:16px;text-align:center;font-size:12px;color:var(--muted);">Şu an hoca sıkıntısı çeken ve senin seviyene uygun kulüp yok. Haftalar ilerledikçe zorlanan kulüplerden teklifler düşecek.</div>';
+  } else {
+    listEl.innerHTML = game.activeJobOffers.map(o => {
+      const c = getClub(o.clubId);
+      if (!c) return '';
+      const lm = getLeagueMeta(c.leagueId);
+      const weeksLeft = Math.max(0, o.expiresWeek - game.week + 1);
+      return `<div class="elevated" style="padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
+        <div style="display:flex;align-items:center;gap:9px;min-width:0;">
+          <div class="club-crest" style="width:34px;height:34px;font-size:10.5px;background:${c.bg};color:${c.fg};">${c.short}</div>
+          <div style="min-width:0;">
+            <div class="truncate" style="font-size:13px;font-weight:800;">${c.name} <span style="font-size:10px;color:var(--muted);">(${lm.short})</span></div>
+            <div style="font-size:10.5px;color:var(--muted);">Güç ${getClubEffectiveOvr(c)} · Bütçe ${fmtMoney(c.budget)} · <span style="color:#fbbf24;font-weight:700;">${o.reason}</span></div>
+            <div style="font-size:10px;color:#f87171;font-weight:700;margin-top:2px;">⏳ Son ${weeksLeft} hafta (Hafta ${o.expiresWeek + 1}'e kadar)</div>
+          </div>
+        </div>
+        <button type="button" data-neg-job="${c.id}" class="btn btn-primary" style="padding:6px 10px;font-size:11px;white-space:nowrap;">Görüşmeye Otur</button>
+      </div>`;
+    }).join('');
+    listEl.querySelectorAll('[data-neg-job]').forEach(btn => btn.addEventListener('click', () => {
+      const target = getClub(btn.dataset.negJob);
+      if (target) openV39JobNegotiation(target, null);
+    }));
+  }
+  document.getElementById('jobOffersModal').classList.remove('hidden');
+};
+
+// Add expiration deadline to Inbox job offers when rendered!
+const _v38RenderInbox2 = renderInboxModal;
+renderInboxModal = function() {
+  _v38RenderInbox2();
+  const active = (game.inbox || []).find(x => x.id === activeInboxId) || (game.inbox && game.inbox[0]);
+  if (active && active.offerClubId && !active.offerResolved) {
+    if (active.expiresWeek === undefined) active.expiresWeek = (active.week || game.week) + 3;
+    const offWrap = document.getElementById('inboxOfferActionWrap');
+    if (game.week > active.expiresWeek) {
+      active.offerResolved = true;
+      if (offWrap) offWrap.classList.add('hidden');
+      document.getElementById('inboxDetBody').textContent = active.body + '\n\n⏳ (Bu teklifin son geçerlilik süresi doldu.)';
+    } else {
+      const left = Math.max(1, active.expiresWeek - game.week + 1);
+      document.getElementById('inboxDetBody').textContent = active.body + `\n\n⏳ Teklif Süresi: Kalan ${left} hafta.`;
+    }
+  }
+};
+
+// -------------------------------------------------------------------------
+// 7. ULTRA-RICH SOCIAL MEDIA (MORE FAN COMMENTS!), PRESS & HALFTIME VARIETY!
+// -------------------------------------------------------------------------
+const EXTRA_V39_FANS = [
+  ['Kale Arkası', '@KaleArkasi12', '#1e293b', '#34d399', 'KA'],
+  ['Taktik Tahtası', '@TaktikTahta', '#0f172a', '#38bdf8', 'TT'],
+  ['Tribün Ateşi', '@TribunAtesi', '#450a0a', '#fbbf24', 'TA'],
+  ['Forma Aşkı', '@FormaAski', '#1e1b4b', '#c084fc', 'FA'],
+  ['Gece Nöbeti', '@GeceNobeti', '#14532d', '#86efac', 'GN'],
+  ['VAR Odası', '@VarOdasiTR', '#3f3f46', '#f87171', 'VR']
+];
+
+const _v38GenPostMatchSocial = generatePostMatchSocialAndInbox;
+generatePostMatchSocialAndInbox = function(match, hg, ag) {
+  _v38GenPostMatchSocial(match, hg, ag);
+  const mc = myClub();
+  if (!mc || !match || (match.home !== mc.id && match.away !== mc.id)) return;
+  const isH = match.home === mc.id;
+  const myG = isH ? hg : ag, opG = isH ? ag : hg;
+  const opp = getClub(isH ? match.away : match.home);
+  const won = myG > opG, draw = myG === opG;
+  const fA = pick(EXTRA_V39_FANS);
+  const fB = pick(EXTRA_V39_FANS.filter(x => x[0] !== fA[0]));
+  const dName = getDerbyName(match.home, match.away);
+
+  if (won) {
+    const winComments = [
+      dName ? `${dName} zaferi gibisi yok! ${opp.name}'i ${myG}-${opG} devirdik, sabaha kadar kutlama var!` : `Tribünler yıkılıyor! ${opp.name} karşısında ${myG}-${opG} tertemiz 3 puan!`,
+      `${game.managerName} takıma resmen kimlik kazandırdı, ${mc.formation} ile top göstermedik bugün!`,
+      `Maçın başından sonuna kadar isteyen taraf bizdik, böyle oynarsak kimse önümüzde duramaz!`,
+      `Soyunma odasında hava harika belli oluyor, ${myG} gol attık üstüne bir de pozisyon kaçırdık!`,
+      `Hafta sonumuz güzelleşti valla! ${mc.name} taraftarı bugün gururla uyuyacak.`
+    ];
+    const winComments2 = [
+      `Güzel galibiyet ama önümüzdeki hafta rehavete kapılmayalım, seri yakalamamız lazım.`,
+      `Orta sahadaki baskı çok iyiydi, ${game.managerName} rakibi iyi analiz etmiş.`,
+      `Yedekten girenlerin enerjisi maçı kopardı, kadro derinliği iş yapıyor.`
+    ];
+    pushSocialPost('fan', fA[0], fA[1], pick(winComments), fA[2], fA[3], fA[4], false);
+    pushSocialPost('fan', fB[0], fB[1], pick(winComments2), fB[2], fB[3], fB[4], false);
+  } else if (draw) {
+    const drawComments = [
+      `Ah be! ${opp.name} karşısında ${myG}-${opG} bitti, son dakikalarda o top nasıl girmez ya?!`,
+      `Oyunu kontrol ettik ama son vuruşlarda eksik kaldık. ${game.managerName} bitiricilik çalıştırmalı.`,
+      `Zor maçtı, 1 puanı küçümsemeyelim ama evimizde/böyle maçlarda 3 puan şart.`
+    ];
+    pushSocialPost('fan', fA[0], fA[1], pick(drawComments), fA[2], fA[3], fA[4], false);
+  } else {
+    const lossComments = [
+      `İnanamıyorum! ${opp.name} karşısında ${myG}-${opG} kaybettik, bu kadar basit goller yenmez!`,
+      `${game.managerName} maçı kenardan izledi resmen, hamleler çok geç kaldı!`,
+      `Kötü günümüzdeydik, can sıkıcı ama hemen toparlanıp haftaya tepki vermeliyiz.`,
+      `Savunma arkasına bu kadar adam kaçırılmaz ya, haftaya acil çözüm lazım!`
+    ];
+    const lossComments2 = [
+      `Bir mağlubiyetle karalar bağlamayalım ama ${mc.name} forması bu kadar kolay teslim olmaz.`,
+      `Taraftar 90 dakika susturmadı ama sahada karşılığını alamadık... Çok üzgünüz.`
+    ];
+    pushSocialPost('fan', fA[0], fA[1], pick(lossComments), fA[2], fA[3], fA[4], false);
+    pushSocialPost('fan', fB[0], fB[1], pick(lossComments2), fB[2], fB[3], fB[4], false);
+  }
+};
+
+// Expand Halftime Talks with rich scenario-based variety!
+const _v38OpenHalftime = openHalftimeModal;
+openHalftimeModal = function() {
+  _v38OpenHalftime();
+  if (!htState || !liveState) return;
+  const club = myClub(), isH = liveState.home.id === club.id;
+  const myG = isH ? liveState.hg : liveState.ag, opG = isH ? liveState.ag : liveState.hg;
+  const opp = isH ? liveState.away : liveState.home;
+  const dName = getDerbyName(liveState.home.id, liveState.away.id);
+  const introVariants = myG >= opG + 2
+    ? [
+        `İlk yarıda ${opp.name} karşısında ${myG}-${opG} gibi harika bir üstünlük kurduk! Rehaveti nasıl önleyeceksin?`,
+        `Soyunma odasında moraller zirvede (${myG}-${opG}). İkinci yarıda skoru koruyup farkı açmak için ne diyorsun?`
+      ]
+    : (myG > opG
+      ? [
+          `${dName ? dName + ' atmosferinde ' : ''}${opp.name} önünde ${myG}-${opG} öndeyiz ama maç henüz bitmedi. Planın ne?`,
+          `İlk yarıyı ${myG}-${opG} önde kapattık. Rakip ikinci yarıda yüklenecek; takıma hangi talimatı vereceksin?`
+        ]
+      : (myG === opG
+        ? [
+            `İlk 45 dakika ${myG}-${opG} dengede geçti. Kilidi açıp 3 puanı almak için soyunma odasında ne söyleyeceksin?`,
+            `${opp.name} iyi direniyor (${myG}-${opG}). İkinci yarıda maçı lehimize çevirmek için nasıl bir dokunuş yapacaksın?`
+          ]
+        : [
+            `Soyunma odasında yüzler asık — ${opp.name} karşısında ${myG}-${opG} gerideyiz! Takımı nasıl ayağa kaldıracaksın?`,
+            `İlk yarı istediğimiz gibi gitmedi (${myG}-${opG}). Geri dönüş ateşini yakmak için ne söyleyeceksin?`
+          ]));
+  htState.steps[0].prompt = pick(introVariants);
+  htState.steps[1].prompt = pick([
+    'Soyunma odasında tüm gözler sende. Takımın ruh halini nasıl ateşleyeceksin?',
+    'Taraftar ikinci yarıda büyük bir reaksiyon bekliyor. Oyunculara nasıl sesleneceksin?',
+    'Kaptan ve tecrübeli isimler senden net bir mesaj bekliyor. Tonun ne olacak?'
+  ]);
+  renderHalftimeStep();
+};
+
+// Add 8 more rich Press Conference questions!
+if (typeof PRESS_BANK !== 'undefined' && Array.isArray(PRESS_BANK)) {
+  [
+    { q: 'Deplasman performansınız ve taraftar desteği hakkında ne düşünüyorsunuz?', opts: [
+      { txt: 'Taraftarımız her yerde 12. adamımız, onların enerjisiyle savaşıyoruz.', morale: 6, trust: 4, post: 'taraftara övgüler yağdırdı.' },
+      { txt: 'Evde de deplasmanda da aynı cesur futbolu oynamak zorundayız.', morale: 4, trust: 5, post: 'cesur oyun vurgusu yaptı.' },
+      { txt: 'Zor deplasmanlardan alınan her puan sezon sonunda altın değerinde olur.', morale: 3, trust: 4, post: 'deplasman puanlarının önemine değindi.' }
+    ]},
+    { q: 'Avrupa kupalarındaki yoğun fikstür takımı fiziksel olarak etkiliyor mu?', opts: [
+      { txt: 'Büyük kulüpler 3 günde bir oynamaya alışkındır, bahane üretmeyiz.', morale: 5, trust: 6, post: 'fikstür bahanesine sığınmadı.' },
+      { txt: 'Geniş kadromuzla akıllı rotasyon yapıp her kulvarda sonuna kadar gideceğiz.', morale: 5, trust: 4, post: 'tüm kulvarlarda iddialı olduklarını açıkladı.' },
+      { txt: 'Oyuncuların sağlığı her şeyden önemli, yükü dengeli dağıtıyoruz.', morale: 6, trust: 3, post: 'oyuncu sağlığını öne koydu.' }
+    ]},
+    { q: 'Rakip teknik direktörün maç öncesi açıklamalarına bir cevabınız olacak mı?', opts: [
+      { txt: 'Sözler sahada konuşulur, cevabımızı 90 dakika boyunca futbolumuzla veririz.', morale: 6, trust: 5, post: 'rakip hocaya sahayı işaret etti!' },
+      { txt: 'Kendisine saygı duyuyorum, güzel ve centilmence bir maç olmasını diliyorum.', morale: 3, trust: 5, post: 'centilmenlik mesajı verdi.' },
+      { txt: 'Baskıyı üzerimizden atmaya çalışıyorlar ama biz ne yaptığımızı çok iyi biliyoruz.', morale: 5, trust: 3, post: 'psikolojik savaşa sert yanıt verdi!' }
+    ]},
+    { q: 'Takımın gol yollarındaki üretkenliğinden memnun musunuz?', opts: [
+      { txt: 'Çok pozisyona giriyoruz, son vuruş kalitemiz arttıkça fark açılacak.', morale: 5, trust: 4, post: 'hücum üretkenliğinden umutlu konuştu.' },
+      { txt: 'Sadece forvetler değil, orta saha ve kanatlar da skora daha fazla katkı vermeli.', morale: 3, trust: 5, post: 'tüm takımdan skor katkısı istedi.' },
+      { txt: 'Önce gol yememek, sonra bulduğumuz fırsatları bitirmek temel prensibimiz.', morale: 3, trust: 4, post: 'savunma güvenliğini öne çıkardı.' }
+    ]}
+  ].forEach(q => PRESS_BANK.push(q));
+}
+
+// -------------------------------------------------------------------------
+// 8. MIGRATE EXISTING SAVES: VARIED CONTRACT YEARS + 3-COMP OBJECTIVES
+// -------------------------------------------------------------------------
+const _v38EnterCareer = enterCareer;
+enterCareer = function(careerObj) {
+  _v38EnterCareer(careerObj);
+  if (game && !game.v39Migrated) {
+    game.v39Migrated = true;
+    const baseY = game.seasonYear || 2026;
+    (game.clubs || []).forEach(c => {
+      c.squad.forEach(p => {
+        if (!p.loanFrom) {
+          p.contractUntil = baseY + (p.age <= 24 ? randInt(2, 5) : (p.age <= 30 ? randInt(1, 4) : randInt(1, 2)));
+        }
+      });
+    });
+    if (myClub() && !game.isUnemployed && (!game.objectives || !game.objectives.some(o => o.type === 'euro'))) {
+      game.objectives = getDefaultObjectivesForClub(myClub());
+    }
+    saveActiveCareer();
   }
 };
 
