@@ -853,7 +853,7 @@ select:focus, select:active, button:focus, button:active, input:focus, a:focus {
 <div class="menu-logo-ring">
 <svg class="svg-icon" style="width:28px;height:28px;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m12 6 3 4-1 5H10l-1-5 3-4Z"/><path d="M12 2v4"/><path d="m4.93 10.93 4.07-.93"/><path d="m19.07 10.93-4.07-.93"/><path d="m6.5 18.5 3.5-3.5"/><path d="m17.5 18.5-3.5-3.5"/></svg>
 </div>
-<div class="btn-soft" style="display:inline-flex;padding:3px 10px;border-radius:999px;font-size:10px;font-weight:700;margin-bottom:6px;">2026–27 DÜNYA SÜRÜMÜ · 7 LİG · v40.2</div>
+<div class="btn-soft" style="display:inline-flex;padding:3px 10px;border-radius:999px;font-size:10px;font-weight:700;margin-bottom:6px;">2026–27 DÜNYA SÜRÜMÜ · 7 LİG · v41</div>
 <h1 style="font-size:24px;font-weight:800;margin:0 0 4px;letter-spacing:-0.02em;">Soccer Simulator</h1>
 <p style="font-size:12px;color:var(--muted);margin:0;">Kendi teknik direktörlük kariyerini kur ve yönet.</p>
 </div>
@@ -1769,6 +1769,14 @@ select:focus, select:active, button:focus, button:active, input:focus, a:focus {
 <div id="live2dGoalBanner" class="hidden" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(2,6,23,0.62);pointer-events:none;z-index:4;">
 <div style="font-size:22px;font-weight:900;color:#fbbf24;letter-spacing:0.08em;text-shadow:0 2px 12px rgba(0,0,0,0.8);">⚽ GOOOL!</div>
 <div id="live2dGoalSub" style="font-size:13px;font-weight:800;color:#ffffff;margin-top:3px;padding:3px 10px;border-radius:999px;background:rgba(16,185,129,0.85);"></div>
+</div>
+<div id="live2dFastOverlay" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;background:rgba(5,16,10,0.72);backdrop-filter:blur(2px);transition:opacity 0.35s ease;opacity:0;pointer-events:none;z-index:3;">
+<div id="live2dFastStatus" style="font-size:11px;font-weight:800;color:#86efac;letter-spacing:0.06em;text-transform:uppercase;">⚡ MAÇ AKIYOR · POZİSYON ARANIYOR</div>
+<div style="width:68%;max-width:260px;height:6px;border-radius:999px;background:rgba(255,255,255,0.16);overflow:hidden;display:flex;">
+<div id="live2dMomBarH" style="height:100%;width:50%;background:#10b981;transition:width 0.35s ease;"></div>
+<div id="live2dMomBarA" style="height:100%;width:50%;background:#38bdf8;transition:width 0.35s ease;"></div>
+</div>
+<div id="live2dFastSub" style="font-size:10.5px;color:#cbd5e1;font-weight:600;">Orta saha mücadelesi sürüyor...</div>
 </div>
 </div>
 </div>
@@ -14012,6 +14020,661 @@ enterCareer = function(careerObj) {
       hud.style.background = 'rgba(2,6,23,0.68)';
       hud.style.color = '#e2e8f0';
     }
+  };
+})();
+
+
+// =========================================================================
+// v41: FM MOBILE-GRADE 2D MATCH ENGINE (STRUCTURED SHAPE, REAL BUILD-UP,
+//      ZERO TACKLE PING-PONG, BALL TRAIL & SMOOTH HIGHLIGHT TRANSITIONS!)
+// =========================================================================
+(function initMatch2DV41() {
+  const eng = window.Match2DEngine;
+  if (!eng) return;
+
+  const PITCH_W = 105;
+  const PITCH_H = 68;
+  const GOAL_HALF_W = 3.85;
+
+  eng.ballTrail = [];
+  eng.highlightOutro = 0;      // Smooth 1.2s follow-through after shot/save/goal/clearance (never cuts abruptly!)
+  eng.highlightPasses = 0;     // Track build-up passes in current highlight
+  eng.tacklePingPongGuard = 0; // Metrics for test verification
+
+  function setFastOverlayVisible(visible, statusTxt, subTxt) {
+    const ov = document.getElementById('live2dFastOverlay');
+    if (!ov) return;
+    ov.style.opacity = visible ? '1' : '0';
+    if (statusTxt) {
+      const sEl = document.getElementById('live2dFastStatus');
+      if (sEl) sEl.textContent = statusTxt;
+    }
+    if (subTxt) {
+      const subEl = document.getElementById('live2dFastSub');
+      if (subEl) subEl.textContent = subTxt;
+    }
+    if (liveState) {
+      const mh = document.getElementById('live2dMomBarH');
+      const ma = document.getElementById('live2dMomBarA');
+      const hp = liveState.hPoss || 50;
+      if (mh) { mh.style.width = `${hp}%`; mh.style.background = (liveState.home && liveState.home.bg) || '#10b981'; }
+      if (ma) { ma.style.width = `${100 - hp}%`; ma.style.background = (liveState.away && liveState.away.bg) || '#38bdf8'; }
+    }
+  }
+
+  // Compute realistic FM Mobile 4-line pitch coordinates for each player based on ball X/Y and possession!
+  eng.computeStructuredTarget = function(pl, ballX, ballY, teamHasBall, tp) {
+    const isHome = pl.side === 'home';
+    const dir = isHome ? 1 : -1;
+    const pos = pl.pos;
+
+    // Normalized ball progress from own goal (0) to opponent goal (1)
+    const prog = isHome ? (ballX / PITCH_W) : ((PITCH_W - ballX) / PITCH_W);
+    const ballShiftY = (ballY - PITCH_H / 2) * 0.28;
+
+    // 1. Goalkeeper: sweeps slightly off line as team pushes up, narrows angle on shots
+    if (pos === 'KL') {
+      const gx = isHome ? (3.5 + prog * 11) : (PITCH_W - 3.5 - prog * 11);
+      const gy = PITCH_H / 2 + Math.max(-5.5, Math.min(5.5, (ballY - PITCH_H / 2) * 0.25));
+      return { x: gx, y: gy, state: 'defend' };
+    }
+
+    // Determine player's natural line depth (0.18 = CB, 0.36 = DM/CM, 0.54 = AM/W, 0.72 = ST)
+    const baseProg = isHome ? (pl.baseX / PITCH_W) : ((PITCH_W - pl.baseX) / PITCH_W); // ~0.16..0.44
+    const isCB = pos === 'STP';
+    const isFB = pos === 'SLB' || pos === 'SĞB';
+    const isDM = pos === 'DOS';
+    const isCM = pos === 'OS';
+    const isAM = pos === 'OOS';
+    const isWinger = pos === 'SLK' || pos === 'SĞK';
+    const isST = pos === 'SNT';
+
+    let targetProg;
+    let targetY = pl.baseY;
+    let state = teamHasBall ? 'support' : 'defend';
+
+    if (teamHasBall) {
+      // ATTACKING SHAPE: Structured 4-line progression across the whole pitch!
+      const highLine = Math.max(0.30, Math.min(0.56, 0.28 + prog * 0.34 + tp.lineShift * 0.004));
+      if (isCB) {
+        targetProg = highLine;
+        targetY = PITCH_H / 2 + (pl.baseY - PITCH_H / 2) * 0.72 + ballShiftY * 0.4;
+      } else if (isFB) {
+        const overlap = (tp.ment === 'ofansif' || tp.ment === 'asiri_hucum' || tp.attSide === 'kanatlar') ? 0.14 : 0.07;
+        targetProg = Math.min(0.84, highLine + 0.14 + overlap * prog);
+        targetY = pos === 'SLB' ? (isHome ? 7.5 : PITCH_H - 7.5) : (isHome ? PITCH_H - 7.5 : 7.5);
+        if (overlap > 0.10 && prog > 0.55) state = 'run';
+      } else if (isDM) {
+        targetProg = Math.min(0.74, highLine + 0.16);
+        targetY = PITCH_H / 2 + (pl.baseY - PITCH_H / 2) * 0.65 + ballShiftY * 0.65;
+      } else if (isCM) {
+        targetProg = Math.min(0.80, highLine + 0.24);
+        targetY = pl.baseY + ballShiftY * 0.65;
+      } else if (isAM) {
+        targetProg = Math.min(0.87, Math.max(0.58, prog + 0.12));
+        targetY = PITCH_H / 2 + (ballY > PITCH_H / 2 ? -9 : 9); // Finds pocket opposite ball!
+        state = 'run';
+      } else if (isWinger) {
+        targetProg = Math.min(0.91, Math.max(0.62, prog + 0.17));
+        const wideY = pos === 'SLK' ? (isHome ? 10 : PITCH_H - 10) : (isHome ? PITCH_H - 10 : 10);
+        // Far-side winger tucks in toward back post when ball is on opposite flank!
+        const ballOnSameFlank = Math.abs(ballY - wideY) < 26;
+        targetY = ballOnSameFlank ? wideY : (PITCH_H / 2 + (wideY < PITCH_H / 2 ? -10 : 10));
+        state = 'run';
+      } else if (isST) {
+        // Striker pins center-backs & makes diagonal runs into the box!
+        targetProg = Math.min(0.92, Math.max(0.66, prog + 0.21));
+        targetY = PITCH_H / 2 + Math.sin((this.simSeconds || 0) * 1.1 + pl.slotIdx) * 8.5;
+        state = 'run';
+      } else {
+        targetProg = Math.min(0.85, baseProg + prog * 0.45);
+      }
+    } else {
+      // DEFENDING SHAPE: Compact 2-bank defensive block (4-4-2 / 4-5-1 style, NEVER everyone crowding the ball!)
+      const defAnchor = Math.max(0.11, Math.min(0.46, prog - 0.14 + tp.lineShift * 0.004));
+      if (isCB || isFB) {
+        targetProg = Math.max(0.11, defAnchor);
+        targetY = PITCH_H / 2 + (pl.baseY - PITCH_H / 2) * 0.68 + ballShiftY * 0.75;
+      } else if (isDM || isCM) {
+        targetProg = Math.max(0.20, defAnchor + 0.11);
+        targetY = PITCH_H / 2 + (pl.baseY - PITCH_H / 2) * 0.66 + ballShiftY * 0.85;
+      } else if (isWinger || isAM) {
+        targetProg = Math.max(0.26, defAnchor + 0.17);
+        targetY = PITCH_H / 2 + (pl.baseY - PITCH_H / 2) * 0.72 + ballShiftY * 0.70;
+      } else if (isST) {
+        // Striker stays upfield around halfway line as counter-attack outlet!
+        targetProg = Math.max(0.42, defAnchor + 0.28);
+        targetY = PITCH_H / 2 + ballShiftY * 0.4;
+      } else {
+        targetProg = Math.max(0.18, defAnchor + 0.12);
+      }
+    }
+
+    const tx = isHome ? (targetProg * PITCH_W) : ((1 - targetProg) * PITCH_W);
+    return {
+      x: Math.max(5, Math.min(PITCH_W - 5, tx)),
+      y: Math.max(5, Math.min(PITCH_H - 5, targetY)),
+      state
+    };
+  };
+
+  // Override stepPlayers: Structured 4-line Football + Stun Recovery Timer (ZERO Tackle Ping-Pong!)
+  eng.stepPlayers = function(dt) {
+    if (this.tackleCooldown > 0) this.tackleCooldown = Math.max(0, this.tackleCooldown - dt);
+    if (this.kickoffFreeze > 0) { this.kickoffFreeze = Math.max(0, this.kickoffFreeze - dt); return; }
+
+    const b = this.ball;
+    const homeTP = this.getTacticalProfile('home');
+    const awayTP = this.getTacticalProfile('away');
+
+    // Designate ONLY 1 (or 2 for high press) defender to close down the ball carrier — excluding stunned/recovering players!
+    const pressSet = new Set();
+    if (this.owner) {
+      const defSide = this.owner.side === 'home' ? 'away' : 'home';
+      const defTP = defSide === 'home' ? homeTP : awayTP;
+      const cands = this.players
+        .filter(p => p.side === defSide && !p.sentOff && p.pos !== 'KL' && (p.recoverTimer || 0) <= 0)
+        .map(p => ({ p, d: Math.hypot(p.x - b.x, p.y - b.y) }))
+        .filter(x => x.d <= defTP.pressRadius)
+        .sort((a, b2) => a.d - b2.d);
+      for (let k = 0; k < Math.min(defTP.pressCount, cands.length); k++) pressSet.add(cands[k].p.id);
+    }
+
+    // Nearest non-recovering player per team chases loose ball
+    let looseH = null, looseA = null, dLH = 999, dLA = 999;
+    if (!this.owner && !b.isShot) {
+      for (let i = 0; i < this.players.length; i++) {
+        const pl = this.players[i];
+        if (pl.sentOff || (pl.recoverTimer || 0) > 0) continue;
+        const d = Math.hypot(pl.x - b.x, pl.y - b.y);
+        if (pl.side === 'home' && d < dLH) { dLH = d; looseH = pl.id; }
+        if (pl.side === 'away' && d < dLA) { dLA = d; looseA = pl.id; }
+      }
+    }
+
+    for (let i = 0; i < this.players.length; i++) {
+      const pl = this.players[i];
+      if (pl.sentOff) continue;
+      if ((pl.recoverTimer || 0) > 0) pl.recoverTimer = Math.max(0, pl.recoverTimer - dt);
+
+      const isHome = pl.side === 'home';
+      const dir = isHome ? 1 : -1;
+      const tp = isHome ? homeTP : awayTP;
+      const teamHasBall = this.owner ? (this.owner.side === pl.side) : (this.lastTouchSide === pl.side);
+
+      if (this.owner && this.owner.id === pl.id) {
+        // Carrier dribbles intelligently into open space (NOT blindly solo-running through 4 defenders!)
+        pl.state = 'carry';
+        // Check if defender is directly blocking ahead within 6m
+        let blockedAhead = false;
+        for (let j = 0; j < this.players.length; j++) {
+          const op = this.players[j];
+          if (op.side !== pl.side && !op.sentOff && op.pos !== 'KL') {
+            const ahead = (op.x - pl.x) * dir;
+            if (ahead > 0.5 && ahead < 6.5 && Math.abs(op.y - pl.y) < 3.5) { blockedAhead = true; break; }
+          }
+        }
+        pl.targetX = Math.max(7, Math.min(PITCH_W - 7, pl.x + dir * (blockedAhead ? 3.5 : 9.5)));
+        pl.targetY = Math.max(6, Math.min(PITCH_H - 6, pl.y + (PITCH_H / 2 - pl.y) * 0.16));
+
+        // Pass/shoot timer: faster decision if defender is closing in!
+        pl.holdTimer = (pl.holdTimer || tp.holdBase) - dt * (blockedAhead ? 1.65 : 1.0);
+        if (pl.holdTimer <= 0) {
+          this.decideFMAction(pl);
+        }
+      } else if (pressSet.has(pl.id) || pl.id === looseH || pl.id === looseA) {
+        pl.state = 'press';
+        pl.targetX = b.x;
+        pl.targetY = b.y;
+
+        // Clean Tackle (with 1.8s stun on tackled victim + 1.4s global cooldown -> ZERO TACKLE PING-PONG!)
+        if (this.owner && this.owner.side !== pl.side && this.tackleCooldown <= 0 && (pl.recoverTimer || 0) <= 0) {
+          const dCarrier = Math.hypot(pl.x - this.owner.x, pl.y - this.owner.y);
+          if (dCarrier < 1.75) {
+            const defSkill = (pl.ovr || 74) + (['STP','DOS','SLB','SĞB'].includes(pl.pos) ? 5 : 0);
+            const attSkill = (this.owner.ovr || 74) + 3;
+            const winProb = Math.max(0.14, Math.min(0.45, 0.24 + (defSkill - attSkill) * 0.012));
+            this.tackleCooldown = 1.45; // Prevents rapid back-and-forth tackles!
+            if (Math.random() < winProb) {
+              const victim = this.owner;
+              victim.recoverTimer = 1.85; // Tackled player is off-balance and cannot instantly re-tackle!
+              victim.vx *= 0.2; victim.vy *= 0.2;
+              this.owner = pl;
+              this.lastTouchSide = pl.side;
+              pl.state = 'carry';
+              pl.holdTimer = 0.45; // Quick outlet pass after winning ball!
+              this.aiMetrics.tackles++;
+              this.emit2DEvent({ type: 'tackle', side: pl.side, player: pl, victim });
+            } else {
+              // Defender missed tackle -> momentarily beaten!
+              pl.recoverTimer = 1.25;
+            }
+          }
+        }
+      } else {
+        // Structured FM Mobile 4-line positioning!
+        const st = this.computeStructuredTarget(pl, b.x, b.y, teamHasBall, tp);
+        pl.targetX = st.x;
+        pl.targetY = st.y;
+        pl.state = st.state;
+      }
+
+      // Teammate spacing separation
+      let sepX = 0, sepY = 0;
+      for (let j = 0; j < this.players.length; j++) {
+        if (i === j) continue;
+        const o = this.players[j];
+        if (o.sentOff || o.side !== pl.side) continue;
+        const sx = pl.x - o.x, sy = pl.y - o.y;
+        const sd = Math.hypot(sx, sy);
+        if (sd > 0.01 && sd < 6.8) {
+          const push = (6.8 - sd) / 6.8;
+          sepX += (sx / sd) * push * 2.6;
+          sepY += (sy / sd) * push * 2.6;
+        }
+      }
+
+      const tx = Math.max(2.2, Math.min(PITCH_W - 2.2, pl.targetX + sepX));
+      const ty = Math.max(2.2, Math.min(PITCH_H - 2.2, pl.targetY + sepY));
+      const dx = tx - pl.x, dy = ty - pl.y;
+      const dist = Math.hypot(dx, dy);
+      const stunMult = (pl.recoverTimer || 0) > 0 ? 0.38 : 1.0;
+      const roleMult = (pl.state === 'press' || pl.state === 'run') ? 1.0 : (pl.state === 'carry' ? 0.86 : 0.82);
+      const maxSpd = this.getMaxSpeed(pl) * roleMult * tp.speedMult * stunMult;
+      const desiredSpd = dist > 1.2 ? maxSpd : maxSpd * (dist / 1.2);
+      const desVx = dist > 0.05 ? (dx / dist) * desiredSpd : 0;
+      const desVy = dist > 0.05 ? (dy / dist) * desiredSpd : 0;
+
+      pl.vx += (desVx - pl.vx) * Math.min(1, 9.0 * dt);
+      pl.vy += (desVy - pl.vy) * Math.min(1, 9.0 * dt);
+      pl.x = Math.max(2, Math.min(PITCH_W - 2, pl.x + pl.vx * dt));
+      pl.y = Math.max(2, Math.min(PITCH_H - 2, pl.y + pl.vy * dt));
+
+      const curSpd = Math.hypot(pl.vx, pl.vy);
+      if (curSpd > 5.2) pl.stamina = Math.max(25, (pl.stamina || 90) - 0.15 * dt);
+    }
+  };
+
+  // FM Mobile Team Build-Up Decision Engine (Requires real passes / box entry — NO solo 26m rockets!)
+  eng.decideFMAction = function(pl) {
+    const isHome = pl.side === 'home';
+    const dir = isHome ? 1 : -1;
+    const tp = this.getTacticalProfile(pl.side);
+    const goalX = isHome ? PITCH_W : 0;
+    const distGoal = Math.hypot(goalX - pl.x, PITCH_H / 2 - pl.y);
+    const angleY = Math.abs(pl.y - PITCH_H / 2);
+
+    // 1. Goalkeeper distributes safely to open defender/midfielder
+    if (pl.pos === 'KL') {
+      const mates = this.players.filter(m => m.side === pl.side && m.id !== pl.id && !m.sentOff);
+      if (!mates.length) return;
+      const target = pick(mates.slice(0, 6));
+      this.kickBall(pl, target.x, target.y, Math.hypot(target.x - pl.x, target.y - pl.y) > 25 ? 'long_pass' : 'short_pass');
+      return;
+    }
+
+    // 2. REALISTIC SHOOTING:
+    //    - Inside penalty box (<16.5m): High shoot chance (~85%)!
+    //    - Edge of box (16.5m..21m) AND after at least 1 build-up pass: Moderate chance (~32%)!
+    //    - Beyond 21m: Almost NEVER shoots (passes to build the attack instead!)
+    const inBox = distGoal <= 19.5 && angleY <= 16.5;
+    const edgeOfBox = distGoal <= 24.0 && angleY <= 15.0 && this.highlightPasses >= 1;
+    if ((inBox && Math.random() < 0.90) || (edgeOfBox && Math.random() < 0.45)) {
+      const cornerBias = (Math.random() < 0.5 ? -1 : 1) * (1.0 + Math.random() * 2.4);
+      const aimY = PITCH_H / 2 + cornerBias;
+      this.kickBall(pl, goalX, aimY, 'shot');
+      if (isHome) this.aiMetrics.shotsHome++; else this.aiMetrics.shotsAway++;
+      // Realistic xG: high inside box (0.14..0.52), low from distance (0.04..0.09)
+      const xg = inBox
+        ? Number(Math.max(0.11, Math.min(0.55, (20 - distGoal) * 0.032 * (1 - angleY / 28))).toFixed(2))
+        : Number(Math.max(0.03, Math.min(0.10, (25 - distGoal) * 0.015)).toFixed(2));
+      this.ball.shotDist = distGoal; // Used by GK save calculation!
+      this.emit2DEvent({ type: 'shot', side: pl.side, player: pl, xg, distGoal });
+      return;
+    }
+
+    // 3. Wing Cross / Cutback into the box when wide near byline!
+    const inFinalThird = isHome ? (pl.x > 76) : (pl.x < 29);
+    const isWide = pl.y < 16 || pl.y > PITCH_H - 16;
+    if (inFinalThird && isWide && Math.random() < 0.82) {
+      const boxMates = this.players.filter(m => m.side === pl.side && m.id !== pl.id && !m.sentOff && ['SNT','OOS','SLK','SĞK','OS'].includes(m.pos));
+      boxMates.sort((a, b) => ((b.x - a.x) * dir));
+      const target = boxMates[0];
+      const bx = target ? Math.max(8, Math.min(PITCH_W - 8, target.x + dir * 2.5)) : (isHome ? PITCH_W - 11 : 11);
+      const by = target ? Math.max(22, Math.min(46, target.y)) : (PITCH_H / 2 + (Math.random() - 0.5) * 8);
+      this.kickBall(pl, bx, by, 'cross');
+      this.highlightPasses++;
+      if (isHome) this.aiMetrics.passesHome++; else this.aiMetrics.passesAway++;
+      this.emit2DEvent({ type: 'pass', side: pl.side, player: pl, passType: 'cross' });
+      return;
+    }
+
+    // 4. Structured Team Pass Selection (Triangle / Wing Switch / Through-Ball to Box Runner!)
+    const mates = this.players.filter(m => m.side === pl.side && m.id !== pl.id && !m.sentOff && m.pos !== 'KL');
+    if (!mates.length) return;
+    let bestTarget = null, bestScore = -999;
+    for (let i = 0; i < mates.length; i++) {
+      const m = mates[i];
+      const dist = Math.hypot(m.x - pl.x, m.y - pl.y);
+      if (dist < 5.5 || dist > 48) continue;
+      const fwdGain = (m.x - pl.x) * dir;
+      let minOppD = 16;
+      for (let j = 0; j < this.players.length; j++) {
+        const op = this.players[j];
+        if (op.side !== pl.side && !op.sentOff) {
+          const od = Math.hypot(op.x - m.x, op.y - m.y);
+          if (od < minOppD) minOppD = od;
+        }
+      }
+      let score = fwdGain * 1.15 + Math.min(10, minOppD) * 1.25 + (Math.random() - 0.5) * 4.5;
+      if (fwdGain < -4) score -= 12;
+      if (m.state === 'run' && fwdGain > 3) score += 9;
+      if (['SNT','OOS','SLK','SĞK'].includes(m.pos) && fwdGain > 2) score += 7;
+      if (tp.passing === 'kisa' && dist <= 18) score += 5;
+      if ((tp.passing === 'uzun' || tp.passing === 'direkt') && dist >= 22) score += 6;
+      if (score > bestScore) { bestScore = score; bestTarget = m; }
+    }
+    if (!bestTarget) bestTarget = mates[0];
+    const d = Math.hypot(bestTarget.x - pl.x, bestTarget.y - pl.y);
+    const fwd = (bestTarget.x - pl.x) * dir;
+    const pType = (d > 26 && tp.passing !== 'kisa') ? 'long_pass' : (fwd > 7 && d > 11 ? 'through_ball' : 'short_pass');
+    const lead = pType === 'through_ball' ? 5.5 : 0.32;
+    const tx = Math.max(4, Math.min(PITCH_W - 4, bestTarget.x + (pType === 'through_ball' ? dir * lead : bestTarget.vx * lead)));
+    const ty = Math.max(4, Math.min(PITCH_H - 4, bestTarget.y + bestTarget.vy * 0.32));
+    this.kickBall(pl, tx, ty, pType);
+    this.highlightPasses++;
+    if (isHome) this.aiMetrics.passesHome++; else this.aiMetrics.passesAway++;
+    this.emit2DEvent({ type: 'pass', side: pl.side, player: pl, passType: pType });
+  };
+
+  // Distance-realistic GK save probability (long shots >20m are saved ~88% of the time; close box shots ~52%!)
+  const _v402StepBall = eng.stepBall.bind(eng);
+  eng.stepBall = function(dt) {
+    const b = this.ball;
+    // Update subtle motion trail for fast balls
+    if (!this.owner && Math.hypot(b.vx, b.vy) > 10) {
+      this.ballTrail.push({ x: b.x, y: b.y, z: b.z || 0 });
+      if (this.ballTrail.length > 7) this.ballTrail.shift();
+    } else if (this.ballTrail.length) {
+      this.ballTrail.shift();
+    }
+
+    if (b.isShot && !this.owner) {
+      b.x += b.vx * dt;
+      b.y += b.vy * dt;
+      if (b.z > 0 || b.vz > 0) { b.z = Math.max(0, b.z + b.vz * dt); b.vz -= 18.5 * dt; }
+      const reachedRight = b.x >= PITCH_W - 2.0 && b.shotSide === 'home';
+      const reachedLeft = b.x <= 2.0 && b.shotSide === 'away';
+      if (reachedRight || reachedLeft) {
+        b.isShot = false;
+        const scoringSide = b.shotSide;
+        const defSide = scoringSide === 'home' ? 'away' : 'home';
+        const onTarget = Math.abs(b.y - PITCH_H / 2) <= 4.0;
+        const gk = this.players.find(p => p.side === defSide && p.pos === 'KL' && !p.sentOff);
+        const shooter = b.shooterRef || null;
+        const shotDist = b.shotDist || 16;
+
+        if (onTarget) {
+          const gkSkill = gk ? (gk.ovr || 74) : 45;
+          const shSkill = shooter ? (shooter.ovr || 74) : 74;
+          // Long shots (>20m) are much easier for GK to save; close-range box shots are deadlier!
+          const distBonus = shotDist > 20 ? 0.24 : (shotDist < 12 ? -0.10 : 0.04);
+          const saveProb = gk
+            ? Math.max(0.32, Math.min(0.90, 0.56 + distBonus + (gkSkill - shSkill) * 0.013))
+            : 0.12;
+          if (Math.random() < saveProb) {
+            this.aiMetrics.saves++;
+            const isCorner = Math.random() < 0.48;
+            if (isCorner) this.aiMetrics.corners++;
+            this.lastActionType = isCorner ? 'corner' : 'save';
+            if (gk && !isCorner) { this.owner = gk; gk.holdTimer = 0.9; }
+            else { b.vx = (reachedRight ? -1 : 1) * 7; b.vy = (Math.random() < 0.5 ? -1 : 1) * 8; b.vz = 2.0; }
+            this.emit2DEvent({ type: 'save', side: defSide, gk, shooter, corner: isCorner });
+          } else {
+            if (scoringSide === 'home') this.aiMetrics.goalsHome++; else this.aiMetrics.goalsAway++;
+            this.lastActionType = 'goal';
+            this.emit2DEvent({ type: 'goal', side: scoringSide, shooter });
+            // Smooth celebration / ball-in-net outro instead of instant snap!
+            if (this.highlightActive) {
+              b.vx = 0; b.vy = 0; b.vz = 0;
+              this.highlightOutro = 1.65;
+            } else {
+              this.resetForKickoff(defSide);
+            }
+          }
+        } else {
+          this.lastActionType = 'miss';
+          if (gk) { this.owner = gk; gk.holdTimer = 0.8; }
+          if (this.highlightActive) this.highlightOutro = 0.95;
+        }
+        return;
+      }
+      if (b.y < 1 || b.y > PITCH_H - 1) {
+        b.isShot = false; this.lastActionType = 'miss';
+        if (this.highlightActive) this.highlightOutro = 0.85;
+      }
+      return;
+    }
+    _v402StepBall(dt);
+  };
+
+  // Draw crisp ball motion comet trail before player/ball draw!
+  const _v402Render = eng.render.bind(eng);
+  eng.render = function() {
+    _v402Render();
+    if (!this.ctx || !this.canvas || this.ballTrail.length < 2) return;
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    for (let i = 0; i < this.ballTrail.length; i++) {
+      const t = this.ballTrail[i];
+      const p = this.toPx(t.x, t.y);
+      const lift = Math.min(10, (t.z || 0) * 1.4);
+      const alpha = ((i + 1) / this.ballTrail.length) * 0.34;
+      const r = Math.max(1.5, ((i + 1) / this.ballTrail.length) * 3.2);
+      ctx.fillStyle = `rgba(255,255,255,${alpha.toFixed(2)})`;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y - lift, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  };
+
+  // Structured FM Mobile Highlight Setup: Starts cleanly from Midfield / Wing Build-Up with realistic 4-line spacing!
+  eng.startHighlightSequence = function(attSide) {
+    const isHome = attSide === 'home';
+    const dir = isHome ? 1 : -1;
+    const attClub = isHome ? liveState.home : liveState.away;
+    const attTP = this.getTacticalProfile(attSide);
+    const defSide = isHome ? 'away' : 'home';
+    const defTP = this.getTacticalProfile(defSide);
+
+    this.highlightActive = true;
+    this.highlightSide = attSide;
+    this.highlightTimer = 11.0; // Generous 11s for realistic 2-4 pass build-up into the box!
+    this.highlightOutro = 0;
+    this.highlightPasses = 0;
+    this.highlightsShown++;
+    this.tackleCooldown = 0.8;
+    this.ballTrail = [];
+
+    // Starting ball zone: Midfield / attacking half (x = 56..64 for home, 41..49 for away)
+    const startX = isHome ? (68 + Math.random() * 7) : (37 - Math.random() * 7);
+    const startY = pick([14, 28, 34, 40, 54]);
+    this.ball = { x: startX, y: startY, z: 0, vx: 0, vy: 0, vz: 0, isShot: false };
+
+    // Place ALL 22 players cleanly into their true 4-line FM Mobile tactical shape!
+    for (let i = 0; i < this.players.length; i++) {
+      const pl = this.players[i];
+      if (pl.sentOff) continue;
+      pl.vx = 0; pl.vy = 0; pl.recoverTimer = 0;
+      const st = this.computeStructuredTarget(pl, startX, startY, pl.side === attSide, pl.side === attSide ? attTP : defTP);
+      pl.x = st.x;
+      pl.y = st.y;
+      pl.state = st.state;
+    }
+
+    // Pick a realistic build-up midfielder or winger to start the attack with the ball!
+    const buildPool = this.players.filter(p => p.side === attSide && !p.sentOff && ['OS','OOS','DOS','SLK','SĞK'].includes(p.pos));
+    const carrier = pick(buildPool.length ? buildPool : this.players.filter(p => p.side === attSide && !p.sentOff && p.pos !== 'KL'));
+    if (carrier) {
+      carrier.x = startX;
+      carrier.y = startY;
+      this.owner = carrier;
+      this.lastTouchSide = attSide;
+      carrier.holdTimer = 0.55;
+      carrier.state = 'carry';
+    }
+
+    setFastOverlayVisible(false);
+    const hud = document.getElementById('live2dHudTag');
+    if (hud && attClub) {
+      hud.textContent = `🔥 ÖNEMLİ AN · ${attClub.short} ATAĞI (${liveState.minute}')`;
+      hud.style.background = 'rgba(220,38,38,0.88)';
+      hud.style.color = '#ffffff';
+    }
+  };
+
+  eng.endHighlightSequence = function() {
+    this.highlightActive = false;
+    this.highlightTimer = 0;
+    this.highlightOutro = 0;
+    this.ballTrail = [];
+    if (this.viewMode === 'highlights' && liveState && !liveState.finished) {
+      setFastOverlayVisible(true, `⚡ MAÇ AKIYOR · ${liveState.minute}'`, `${liveState.home.short} %${liveState.hPoss} — %${100 - liveState.hPoss} ${liveState.away.short} · Yeni pozisyon aranıyor...`);
+    }
+    const hud = document.getElementById('live2dHudTag');
+    if (hud && liveState && liveState.home && liveState.away) {
+      hud.textContent = `⚡ Hızlı Akış · ${liveState.home.short} vs ${liveState.away.short}`;
+      hud.style.background = 'rgba(2,6,23,0.68)';
+      hud.style.color = '#e2e8f0';
+    }
+  };
+
+  // Trigger smooth outro (1.1s follow-through) after save/clearance instead of abrupt snap!
+  eng.eventCallbacks.push((ev) => {
+    if (!eng.highlightActive || eng.highlightOutro > 0) return;
+    if (ev.type === 'save') eng.highlightOutro = 1.15;
+  });
+
+  // Override stepPhysics with smooth outro + live fade overlay!
+  const _v402StepPhys = eng.stepPhysics.bind(eng);
+  eng.stepPhysics = function(dt) {
+    if (this.goalBannerTimer > 0) {
+      this.goalBannerTimer = Math.max(0, this.goalBannerTimer - dt);
+      if (this.goalBannerTimer === 0) {
+        const b = document.getElementById('live2dGoalBanner');
+        if (b) b.classList.add('hidden');
+      }
+    }
+    if (!liveState || liveState.finished || liveState.paused) return;
+
+    if (this.viewMode === 'full') {
+      setFastOverlayVisible(false);
+      // Run full-match vertical 2D physics
+      this.stepPlayers(dt);
+      this.stepBall(dt);
+      liveState.totalPossTicks = (liveState.totalPossTicks || 0) + 1;
+      if (this.lastTouchSide === 'home') liveState.hPossTicks = (liveState.hPossTicks || 0) + 1;
+      liveState.hPoss = Math.max(25, Math.min(75, Math.round((liveState.hPossTicks / Math.max(1, liveState.totalPossTicks)) * 100)));
+      this.simSeconds += dt;
+      const curMin = Math.min(90, Math.floor(this.simSeconds));
+      if (curMin > this.lastRecordedMin) {
+        for (let m = this.lastRecordedMin + 1; m <= curMin; m++) {
+          this.lastRecordedMin = m;
+          this.onMatchMinuteAdvance(m);
+          if (!liveState || liveState.paused || liveState.finished) break;
+        }
+      }
+      return;
+    }
+
+    // FM MOBILE "ÖNEMLİ ANLAR" MODE
+    if (this.highlightActive) {
+      if (this.highlightOutro > 0) {
+        // Smooth follow-through outro: players keep jogging/celebrating naturally, NO new shots/pickups!
+        this.owner = null;
+        this.ball.isShot = false;
+        this.ball.vx *= 0.92; this.ball.vy *= 0.92;
+        this.ball.x = Math.max(1.5, Math.min(PITCH_W - 1.5, this.ball.x + this.ball.vx * dt));
+        this.ball.y = Math.max(1.5, Math.min(PITCH_H - 1.5, this.ball.y + this.ball.vy * dt));
+        for (let i = 0; i < this.players.length; i++) {
+          const pl = this.players[i];
+          if (pl.sentOff) continue;
+          pl.vx *= 0.95; pl.vy *= 0.95;
+          pl.x = Math.max(2, Math.min(PITCH_W - 2, pl.x + pl.vx * dt));
+          pl.y = Math.max(2, Math.min(PITCH_H - 2, pl.y + pl.vy * dt));
+        }
+        this.highlightOutro -= dt;
+        if (this.highlightOutro <= 0) this.endHighlightSequence();
+        return;
+      }
+      this.stepPlayers(dt);
+      this.stepBall(dt);
+
+      this.highlightTimer -= dt;
+      // If defending team cleanly won the ball & cleared it -> smooth 1.0s outro!
+      const defCleared = this.owner && this.owner.side !== this.highlightSide && this.highlightTimer < 7.5;
+      if (defCleared) {
+        this.highlightOutro = 1.0;
+        return;
+      }
+      if (this.highlightTimer <= 0) {
+        this.highlightOutro = 0.65;
+      }
+      return;
+    }
+
+    // BETWEEN HIGHLIGHTS: Smooth fast-flow overlay + realistic match clock!
+    this.fastMinAccum += dt * 3.5;
+    while (this.fastMinAccum >= 1.0 && !this.highlightActive && !liveState.paused && !liveState.finished) {
+      this.fastMinAccum -= 1.0;
+      const nextMin = Math.min(90, this.lastRecordedMin + 1);
+      if (nextMin > this.lastRecordedMin) {
+        this.lastRecordedMin = nextMin;
+        const hb = getTacticalBonus(liveState.home), ab = getTacticalBonus(liveState.away);
+        const hPow = getClubEffectiveOvr(liveState.home) + 1.5 + hb.att - ab.def - (liveState.hReds * 4.5);
+        const aPow = getClubEffectiveOvr(liveState.away) + ab.att - hb.def - (liveState.aReds * 4.5);
+        const homeShare = Math.max(0.32, Math.min(0.68, 0.50 + (hPow - aPow) * 0.018));
+        liveState.totalPossTicks = (liveState.totalPossTicks || 0) + 1;
+        if (Math.random() < homeShare) {
+          liveState.hPossTicks = (liveState.hPossTicks || 0) + 1;
+          liveState.hPasses += randInt(4, 7); liveState.aPasses += randInt(2, 4);
+        } else {
+          liveState.aPasses += randInt(4, 7); liveState.hPasses += randInt(2, 4);
+        }
+        liveState.hPoss = Math.max(25, Math.min(75, Math.round((liveState.hPossTicks / Math.max(1, liveState.totalPossTicks)) * 100)));
+        setFastOverlayVisible(true, `⚡ MAÇ AKIYOR · ${nextMin}'`, `${liveState.home.short} %${liveState.hPoss} — %${100 - liveState.hPoss} ${liveState.away.short} · Pozisyon aranıyor...`);
+
+        this.onMatchMinuteAdvance(nextMin);
+        if (liveState.paused || liveState.finished) break;
+
+        if (this.highlightCooldownMin > 0) this.highlightCooldownMin--;
+        if (nextMin >= 3 && nextMin <= 88 && this.highlightCooldownMin === 0 && Math.random() < 0.28) {
+          const attSide = Math.random() < homeShare ? 'home' : 'away';
+          this.highlightCooldownMin = 3;
+          this.startHighlightSequence(attSide);
+          break;
+        }
+      }
+    }
+  };
+
+  // Show fast overlay initially in highlights mode
+  const _v402Init = eng.initForMatch.bind(eng);
+  eng.initForMatch = function(home, away) {
+    this.ballTrail = [];
+    this.highlightOutro = 0;
+    this.highlightPasses = 0;
+    _v402Init(home, away);
+    setFastOverlayVisible(this.viewMode === 'highlights', `⚡ MAÇ BAŞLADI · 0'`, `${home.short} vs ${away.short} · İlk atak bekleniyor...`);
+  };
+
+  // Hide fast overlay cleanly on match end
+  const _v402Stop = eng.stop.bind(eng);
+  eng.stop = function() {
+    setFastOverlayVisible(false);
+    _v402Stop();
   };
 })();
 
