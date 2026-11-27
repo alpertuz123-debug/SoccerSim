@@ -6356,7 +6356,10 @@ function renderYouthIntakeModal() {
 const club = myClub();
 const list = document.getElementById('youthProspectsList');
 const prospects = game.pendingYouthIntake || [];
-document.getElementById('youthSquadCountLabel').textContent = `A Takım Kadrosu: ${club.squad.length} oyuncu`;
+const MAX_YOUTH_PER_SEASON = 2;
+const promotedCount = prospects.filter(p => p.promoted).length;
+const limitReached = promotedCount >= MAX_YOUTH_PER_SEASON;
+document.getElementById('youthSquadCountLabel').textContent = `A Takım: ${club.squad.length} oyuncu · Yıllık Altyapı Hakkı: ${promotedCount} / ${MAX_YOUTH_PER_SEASON}`;
 list.innerHTML = prospects.map((p, idx) => `
 <div class="youth-card">
 <div style="display:flex;align-items:center;gap:9px;min-width:0;flex:1;">
@@ -6368,10 +6371,17 @@ list.innerHTML = prospects.map((p, idx) => `
 </div>
 ${p.promoted
 ? '<span style="font-size:11px;font-weight:800;color:#10b981;white-space:nowrap;">✓ A Takımda</span>'
-: `<button type="button" data-promote-youth="${idx}" class="btn btn-primary" style="padding:6px 10px;font-size:11px;white-space:nowrap;">A Takıma Al</button>`}
+: (limitReached
+? '<button type="button" class="btn btn-ghost" disabled style="padding:6px 10px;font-size:10.5px;white-space:nowrap;opacity:0.55;">Limit Doldu (2/2)</button>'
+: `<button type="button" data-promote-youth="${idx}" class="btn btn-primary" style="padding:6px 10px;font-size:11px;white-space:nowrap;">A Takıma Al</button>`)}
 </div>
 `).join('');
 list.querySelectorAll('[data-promote-youth]').forEach(btn => btn.addEventListener('click', () => {
+const curPromoted = prospects.filter(x => x.promoted).length;
+if (curPromoted >= MAX_YOUTH_PER_SEASON) {
+showToast('Her sezon altyapıdan en fazla 2 oyuncu A Takıma alınabilir!');
+return;
+}
 const idx = Number(btn.dataset.promoteYouth);
 const p = prospects[idx];
 if (!p || p.promoted) return;
@@ -6381,7 +6391,7 @@ delete copy.promoted; delete copy.potTag;
 club.squad.push(copy);
 saveActiveCareer();
 renderYouthIntakeModal();
-showToast(`${p.name} A Takıma yükseltildi!`);
+showToast(`${p.name} A Takıma yükseltildi! (${curPromoted + 1}/${MAX_YOUTH_PER_SEASON})`);
 }));
 }
 
@@ -9156,6 +9166,224 @@ enterCareer = function(careerObj) {
     game.clubs.forEach(c => c.squad.forEach(p => { p.value = computeRealisticMarketValue(p.ovr, p.age); }));
     (game.market || []).forEach(p => { p.value = computeRealisticMarketValue(p.ovr, p.age); });
   }
+};
+
+})();
+
+
+// =========================================================================
+// v33: AUTO-ROTATION IN BULK SIM & EUROPEAN / DOMESTIC CUP SIM BUTTONS
+// =========================================================================
+(function initV33Patch() {
+
+const POS_LINE_GROUP = {
+  KL: 'GK',
+  STP: 'DEF', SĞB: 'DEF', SLB: 'DEF',
+  DOS: 'MID', OS: 'MID', OOS: 'MID',
+  SĞK: 'FWD', SLK: 'FWD', SNT: 'FWD'
+};
+
+function autoRotateUserLineupForBulkSim(club) {
+  if (!club || !Array.isArray(club.lineup) || !Array.isArray(club.squad)) return 0;
+  let swaps = 0;
+  const starterSet = new Set(club.lineup);
+  const bench = club.squad.filter(p => !starterSet.has(p.id) && (p.injuredWeeks || 0) === 0 && (p.suspendedWeeks || 0) === 0);
+
+  for (let i = 0; i < club.lineup.length; i++) {
+    const curId = club.lineup[i];
+    const cur = club.squad.find(x => x.id === curId);
+    if (!cur) continue;
+    const isUnavailable = (cur.injuredWeeks || 0) > 0 || (cur.suspendedWeeks || 0) > 0;
+    const isTired = (cur.stamina ?? 100) < 74;
+    const curGroup = POS_LINE_GROUP[cur.pos] || 'MID';
+
+    // Find best eligible bench replacement
+    const findReplacement = (minStamina, minOvrDelta) => {
+      const cands = bench.filter(b => {
+        if ((b.stamina ?? 100) < minStamina) return false;
+        if (cur.pos === 'KL') return b.pos === 'KL';
+        if (b.pos === 'KL') return false;
+        const exact = b.pos === cur.pos || (Array.isArray(b.altPos) && b.altPos.includes(cur.pos));
+        const sameLine = (POS_LINE_GROUP[b.pos] || 'MID') === curGroup;
+        if (!exact && !sameLine) return false;
+        return b.ovr >= (cur.ovr + minOvrDelta);
+      }).sort((a, b) => {
+        const aExact = (a.pos === cur.pos || (Array.isArray(a.altPos) && a.altPos.includes(cur.pos))) ? 4 : 0;
+        const bExact = (b.pos === cur.pos || (Array.isArray(b.altPos) && b.altPos.includes(cur.pos))) ? 4 : 0;
+        return (b.ovr * 0.65 + (b.stamina ?? 100) * 0.35 + bExact) - (a.ovr * 0.65 + (a.stamina ?? 100) * 0.35 + aExact);
+      });
+      return cands[0] || null;
+    };
+
+    let rep = null;
+    if (isUnavailable) {
+      rep = findReplacement(45, -20);
+    } else if (isTired) {
+      rep = findReplacement(76, -9);
+    } else if ((cur.stamina ?? 100) < 90) {
+      // Bring back rested stronger star if they recovered (>=88 stamina and +2 OVR stronger)
+      rep = findReplacement(88, 2);
+    }
+
+    if (rep) {
+      const bIdx = bench.findIndex(x => x.id === rep.id);
+      if (bIdx !== -1) bench.splice(bIdx, 1);
+      club.lineup[i] = rep.id;
+      starterSet.delete(cur.id);
+      starterSet.add(rep.id);
+      if (!isUnavailable) bench.push(cur);
+      swaps++;
+    }
+  }
+  return swaps;
+}
+
+// Wrap simulateUntilWeek so every simulated week auto-rotates tired players & recovers rested bench players!
+const _v32SimulateUntilWeek = simulateUntilWeek;
+simulateUntilWeek = function(targetWeekIdx) {
+  if (!game || game.week >= getTotalWeeks() || targetWeekIdx < game.week) return;
+  if (game.managerMeta && game.managerMeta.meetingPending) { showToast('Önce yönetim toplantısına katılmalısın!'); openBoardMeetingModal(); return; }
+  snapshotPrevRanks();
+  const club = myClub();
+  const results = [];
+  let totalRotations = 0;
+
+  for (let w = game.week; w <= targetWeekIdx; w++) {
+    // Auto-rotate user's tired/suspended/injured players before matches each week!
+    if (club && !game.isUnemployed) {
+      totalRotations += autoRotateUserLineupForBulkSim(club);
+    }
+    // 1. Play any scheduled Domestic Cup / European Cup matches for this week BEFORE league match!
+    processAllCupsForWeek(w, true);
+    if (club) collectUserCupResultsForWeek(w, club.id).forEach(line => results.push(line));
+    // 2. Play active league week
+    const weekMatches = game.schedule[w];
+    if (weekMatches) {
+      weekMatches.forEach(m => { if (!m.played) simulateSingleMatch(m); });
+      const myM = club ? weekMatches.find(m => m.home === club.id || m.away === club.id) : null;
+      if (myM) results.push(`Hafta ${w + 1} (${game.weekDates[w] || ''}): ${getClub(myM.home).name} ${myM.hg} - ${myM.ag} ${getClub(myM.away).name}`);
+    }
+    // 3. Advance all other 6 leagues in lockstep!
+    simulateOtherLeaguesWeek(w);
+    // 4. Stamina recovery: rested bench players recover much faster (+14) than starters (+6)!
+    game.clubs.forEach(c => {
+      const stSet = new Set(c.lineup || []);
+      c.squad.forEach(p => {
+        const rec = stSet.has(p.id) ? 6 : 14;
+        p.stamina = Math.min(100, (p.stamina ?? 100) + rec);
+      });
+    });
+    game.week = w + 1;
+    processWeeklyCycle();
+    pruneOldAiReports();
+    checkBoardStatusAfterWeek();
+    if (game.managerMeta && game.managerMeta.meetingPending) { targetWeekIdx = w; break; }
+  }
+
+  // Final pass after bulk sim: bring back rested top starters if fresh
+  if (club && !game.isUnemployed) {
+    totalRotations += autoRotateUserLineupForBulkSim(club);
+  }
+
+  game.week = targetWeekIdx + 1;
+  if (game.week >= getTotalWeeks()) {
+    finishAllRemainingWorldCompetitions();
+    if (!game.pendingYouthIntake && club) game.pendingYouthIntake = generateYouthIntake(club);
+  }
+  recordSeasonIfFinished();
+  saveActiveCareer();
+  renderHeader();
+  if (currentTab === 'calendar') renderCalendar(); else renderHome();
+
+  const rotBanner = totalRotations > 0
+    ? [`<div class="elevated" style="padding:8px 10px;font-size:11.5px;border-left:3px solid #10b981;color:#34d399;font-weight:700;">🔄 Otomatik Rotasyon: Yorgunluğu önlemek için ${totalRotations} kadro değişikliği yapıldı.</div>`]
+    : [];
+  document.getElementById('simSummaryList').innerHTML = rotBanner.concat(
+    results.map(r => `<div class="elevated" style="padding:8px 10px;font-size:12px;">${r}</div>`)
+  ).join('');
+  document.getElementById('simSummaryModal').classList.remove('hidden');
+};
+
+// Unified Cup Quick-Sim Helper (works for Domestic Cup, UEFA League Phase, AND 2-Legged UEFA Knockouts!)
+function quickSimPendingCupMatch() {
+  const p = getPendingUserCupMatch();
+  if (!p) { showToast('Bu hafta oynanacak kupa maçı bulunmuyor.'); return false; }
+  const h = getClub(p.match.home), a = getClub(p.match.away);
+  const rawDiff = (getClubEffectiveOvr(h) + 1.45) - getClubEffectiveOvr(a);
+  const diff = Math.sign(rawDiff) * Math.pow(Math.abs(rawDiff), 0.88) / 5.6;
+  let hg = 0, ag = 0;
+  for (let c = 0; c < 6; c++) {
+    if (Math.random() < Math.max(0.055, Math.min(0.48, 0.215 + diff * 0.12))) hg++;
+    if (Math.random() < Math.max(0.05, Math.min(0.44, 0.165 - diff * 0.12))) ag++;
+  }
+  let winnerId = hg > ag ? h.id : (ag > hg ? a.id : null), penTxt = '';
+  const allowDraw = !!(p.isEuroLP || p.isFirstLeg);
+  if (!allowDraw && !winnerId) {
+    let hp = randInt(3, 5), ap = randInt(3, 5);
+    while (hp === ap) { if (Math.random() < 0.5) hp++; else ap++; }
+    winnerId = hp > ap ? h.id : a.id;
+    penTxt = ` (Pen: ${hp}-${ap})`;
+  }
+  resolveCupMatch(p.cup.id, p.roundIdx, p.matchIdx, hg, ag, winnerId, penTxt, p.isEuroLP);
+  processAllCupsForWeek(game.week, false);
+  saveActiveCareer();
+  showToast(`🏆 ${p.cup.name}: ${h.short} ${hg}-${ag} ${a.short}${penTxt}`);
+  renderHeader();
+  if (currentTab === 'calendar') renderCalendar(); else renderHome();
+  return true;
+}
+
+// Re-bind Home tab's simCupMatchBtn cleanly to our unified quickSimPendingCupMatch
+const _cupBtnOld = document.getElementById('simCupMatchBtn');
+if (_cupBtnOld && _cupBtnOld.parentNode) {
+  const _cupBtnNew = _cupBtnOld.cloneNode(true);
+  _cupBtnOld.parentNode.replaceChild(_cupBtnNew, _cupBtnOld);
+  _cupBtnNew.addEventListener('click', () => quickSimPendingCupMatch());
+}
+
+// Enhance renderCalendar: add "Maça Sim" (for future European/Domestic Cup matches) & "Simüle Et" (for current-week cup matches)!
+const _v32RenderCalendar = renderCalendar;
+renderCalendar = function() {
+  _v32RenderCalendar();
+  const club = myClub();
+  if (!club || game.isUnemployed) return;
+  const list = document.getElementById('calendarList');
+  if (!list) return;
+  // Find every unplayed cup/euro row (currently showing static "Hafta X" span) and upgrade it with an actionable Sim button!
+  list.querySelectorAll('.fixture-row').forEach(row => {
+    // Skip played rows (have form-pill) and league rows (already have data-sim-until)
+    if (row.querySelector('.form-pill') || row.querySelector('[data-sim-until]')) return;
+    const badge = row.querySelector('.comp-badge');
+    if (!badge) return;
+    const isEuroOrCup = badge.classList.contains('comp-euro') || badge.classList.contains('comp-cup');
+    if (!isEuroOrCup) return;
+    const spans = Array.from(row.children).filter(el => el.tagName === 'SPAN');
+    const weekSpan = spans[spans.length - 1];
+    if (!weekSpan) return;
+    const m = (weekSpan.textContent || '').match(/Hafta\s+(\d+)/);
+    if (!m) return;
+    const targetWeek = Number(m[1]) - 1;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.style.cssText = 'padding:4px 9px;font-size:10.5px;flex-shrink:0;';
+    if (targetWeek === game.week) {
+      btn.className = 'btn btn-primary';
+      btn.textContent = 'Simüle Et';
+      btn.dataset.simCupNow = '1';
+      btn.addEventListener('click', () => quickSimPendingCupMatch());
+    } else if (targetWeek > game.week) {
+      btn.className = 'btn btn-soft';
+      btn.textContent = 'Maça Sim';
+      btn.dataset.simToCup = String(targetWeek);
+      btn.addEventListener('click', () => {
+        simulateUntilWeek(targetWeek - 1);
+        showToast(`🏆 ${badge.textContent} maç haftasına gelindi! Maça çıkabilir veya hızlı simüle edebilirsin.`);
+      });
+    } else {
+      return;
+    }
+    weekSpan.parentNode.replaceChild(btn, weekSpan);
+  });
 };
 
 })();
