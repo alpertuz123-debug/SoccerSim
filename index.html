@@ -853,7 +853,7 @@ select:focus, select:active, button:focus, button:active, input:focus, a:focus {
 <div class="menu-logo-ring">
 <svg class="svg-icon" style="width:28px;height:28px;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m12 6 3 4-1 5H10l-1-5 3-4Z"/><path d="M12 2v4"/><path d="m4.93 10.93 4.07-.93"/><path d="m19.07 10.93-4.07-.93"/><path d="m6.5 18.5 3.5-3.5"/><path d="m17.5 18.5-3.5-3.5"/></svg>
 </div>
-<div class="btn-soft" style="display:inline-flex;padding:3px 10px;border-radius:999px;font-size:10px;font-weight:700;margin-bottom:6px;">2026–27 DÜNYA SÜRÜMÜ · 7 LİG · v40</div>
+<div class="btn-soft" style="display:inline-flex;padding:3px 10px;border-radius:999px;font-size:10px;font-weight:700;margin-bottom:6px;">2026–27 DÜNYA SÜRÜMÜ · 7 LİG · v40.1</div>
 <h1 style="font-size:24px;font-weight:800;margin:0 0 4px;letter-spacing:-0.02em;">Soccer Simulator</h1>
 <p style="font-size:12px;color:var(--muted);margin:0;">Kendi teknik direktörlük kariyerini kur ve yönet.</p>
 </div>
@@ -5752,7 +5752,7 @@ enterCareer(game);
 document.querySelectorAll('.nav-btn').forEach(btn => btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
 document.getElementById('goToMatchCenterBtn').addEventListener('click', openPreMatchCenter);
 document.getElementById('closePreMatchBtn').addEventListener('click', () => { document.getElementById('preMatchOverlay').classList.add('hidden'); document.body.classList.remove('lock-scroll'); });
-document.getElementById('playLiveMatchBtn').addEventListener('click', startLiveMatch);
+document.getElementById('playLiveMatchBtn').addEventListener('click', () => startLiveMatch());
 document.getElementById('quickSimWeekBtn').addEventListener('click', () => {
 const playedW = game.week;
 document.getElementById('preMatchOverlay').classList.add('hidden');
@@ -12477,7 +12477,7 @@ enterCareer = function(careerObj) {
   const _v39StartLive = startLiveMatch;
   startLiveMatch = function() {
     _v39StartLive();
-    if (liveState && liveState.home && liveState.away) {
+    if (liveState && liveState.home && liveState.away && (!engine.active || engine.activeMatchRef !== liveState.match)) {
       engine.initForMatch(liveState.home, liveState.away);
     }
   };
@@ -13545,12 +13545,22 @@ enterCareer = function(careerObj) {
     }
   };
 
-  // Override runLiveTimer so the 2D Engine drives the match (no duplicate setInterval ticking!)
+  // Override runLiveTimer so the 2D Engine ALWAYS initializes & drives the match (from ANY entry point!)
   const _v39RunLiveTimer = runLiveTimer;
   runLiveTimer = function() {
     clearInterval(liveInterval);
     if (!eng.use2DEngine) { _v39RunLiveTimer(); return; }
-    // 2D Engine's rAF loop automatically reads liveState.speed (0.5x/1x/2x/4x) & liveState.paused!
+    if (liveState && !liveState.finished && liveState.home && liveState.away) {
+      if (!eng.active || eng.activeMatchRef !== liveState.match) {
+        eng.activeMatchRef = liveState.match;
+        eng.initForMatch(liveState.home, liveState.away);
+        if (typeof requestAnimationFrame !== 'undefined') {
+          requestAnimationFrame(() => { if (eng.active) { eng.resize(); eng.render(); } });
+        }
+      } else if (!eng.rafId) {
+        eng.startLoop();
+      }
+    }
   };
 
   // Reset clock on initForMatch
@@ -13563,7 +13573,11 @@ enterCareer = function(careerObj) {
     this.goalBannerTimer = 0;
     const gb = document.getElementById('live2dGoalBanner');
     if (gb) gb.classList.add('hidden');
+    if (liveState && liveState.match) this.activeMatchRef = liveState.match;
     _s3Init(home, away);
+    if (typeof requestAnimationFrame !== 'undefined') {
+      requestAnimationFrame(() => { if (this.active) { this.resize(); this.render(); } });
+    }
   };
 
   // Sync 2D agents whenever user closes Live Tactics / makes a substitution or changes formation!
