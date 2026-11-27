@@ -853,7 +853,7 @@ select:focus, select:active, button:focus, button:active, input:focus, a:focus {
 <div class="menu-logo-ring">
 <svg class="svg-icon" style="width:28px;height:28px;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m12 6 3 4-1 5H10l-1-5 3-4Z"/><path d="M12 2v4"/><path d="m4.93 10.93 4.07-.93"/><path d="m19.07 10.93-4.07-.93"/><path d="m6.5 18.5 3.5-3.5"/><path d="m17.5 18.5-3.5-3.5"/></svg>
 </div>
-<div class="btn-soft" style="display:inline-flex;padding:3px 10px;border-radius:999px;font-size:10px;font-weight:700;margin-bottom:6px;">2026–27 DÜNYA SÜRÜMÜ · 7 LİG · v43</div>
+<div class="btn-soft" style="display:inline-flex;padding:3px 10px;border-radius:999px;font-size:10px;font-weight:700;margin-bottom:6px;">2026–27 DÜNYA SÜRÜMÜ · 7 LİG · v44</div>
 <h1 style="font-size:24px;font-weight:800;margin:0 0 4px;letter-spacing:-0.02em;">Soccer Simulator</h1>
 <p style="font-size:12px;color:var(--muted);margin:0;">Kendi teknik direktörlük kariyerini kur ve yönet.</p>
 </div>
@@ -15627,6 +15627,389 @@ enterCareer = function(careerObj) {
       hud.style.background = 'rgba(220,38,38,0.88)';
       hud.style.color = '#ffffff';
     }
+  };
+})();
+
+
+// =========================================================================
+// v44: FIFA OFFSIDE MECHANIC, FULL-PITCH SPREAD, KILLER PASS AI &
+//      100% CONCLUDED HIGHLIGHTS (ZERO ABRUPT MID-PLAY CUTS!)
+// =========================================================================
+(function initMatch2DV44() {
+  const eng = window.Match2DEngine;
+  if (!eng) return;
+
+  const PITCH_W = 105;
+  const PITCH_H = 68;
+
+  eng.offsideSnap = new Set();     // Player IDs who were offside at the exact instant of the pass!
+  eng.offsideLineFlash = null;     // { x, timer } for drawing crisp yellow dashed offside line on canvas!
+  eng.offsidesCount = 0;
+  eng.throwInsCount = 0;
+  eng.clearancesCount = 0;
+  eng.highlightResolved = false;   // Every highlight MUST resolve with a real football outcome!
+
+  // Helper: Compute the defending team's exact 2nd-last-defender Offside Line X!
+  eng.getOffsideLineX = function(defSide) {
+    const defPs = this.players.filter(p => p.side === defSide && !p.sentOff);
+    if (defPs.length < 2) return PITCH_W / 2;
+    const xs = defPs.map(p => p.x).sort((a, b) => defSide === 'away' ? (b - a) : (a - b));
+    // xs[0] is deepest (usually GK), xs[1] is 2nd-last defender!
+    const secondLast = xs[1];
+    return defSide === 'away' ? Math.max(PITCH_W / 2, secondLast) : Math.min(PITCH_W / 2, secondLast);
+  };
+
+  eng.isPlayerOffside = function(pl, ballX) {
+    if (!pl || pl.sentOff || pl.pos === 'KL') return false;
+    const isHome = pl.side === 'home';
+    const defSide = isHome ? 'away' : 'home';
+    const lineX = this.getOffsideLineX(defSide);
+    if (isHome) return pl.x > Math.max(PITCH_W / 2, lineX + 0.55) && pl.x > (ballX + 0.3);
+    return pl.x < Math.min(PITCH_W / 2, lineX - 0.55) && pl.x < (ballX - 0.3);
+  };
+
+  // Helper: Set HUD conclusion banner cleanly when a highlight ends in a real football event!
+  eng.concludeHighlight = function(hudText, hudBg, outroSec) {
+    if (!this.highlightActive || this.highlightResolved) return;
+    this.highlightResolved = true;
+    this.highlightOutro = outroSec || 1.15;
+    const hud = document.getElementById('live2dHudTag');
+    if (hud && hudText) {
+      hud.textContent = hudText;
+      hud.style.background = hudBg || 'rgba(15,23,42,0.85)';
+      hud.style.color = '#ffffff';
+    }
+  };
+
+  // 1. IMPROVED FULL-PITCH SPREAD + ONSIDE SHOULDER DISCIPLINE (FIXES CLUMPING & OFFSIDE CAMPING!)
+  const _v43ComputeTarget = eng.computeStructuredTarget.bind(eng);
+  eng.computeStructuredTarget = function(pl, ballX, ballY, teamHasBall, tp) {
+    const res = _v43ComputeTarget(pl, ballX, ballY, teamHasBall, tp);
+    if (pl.pos === 'KL') return res;
+
+    const isHome = pl.side === 'home';
+    const dir = isHome ? 1 : -1;
+    const defSide = isHome ? 'away' : 'home';
+
+    if (teamHasBall) {
+      // Keep wingers & fullbacks genuinely WIDE across the full 68m width (no clumping into center!)
+      if (pl.pos === 'SLK' || pl.pos === 'SLB') {
+        const wideLane = isHome ? (pl.pos === 'SLB' ? 7 : 12) : (pl.pos === 'SLB' ? PITCH_H - 7 : PITCH_H - 12);
+        res.y = res.y * 0.35 + wideLane * 0.65;
+      } else if (pl.pos === 'SĞK' || pl.pos === 'SĞB') {
+        const wideLane = isHome ? (pl.pos === 'SĞB' ? PITCH_H - 7 : PITCH_H - 12) : (pl.pos === 'SĞB' ? 7 : 12);
+        res.y = res.y * 0.35 + wideLane * 0.65;
+      } else if (pl.pos === 'STP') {
+        // Keep CBs calmly staggered near halfway line (never crowding midfielders)
+        res.x = isHome ? Math.min(48, res.x) : Math.max(PITCH_W - 48, res.x);
+      }
+
+      // SMART OFFSIDE AWARENESS: Attacking runners hold their run right ON the shoulder of the 2nd-last defender!
+      if (['SNT','SLK','SĞK','OOS'].includes(pl.pos)) {
+        const offLine = this.getOffsideLineX(defSide);
+        // Allow occasional mistimed run (~14% chance of drifting slightly offside for realism!), otherwise stay cleanly onside!
+        const stayOnside = (pl.slotIdx + Math.floor((this.simSeconds || 0) * 0.5)) % 7 !== 0;
+        if (stayOnside) {
+          if (isHome && res.x > offLine - 1.2) res.x = Math.max(ballX + 2, offLine - 1.2);
+          if (!isHome && res.x < offLine + 1.2) res.x = Math.min(ballX - 2, offLine + 1.2);
+        }
+      }
+    } else {
+      // Defending width discipline: spread back 4 smoothly across 52m so defenders don't stack in one pile
+      if (pl.pos === 'SLB' || pl.pos === 'SĞB') {
+        const flankY = pl.pos === 'SLB' ? (isHome ? 13 : PITCH_H - 13) : (isHome ? PITCH_H - 13 : 13);
+        res.y = res.y * 0.55 + flankY * 0.45;
+      }
+    }
+
+    res.x = Math.max(5, Math.min(PITCH_W - 5, res.x));
+    res.y = Math.max(4.5, Math.min(PITCH_H - 4.5, res.y));
+    return res;
+  };
+
+  // Stronger separation pass inside stepPlayers so players NEVER clump into one zone!
+  const _v43StepPlayers = eng.stepPlayers.bind(eng);
+  eng.stepPlayers = function(dt) {
+    _v43StepPlayers(dt);
+    // Extra gentle full-pitch separation (9.5m between teammates, 2.8m between non-pressing opponents)
+    for (let i = 0; i < this.players.length; i++) {
+      const a = this.players[i];
+      if (a.sentOff || a.pos === 'KL') continue;
+      let px = 0, py = 0;
+      for (let j = i + 1; j < this.players.length; j++) {
+        const b = this.players[j];
+        if (b.sentOff || b.pos === 'KL') continue;
+        const dx = a.x - b.x, dy = a.y - b.y;
+        const d = Math.hypot(dx, dy);
+        const minR = a.side === b.side ? 9.5 : 2.6;
+        if (d > 0.05 && d < minR) {
+          const f = ((minR - d) / minR) * 1.9 * dt;
+          const ux = dx / d, uy = dy / d;
+          px += ux * f; py += uy * f;
+          b.x = Math.max(2.5, Math.min(PITCH_W - 2.5, b.x - ux * f));
+          b.y = Math.max(2.5, Math.min(PITCH_H - 2.5, b.y - uy * f));
+        }
+      }
+      a.x = Math.max(2.5, Math.min(PITCH_W - 2.5, a.x + px));
+      a.y = Math.max(2.5, Math.min(PITCH_H - 2.5, a.y + py));
+    }
+  };
+
+  // 2. SNAPSHOT OFFSIDE PLAYERS AT THE INSTANT OF EVERY PASS!
+  const _v43Kick = eng.kickBall.bind(eng);
+  eng.kickBall = function(fromAgent, tx, ty, type, targetAgent) {
+    this.offsideSnap = new Set();
+    if (fromAgent && type !== 'shot' && this.lastScenario !== 'corner_kick') {
+      const bx = this.ball.x;
+      for (let i = 0; i < this.players.length; i++) {
+        const m = this.players[i];
+        if (m.side === fromAgent.side && m.id !== fromAgent.id && !m.sentOff && this.isPlayerOffside(m, bx)) {
+          this.offsideSnap.add(m.id);
+        }
+      }
+    }
+    _v43Kick(fromAgent, tx, ty, type, targetAgent);
+  };
+
+  // 3. KILLER-PASS PRIORITY + ONSIDE-AWARE PASSING (NEVER TURNS BACK WHEN TEAMMATE CAN SCORE!)
+  eng.decideFMAction = function(pl) {
+    const isHome = pl.side === 'home';
+    const dir = isHome ? 1 : -1;
+    const defSide = isHome ? 'away' : 'home';
+    const tp = this.getTacticalProfile(pl.side);
+    const goalX = isHome ? PITCH_W : 0;
+    const distGoal = Math.hypot(goalX - pl.x, PITCH_H / 2 - pl.y);
+    const angleY = Math.abs(pl.y - PITCH_H / 2);
+
+    // Goalkeeper safe distribution
+    if (pl.pos === 'KL') {
+      if (this.highlightActive && pl.side !== this.highlightSide) {
+        this.gkHoldSafe = true;
+        pl.holdTimer = 3.0;
+        this.concludeHighlight('🧤 KALECİ KONTROL ETTİ', 'rgba(15,23,42,0.85)', 1.05);
+        return;
+      }
+      const clearX = isHome ? (58 + Math.random() * 14) : (47 - Math.random() * 14);
+      const clearY = 12 + Math.random() * (PITCH_H - 24);
+      this.kickBall(pl, clearX, clearY, 'long_pass', null);
+      this.ball.vz = 11.2;
+      return;
+    }
+
+    // If defending team just won the ball during an opponent's highlight -> boot a REAL CLEARANCE to conclude cleanly!
+    if (this.highlightActive && pl.side !== this.highlightSide) {
+      const clearX = isHome ? Math.min(PITCH_W - 12, pl.x + 36) : Math.max(12, pl.x - 36);
+      const clearY = Math.random() < 0.5 ? 2 : (PITCH_H - 2); // Clear upfield or out to touch!
+      this.kickBall(pl, clearX, clearY, 'long_pass', null);
+      this.clearancesCount++;
+      this.concludeHighlight('🛡️ SAVUNMA UZAKLAŞTIRDI', 'rgba(30,41,59,0.88)', 1.05);
+      return;
+    }
+
+    // Urgency boost if highlight has been running >9.5s (forces a real shot or killer pass instead of timing out!)
+    const urgent = this.highlightActive && this.highlightTimer < 4.0;
+
+    // 1. REALISTIC SHOOTING
+    const inBox = distGoal <= 19.0 && angleY <= 15.5;
+    const edgeOfBox = distGoal <= 23.5 && angleY <= 14.0 && (this.highlightPasses >= 1 || urgent);
+    if ((inBox && Math.random() < (urgent ? 0.96 : 0.88)) || (edgeOfBox && Math.random() < (urgent ? 0.72 : 0.36))) {
+      const cornerBias = (Math.random() < 0.5 ? -1 : 1) * (0.9 + Math.random() * 2.4);
+      this.kickBall(pl, goalX, PITCH_H / 2 + cornerBias, 'shot', null);
+      if (isHome) this.aiMetrics.shotsHome++; else this.aiMetrics.shotsAway++;
+      const xg = inBox
+        ? Number(Math.max(0.14, Math.min(0.56, (20.5 - distGoal) * 0.032 * (1 - angleY / 28))).toFixed(2))
+        : Number(Math.max(0.04, Math.min(0.11, (25 - distGoal) * 0.015)).toFixed(2));
+      this.ball.shotDist = distGoal;
+      this.emit2DEvent({ type: 'shot', side: pl.side, player: pl, xg, distGoal });
+      return;
+    }
+
+    // 2. WING CROSS / CUTBACK INTO THE BOX
+    const inFinalThird = isHome ? (pl.x > 74) : (pl.x < 31);
+    const isWide = pl.y < 16 || pl.y > PITCH_H - 16;
+    if (inFinalThird && isWide && Math.random() < 0.84) {
+      const boxMates = this.players.filter(m => m.side === pl.side && m.id !== pl.id && !m.sentOff && !this.isPlayerOffside(m, this.ball.x) && ['SNT','OOS','SLK','SĞK','OS'].includes(m.pos));
+      boxMates.sort((a, b) => ((b.x - a.x) * dir));
+      const target = boxMates[0];
+      const bx = target ? Math.max(8, Math.min(PITCH_W - 8, target.x + dir * 2.5)) : (isHome ? PITCH_W - 11 : 11);
+      const by = target ? Math.max(20, Math.min(48, target.y)) : (PITCH_H / 2 + (Math.random() - 0.5) * 9);
+      this.kickBall(pl, bx, by, 'cross', target);
+      this.highlightPasses++;
+      if (isHome) this.aiMetrics.passesHome++; else this.aiMetrics.passesAway++;
+      this.emit2DEvent({ type: 'pass', side: pl.side, player: pl, passType: 'cross' });
+      return;
+    }
+
+    // 3. KILLER-PASS PRIORITY + ONSIDE-AWARE PASSING (NEVER TURNS BACK WHEN TEAMMATE HAS A GOAL CHANCE!)
+    const mates = this.players.filter(m => m.side === pl.side && m.id !== pl.id && !m.sentOff && m.pos !== 'KL');
+    if (!mates.length) return;
+    let bestTarget = null, bestScore = -999;
+
+    for (let i = 0; i < mates.length; i++) {
+      const m = mates[i];
+      const dist = Math.hypot(m.x - pl.x, m.y - pl.y);
+      if (dist < 5.5 || dist > 48) continue;
+      const fwdGain = (m.x - pl.x) * dir;
+      const mDistGoal = Math.hypot(goalX - m.x, PITCH_H / 2 - m.y);
+      const mOffside = this.isPlayerOffside(m, this.ball.x);
+
+      let minOppD = 16, laneBlocked = 0;
+      const ux = (m.x - pl.x) / dist, uy = (m.y - pl.y) / dist;
+      for (let j = 0; j < this.players.length; j++) {
+        const op = this.players[j];
+        if (op.side !== pl.side && !op.sentOff) {
+          const od = Math.hypot(op.x - m.x, op.y - m.y);
+          if (od < minOppD) minOppD = od;
+          const proj = (op.x - pl.x) * ux + (op.y - pl.y) * uy;
+          if (proj > 2 && proj < dist - 2) {
+            const perp = Math.abs((op.x - pl.x) * (-uy) + (op.y - pl.y) * ux);
+            if (perp < 2.1) laneBlocked += 1;
+          }
+        }
+      }
+
+      let score = fwdGain * 1.25 + Math.min(10, minOppD) * 1.15 - laneBlocked * 6.5 + (Math.random() - 0.5) * 3.0;
+
+      // HUGE KILLER-PASS PRIORITY: Onside teammate inside/near scoring zone!
+      if (!mOffside && mDistGoal <= 21 && minOppD >= 2.0) {
+        score += 26;
+      } else if (!mOffside && mDistGoal <= 27 && fwdGain > 4) {
+        score += 14;
+      }
+
+      // Strongly penalize offside targets (so AI doesn't blindly launch to offside campers!)
+      if (mOffside) score -= 24;
+
+      // In attacking half, strongly discourage turning backward if forward options exist!
+      const inAttHalf = isHome ? (pl.x > 52) : (pl.x < 53);
+      if (inAttHalf && fwdGain < -2) score -= 20;
+
+      if (m.state === 'run' && fwdGain > 3 && !mOffside) score += 10;
+      if (tp.passing === 'kisa' && dist <= 18) score += 4;
+      if ((tp.passing === 'uzun' || tp.passing === 'direkt') && dist >= 22) score += 5;
+
+      if (score > bestScore) { bestScore = score; bestTarget = m; }
+    }
+
+    if (!bestTarget) bestTarget = mates[0];
+    const d = Math.hypot(bestTarget.x - pl.x, bestTarget.y - pl.y);
+    const fwd = (bestTarget.x - pl.x) * dir;
+    const isThrough = (bestTarget.state === 'run' || ['SNT','SLK','SĞK','OOS'].includes(bestTarget.pos)) && fwd > 5 && d > 10;
+    const pType = isThrough ? 'through_ball' : ((d > 27 && tp.passing !== 'kisa') ? 'long_pass' : 'short_pass');
+
+    const leadX = isThrough ? (bestTarget.x + dir * 5.8) : (bestTarget.x + bestTarget.vx * 0.25);
+    const leadY = isThrough ? (bestTarget.y + (PITCH_H / 2 - bestTarget.y) * 0.14) : (bestTarget.y + bestTarget.vy * 0.25);
+    this.kickBall(pl, Math.max(4, Math.min(PITCH_W - 4, leadX)), Math.max(4, Math.min(PITCH_H - 4, leadY)), pType, bestTarget);
+    this.highlightPasses++;
+    if (isHome) this.aiMetrics.passesHome++; else this.aiMetrics.passesAway++;
+    this.emit2DEvent({ type: 'pass', side: pl.side, player: pl, passType: pType });
+  };
+
+  // 4. REAL OFFSIDE WHISTLE + SIDELINE THROW-IN DETECTION + OUTCOME-CONCLUDED HIGHLIGHTS!
+  const _v43StepBall = eng.stepBall.bind(eng);
+  eng.stepBall = function(dt) {
+    if (this.offsideLineFlash && this.offsideLineFlash.timer > 0) {
+      this.offsideLineFlash.timer = Math.max(0, this.offsideLineFlash.timer - dt);
+      if (this.offsideLineFlash.timer === 0) this.offsideLineFlash = null;
+    }
+
+    const prevOwner = this.owner;
+    const b = this.ball;
+
+    // Check sideline Throw-In when a pass/loose ball hits touchline during a highlight!
+    if (!this.owner && !b.isShot && this.highlightActive && !this.highlightResolved) {
+      if (b.y <= 1.35 || b.y >= PITCH_H - 1.35) {
+        this.throwInsCount++;
+        b.vx = 0; b.vy = 0; b.vz = 0;
+        this.concludeHighlight('🚩 TOP TAÇA ÇIKTI', 'rgba(30,41,59,0.88)', 0.95);
+        return;
+      }
+    }
+
+    _v43StepBall(dt);
+
+    // Check if an OFFSIDE player just received a teammate's pass!
+    if (!prevOwner && this.owner && this.offsideSnap && this.offsideSnap.has(this.owner.id)) {
+      const offender = this.owner;
+      const defSide = offender.side === 'home' ? 'away' : 'home';
+      const offLineX = this.getOffsideLineX(defSide);
+      this.offsideSnap.clear();
+      this.offsidesCount++;
+      this.owner = null;
+      this.ball.vx = 0; this.ball.vy = 0; this.ball.vz = 0;
+      this.offsideLineFlash = { x: offLineX, timer: 1.5 };
+      if (liveState && !liveState.finished) {
+        const min = Math.max(1, liveState.minute || 1);
+        addFeedItem(min, `🚩 OFSAYT! ${offender.name} savunma arkasına erken sarktı, bayrak kalktı!`, { type: 'neutral' });
+      }
+      if (this.highlightActive) {
+        this.concludeHighlight(`🚩 OFSAYT · ${offender.name.split(' ').slice(-1)[0]}`, 'rgba(202,138,4,0.92)', 1.35);
+      }
+    } else if (!prevOwner && this.owner) {
+      this.offsideSnap.clear();
+    }
+  };
+
+  // Draw crisp Yellow Dashed FIFA Offside Line on the 2D Canvas when offside is called!
+  const _v43Render = eng.render.bind(eng);
+  eng.render = function() {
+    _v43Render();
+    if (!this.ctx || !this.canvas || !this.offsideLineFlash) return;
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    const pTop = this.toPx(this.offsideLineFlash.x, 0);
+    const pBot = this.toPx(this.offsideLineFlash.x, PITCH_H);
+    ctx.strokeStyle = 'rgba(250, 204, 21, 0.92)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 4]);
+    ctx.beginPath();
+    ctx.moveTo(pTop.x, pTop.y);
+    ctx.lineTo(pBot.x, pBot.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+  };
+
+  // Realistic 3-Lane Counter-Attack setup + reset highlightResolved on every new highlight!
+  const _v43StartHL = eng.startHighlightSequence.bind(eng);
+  eng.startHighlightSequence = function(attSide) {
+    this.highlightResolved = false;
+    this.offsideSnap = new Set();
+    this.offsideLineFlash = null;
+    _v43StartHL(attSide);
+
+    // Polish fast_counter into true 3-lane full-width counter-attack (Left y=14, Center y=34, Right y=54)!
+    if (this.lastScenario === 'fast_counter') {
+      const isHome = attSide === 'home';
+      const defSide = isHome ? 'away' : 'home';
+      const attPs = this.players.filter(p => p.side === attSide && !p.sentOff && p.pos !== 'KL');
+      const defPs = this.players.filter(p => p.side === defSide && !p.sentOff && p.pos !== 'KL');
+      // 3 wide attacking lanes sprinting forward
+      const lanes = [14, 34, 54];
+      attPs.filter(p => ['SLK','SNT','SĞK','OOS'].includes(p.pos)).slice(0, 3).forEach((a, idx) => {
+        a.x = isHome ? (48 + idx * 4) : (57 - idx * 4);
+        a.y = lanes[idx % 3];
+        a.state = 'run';
+      });
+      // Only 2 CBs back defending at 66m/39m, rest chasing from midfield -> realistic counter shape!
+      const cbs = defPs.filter(d => d.pos === 'STP').slice(0, 2);
+      cbs.forEach((cb, idx) => {
+        cb.x = isHome ? 68 : 37;
+        cb.y = idx === 0 ? 25 : 43;
+      });
+    }
+  };
+
+  // Prevent timer from abruptly cutting a highlight mid-dribble! Instead force defensive clearance if >15s!
+  const _v43StepPhys = eng.stepPhysics.bind(eng);
+  eng.stepPhysics = function(dt) {
+    if (this.highlightActive && this.highlightOutro <= 0 && !this.highlightResolved && this.highlightTimer <= 0.3) {
+      // Instead of cutting mid-play, conclude naturally with a defensive clearance!
+      this.clearancesCount++;
+      this.concludeHighlight('🛡️ ATAK SAVUŞTURULDU', 'rgba(30,41,59,0.88)', 0.95);
+    }
+    _v43StepPhys(dt);
   };
 })();
 
