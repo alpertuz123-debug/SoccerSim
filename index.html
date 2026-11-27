@@ -765,6 +765,27 @@ select:focus, select:active, button:focus, button:active, input:focus, a:focus {
 #customSelectList { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding: 2px 0; }
 .csel-opt { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border-strong); background: var(--elevated); color: var(--text); font-size: 13px; font-weight: 600; text-align: left; cursor: pointer; }
 .csel-opt.selected { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-text); font-weight: 800; }
+
+/* v38: Horizontal Trophies, Distinct Individual Awards, Rounded Color-Icon Pills & Derby Styles */
+.trophy-strip { display:flex; gap:8px; overflow-x:auto; padding:2px 0 4px; -webkit-overflow-scrolling:touch; }
+.trophy-strip-card { flex:0 0 auto; min-width:142px; max-width:175px; padding:10px 11px; border-radius:12px; border:1px solid rgba(251,191,36,0.38); background:linear-gradient(135deg, rgba(251,191,36,0.14), rgba(15,23,42,0.28)); display:flex; flex-direction:column; gap:4px; }
+.ind-award-strip { display:flex; gap:7px; overflow-x:auto; padding:2px 0 2px; margin-top:8px; }
+.ind-award-pill { flex:0 0 auto; display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px; border:1px solid rgba(168,85,247,0.45); background:linear-gradient(135deg, rgba(168,85,247,0.18), rgba(56,189,248,0.14)); color:#e9d5ff; font-size:11px; font-weight:800; }
+.ind-award-ico { width:20px; height:20px; border-radius:999px; display:inline-flex; align-items:center; justify-content:center; background:rgba(168,85,247,0.32); font-size:11px; flex-shrink:0; }
+.info-chip-row { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+.info-chip-pill { display:inline-flex; align-items:center; gap:6px; padding:4px 10px 4px 5px; border-radius:999px; border:1px solid var(--border-strong); background:var(--elevated); font-size:11px; font-weight:700; color:var(--text); }
+.chip-ico-circle { width:20px; height:20px; border-radius:999px; display:inline-flex; align-items:center; justify-content:center; font-size:10.5px; flex-shrink:0; }
+.chip-emerald .chip-ico-circle { background:rgba(16,185,129,0.22); color:#34d399; }
+.chip-blue .chip-ico-circle { background:rgba(56,189,248,0.22); color:#38bdf8; }
+.chip-amber .chip-ico-circle { background:rgba(245,158,11,0.22); color:#fbbf24; }
+.chip-purple .chip-ico-circle { background:rgba(168,85,247,0.22); color:#c084fc; }
+.chip-rose .chip-ico-circle { background:rgba(244,63,94,0.22); color:#fb7185; }
+.derby-badge { display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:999px; background:linear-gradient(135deg, #dc2626, #f59e0b); color:#fff; font-size:10px; font-weight:900; letter-spacing:0.04em; }
+.list-tag-sale { display:inline-block; padding:1px 6px; border-radius:5px; font-size:9.5px; font-weight:800; background:rgba(245,158,11,0.22); color:#fbbf24; margin-left:4px; }
+.list-tag-loan { display:inline-block; padding:1px 6px; border-radius:5px; font-size:9.5px; font-weight:800; background:rgba(56,189,248,0.22); color:#38bdf8; margin-left:4px; }
+.supercup-hero { border:1.5px solid #fbbf24 !important; background:linear-gradient(135deg, rgba(245,158,11,0.16), rgba(15,23,42,0.5)) !important; }
+.records-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; }
+.record-tile { padding:9px 10px; border-radius:10px; border:1px solid var(--border); background:var(--elevated); }
 </style>
 </head>
 <body data-theme="dark" data-accent="emerald" data-pitch="striped">
@@ -826,7 +847,7 @@ select:focus, select:active, button:focus, button:active, input:focus, a:focus {
 <div class="menu-logo-ring">
 <svg class="svg-icon" style="width:28px;height:28px;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m12 6 3 4-1 5H10l-1-5 3-4Z"/><path d="M12 2v4"/><path d="m4.93 10.93 4.07-.93"/><path d="m19.07 10.93-4.07-.93"/><path d="m6.5 18.5 3.5-3.5"/><path d="m17.5 18.5-3.5-3.5"/></svg>
 </div>
-<div class="btn-soft" style="display:inline-flex;padding:3px 10px;border-radius:999px;font-size:10px;font-weight:700;margin-bottom:6px;">2026–27 DÜNYA SÜRÜMÜ · 7 LİG · v37.1</div>
+<div class="btn-soft" style="display:inline-flex;padding:3px 10px;border-radius:999px;font-size:10px;font-weight:700;margin-bottom:6px;">2026–27 DÜNYA SÜRÜMÜ · 7 LİG · v38</div>
 <h1 style="font-size:24px;font-weight:800;margin:0 0 4px;letter-spacing:-0.02em;">Soccer Simulator</h1>
 <p style="font-size:12px;color:var(--muted);margin:0;">Kendi teknik direktörlük kariyerini kur ve yönet.</p>
 </div>
@@ -1029,6 +1050,26 @@ select:focus, select:active, button:focus, button:active, input:focus, a:focus {
 <div id="kpiBudget" class="kpi-value">€26.0M</div>
 </div>
 </div>
+<div id="pendingSuperCupCard" class="surface supercup-hero hidden stack-sm" style="padding:13px;">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;font-weight:800;">
+<span id="scHeroBadge" style="color:#fbbf24;">🏆 SÜPER KUPA FİNALİ</span>
+<span id="scHeroSub" style="color:var(--muted);">Tek Maç · Kupa Finali</span>
+</div>
+<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+<div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1;">
+<div id="scHomeCrest" class="club-crest" style="width:36px;height:36px;font-size:11px;"></div>
+<div class="wrap-text" id="scHomeName" style="font-size:12.5px;font-weight:800;"></div>
+</div>
+<span style="font-size:12px;font-weight:800;color:#fbbf24;">VS</span>
+<div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1;justify-content:flex-end;text-align:right;">
+<div class="wrap-text" id="scAwayName" style="font-size:12.5px;font-weight:800;"></div>
+<div id="scAwayCrest" class="club-crest" style="width:36px;height:36px;font-size:11px;"></div>
+</div>
+</div>
+<div style="display:flex;gap:8px;">
+<button id="simSuperCupBtn" type="button" class="btn btn-primary" style="flex:1;padding:8px 12px;font-size:12px;">🏆 Süper Kupa Finalini Oyna</button>
+</div>
+</div>
 <div id="pendingCupCard" class="surface cup-hero-card hidden stack-sm">
 <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;font-weight:800;">
 <span id="cupHeroBadge" style="color:#60a5fa;">🏆 KUPA MAÇI</span>
@@ -1052,7 +1093,7 @@ select:focus, select:active, button:focus, button:active, input:focus, a:focus {
 </div>
 <div id="nextMatchCard" class="surface match-hero">
 <div class="hero-muted" style="display:flex;align-items:center;justify-content:space-between;font-size:11px;font-weight:600;">
-<span id="nextMatchWeekLabel">Sıradaki Maç · Hafta 1</span>
+<span style="display:inline-flex;align-items:center;gap:6px;"><span id="nextMatchWeekLabel">Sıradaki Maç · Hafta 1</span><span id="nextMatchDerbyBadge" class="derby-badge hidden">🔥 DERBİ</span></span>
 <span id="nextMatchDateLabel">14 Ağu 2026</span>
 </div>
 <div class="match-versus">
@@ -1060,12 +1101,14 @@ select:focus, select:active, button:focus, button:active, input:focus, a:focus {
 <div id="nextHomeCrest" class="club-crest" style="width:46px;height:46px;font-size:13px;"></div>
 <div id="nextHomeName" class="wrap-text" style="font-size:13px;font-weight:800;color:#ffffff;"></div>
 <div id="nextHomeOvr" class="hero-muted" style="font-size:11px;"></div>
+<div id="nextHomeMetaPill" class="info-chip-pill chip-emerald" style="margin-top:2px;background:rgba(15,23,42,0.55);color:#f8fafc;border-color:rgba(255,255,255,0.16);font-size:10px;padding:2px 8px 2px 3px;"><span class="chip-ico-circle" style="width:16px;height:16px;font-size:9px;">⚡</span><span id="nextHomeFormMini">-</span></div>
 </div>
 <div class="hero-muted" style="font-size:13px;font-weight:800;">VS</div>
 <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
 <div id="nextAwayCrest" class="club-crest" style="width:46px;height:46px;font-size:13px;"></div>
 <div id="nextAwayName" class="wrap-text" style="font-size:13px;font-weight:800;color:#ffffff;"></div>
 <div id="nextAwayOvr" class="hero-muted" style="font-size:11px;"></div>
+<div id="nextAwayMetaPill" class="info-chip-pill chip-rose" style="margin-top:2px;background:rgba(15,23,42,0.55);color:#f8fafc;border-color:rgba(255,255,255,0.16);font-size:10px;padding:2px 8px 2px 3px;"><span class="chip-ico-circle" style="width:16px;height:16px;font-size:9px;">🛡️</span><span id="nextAwayFormMini">-</span></div>
 </div>
 </div>
 <div id="nextMatchActions" style="display:flex;justify-content:center;padding-top:4px;">
@@ -1148,6 +1191,26 @@ select:focus, select:active, button:focus, button:active, input:focus, a:focus {
 <button type="button" data-train-focus="defense" class="train-btn">🛡️ Savunma &amp; Duran Top <span style="display:block;font-size:9.5px;color:var(--muted);font-weight:500;">Maçta +Defans bonusu</span></button>
 <button type="button" data-train-focus="fitness" class="train-btn">⚡ Kondisyon Toparlama <span style="display:block;font-size:9.5px;color:var(--muted);font-weight:500;">+Ekstra dayanıklılık</span></button>
 <button type="button" data-train-focus="youth" class="train-btn">🌱 Genç Gelişimi <span style="display:block;font-size:9.5px;color:var(--muted);font-weight:500;">U23 hızlı OVR artışı</span></button>
+</div>
+</div>
+<div class="surface stack-sm" style="padding:10px 12px;">
+<div style="display:flex;align-items:center;justify-content:space-between;">
+<span style="font-size:11.5px;font-weight:800;">Takım Rolleri &amp; Duran Top Uzmanları</span>
+<span style="font-size:10px;color:var(--muted);">Maç motoruna etki eder</span>
+</div>
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;">
+<div>
+<label for="roleCaptainSelect" style="display:block;font-size:10px;color:#fbbf24;font-weight:700;margin-bottom:3px;">©️ Kaptan</label>
+<select id="roleCaptainSelect" style="font-size:11px;padding:6px;"></select>
+</div>
+<div>
+<label for="rolePenaltySelect" style="display:block;font-size:10px;color:#34d399;font-weight:700;margin-bottom:3px;">🎯 Penaltıcı</label>
+<select id="rolePenaltySelect" style="font-size:11px;padding:6px;"></select>
+</div>
+<div>
+<label for="roleFreeKickSelect" style="display:block;font-size:10px;color:#38bdf8;font-weight:700;margin-bottom:3px;">⚡ Frikikçi</label>
+<select id="roleFreeKickSelect" style="font-size:11px;padding:6px;"></select>
+</div>
 </div>
 </div>
 <div class="surface" style="padding:12px;">
@@ -1340,9 +1403,19 @@ select:focus, select:active, button:focus, button:active, input:focus, a:focus {
 <div class="scene-fg" style="font-size:20px;">✍️</div>
 </div>
 <div class="surface" style="padding:14px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;">
-<div>
-<div style="font-size:11px;color:var(--muted);">Transfer Bütçesi</div>
-<div id="transferBudgetVal" style="font-size:20px;font-weight:800;color:var(--accent-text);">€26.0M</div>
+<div class="info-chip-row">
+<div class="info-chip-pill chip-emerald" style="padding:5px 12px 5px 6px;">
+<span class="chip-ico-circle" style="width:24px;height:24px;font-size:12px;">💶</span>
+<div><div style="font-size:9.5px;color:var(--muted);line-height:1;">Bütçe</div><div id="transferBudgetVal" style="font-size:14px;font-weight:800;color:var(--accent-text);line-height:1.2;">€26.0M</div></div>
+</div>
+<div class="info-chip-pill chip-blue" style="padding:5px 11px 5px 6px;">
+<span class="chip-ico-circle" style="width:24px;height:24px;font-size:12px;">👥</span>
+<div><div style="font-size:9.5px;color:var(--muted);line-height:1;">Kadro</div><div id="transferSquadPillVal" style="font-size:13px;font-weight:800;line-height:1.2;">22</div></div>
+</div>
+<div class="info-chip-pill chip-amber" style="padding:5px 11px 5px 6px;">
+<span class="chip-ico-circle" style="width:24px;height:24px;font-size:12px;">🏷️</span>
+<div><div style="font-size:9.5px;color:var(--muted);line-height:1;">Listede</div><div id="transferListedPillVal" style="font-size:13px;font-weight:800;line-height:1.2;">0</div></div>
+</div>
 </div>
 <div style="display:flex;gap:6px;">
 <button id="transferTabBuy" type="button" class="btn btn-primary">Oyuncu Al</button>
@@ -1520,6 +1593,18 @@ select:focus, select:active, button:focus, button:active, input:focus, a:focus {
 <span id="mgrTrophySub" style="font-size:11px;color:var(--muted);">Süper Lig</span>
 </div>
 <div id="mgrTrophiesBox"></div>
+<div id="mgrIndAwardsWrap" class="hidden" style="margin-top:6px;">
+<div style="font-size:11px;font-weight:800;color:#c084fc;margin-bottom:4px;">🎖️ Bireysel Ödüller</div>
+<div id="mgrIndAwardsBox" class="ind-award-strip"></div>
+</div>
+</div>
+<!-- Club & Career Records Book -->
+<div class="surface stack-sm" style="padding:14px;">
+<div style="display:flex;align-items:center;justify-content:space-between;">
+<span style="font-size:13px;font-weight:700;">Kulüp &amp; Kariyer Rekorları</span>
+<span style="font-size:10.5px;color:var(--muted);">Kalıcı Defter</span>
+</div>
+<div id="mgrRecordsGrid" class="records-grid"></div>
 </div>
 <!-- Season-by-Season Career History (Simplified) -->
 <div class="surface stack-sm" style="padding:14px;">
@@ -1798,6 +1883,11 @@ select:focus, select:active, button:focus, button:active, input:focus, a:focus {
 <span id="negBudgetHint">Bütçen: €26.0M</span>
 <span id="negRoundsHint">Kalan Tur: 3</span>
 </div>
+<div id="negSwapWrap" style="margin-top:4px;">
+<label for="negSwapSelect" style="display:block;font-size:10.5px;color:var(--muted);margin-bottom:3px;">🔄 Oyuncu Takası Ekle (İsteğe Bağlı · Bonservisi Düşürür)</label>
+<select id="negSwapSelect" style="font-size:11.5px;"></select>
+<div id="negSwapTotalHint" style="font-size:10.5px;color:#34d399;font-weight:700;margin-top:3px;"></div>
+</div>
 <button id="sendClubOfferBtn" type="button" class="btn btn-primary" style="width:100%;margin-top:4px;">Bonservis Teklifi Gönder</button>
 </div>
 <div id="negStage2Wrap" class="hidden stack-sm">
@@ -2064,6 +2154,7 @@ Kalecin kırmızı kart gördü! Devam etmek için sahadan bir oyuncuyu seçip y
 <div id="inboxDetBody" style="font-size:12px;line-height:1.5;padding-top:6px;border-top:1px solid var(--border);"></div>
 <div id="inboxDetActionWrap" class="hidden" style="padding-top:6px;"><button id="inboxJoinMeetingBtn" type="button" class="btn btn-danger" style="width:100%;">Yönetim Toplantısına Katıl</button></div>
 <div id="inboxOfferActionWrap" class="hidden" style="padding-top:6px;display:flex;gap:8px;"><button id="inboxAcceptOfferBtn" type="button" class="btn btn-primary" style="flex:1;">Teklifi Kabul Et ✓</button><button id="inboxDeclineOfferBtn" type="button" class="btn btn-ghost">Reddet</button></div>
+<div id="inboxInteractiveWrap" class="hidden" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"></div>
 </div>
 <div id="inboxListBox" class="stack-sm" style="flex:1;min-height:0;max-height:38vh;overflow-y:auto;"></div>
 </div>
@@ -2345,6 +2436,95 @@ Kalecin kırmızı kart gördü! Devam etmek için sahadan bir oyuncuyu seçip y
 <button id="closeCustomSelectBtn" type="button" class="btn btn-ghost" style="padding:4px 10px;font-size:11.5px;">Kapat</button>
 </div>
 <div id="customSelectList"></div>
+</div>
+</div>
+<!-- MODAL: INCOMING TRANSFER / LOAN OFFER COUNTER-NEGOTIATION -->
+<div id="incomingOfferModal" class="modal-backdrop hidden" style="z-index:92;">
+<div class="modal-box stack-md" style="max-width:460px;">
+<div class="theme-room-banner transfer-room-bg">
+<svg class="room-bg" viewBox="0 0 420 110" preserveAspectRatio="xMidYMid slice"><rect x="20" y="72" width="380" height="38" rx="8" fill="#1e293b" opacity="0.6"/><circle cx="350" cy="40" r="24" fill="none" stroke="#38bdf8" stroke-opacity="0.35" stroke-width="1.5"/><path d="M350 40 L370 25 A24 24 0 0 1 374 40 Z" fill="#38bdf8" opacity="0.3"/></svg>
+<div class="room-fg">
+<div style="min-width:0;">
+<div id="incOfferBadge" class="obj-badge obj-track" style="margin-bottom:4px;">GELEN TRANSFER TEKLİFİ</div>
+<h3 id="incOfferTitle" class="truncate" style="font-size:15px;font-weight:800;margin:0;color:#f8fafc;">Oyuncu</h3>
+</div>
+<button id="closeIncOfferBtn" type="button" class="btn btn-ghost" style="padding:5px 10px;background:rgba(15,23,42,0.55);color:#f8fafc;border-color:rgba(148,163,184,0.35);">Kapat</button>
+</div>
+</div>
+<div id="incOfferDialogue" class="elevated" style="padding:11px;font-size:12px;line-height:1.5;border-left:3px solid var(--accent);"></div>
+<div class="stack-sm">
+<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);">
+<span id="incOfferSliderLabel">Karşı Teklifin</span>
+<span id="incOfferVal" style="color:var(--accent-text);font-weight:800;font-size:13px;">€10.0M</span>
+</div>
+<input id="incOfferRange" type="range" min="1" max="100" step="0.5" value="10">
+<div style="display:flex;justify-content:space-between;font-size:10.5px;color:var(--muted);">
+<span id="incOfferCurrentHint">Mevcut Teklif: €8.0M</span>
+<span id="incOfferRoundsHint">Kalan Tur: 3</span>
+</div>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+<button id="incOfferAcceptBtn" type="button" class="btn btn-primary" style="font-size:12px;">Mevcut Teklifi Kabul Et</button>
+<button id="incOfferCounterBtn" type="button" class="btn btn-soft" style="font-size:12px;">Karşı Teklif Gönder</button>
+</div>
+<button id="incOfferRejectBtn" type="button" class="btn btn-danger" style="width:100%;font-size:12px;">Teklifi Reddet</button>
+</div>
+</div>
+
+<!-- MODAL: PRE-SIGNING CLUB CONTRACT & OBJECTIVES NEGOTIATION -->
+<div id="jobNegotiationModal" class="modal-backdrop hidden" style="z-index:94;">
+<div class="modal-box stack-md" style="max-width:470px;">
+<div class="theme-room-banner board-room-bg">
+<svg class="room-bg" viewBox="0 0 420 110" preserveAspectRatio="xMidYMid slice"><rect x="30" y="70" width="360" height="40" rx="8" fill="#451a03" opacity="0.65"/><circle cx="210" cy="36" r="24" fill="none" stroke="#fbbf24" stroke-opacity="0.35" stroke-width="1.5"/></svg>
+<div class="room-fg">
+<div style="min-width:0;">
+<div class="obj-badge obj-track" style="margin-bottom:4px;">YÖNETİM KURULU · SÖZLEŞME MASASI</div>
+<h3 id="jobNegClubTitle" class="truncate" style="font-size:15px;font-weight:800;margin:0;color:#fef3c7;">Kulüp Görüşmesi</h3>
+</div>
+<button id="closeJobNegBtn" type="button" class="btn btn-ghost" style="padding:5px 10px;background:rgba(15,23,42,0.55);color:#f8fafc;border-color:rgba(148,163,184,0.35);">Masadan Kalk</button>
+</div>
+</div>
+<div id="jobNegDialogue" class="elevated" style="padding:11px;font-size:12px;line-height:1.5;border-left:3px solid #fbbf24;"></div>
+<div class="stack-sm">
+<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);">
+<span>Talep Ettiğin Yıllık Maaş</span>
+<span id="jobNegWageVal" style="color:var(--accent-text);font-weight:800;font-size:13px;">€2.5M / yıl</span>
+</div>
+<input id="jobNegWageRange" type="range" min="0.5" max="15" step="0.2" value="2.5">
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+<div>
+<label for="jobNegYearsSelect" style="display:block;font-size:10.5px;color:var(--muted);margin-bottom:3px;">Sözleşme Süresi</label>
+<select id="jobNegYearsSelect">
+<option value="1">1 Yıl</option>
+<option value="2" selected>2 Yıl</option>
+<option value="3">3 Yıl</option>
+<option value="4">4 Yıl</option>
+</select>
+</div>
+<div>
+<label for="jobNegBonusSelect" style="display:block;font-size:10.5px;color:var(--muted);margin-bottom:3px;">Başarı Primi</label>
+<select id="jobNegBonusSelect">
+<option value="low">Standart (%10)</option>
+<option value="mid" selected>Yüksek (%20)</option>
+<option value="high">Özel Prim (%35)</option>
+</select>
+</div>
+</div>
+<div>
+<label for="jobNegAmbitionSelect" style="display:block;font-size:10.5px;color:var(--muted);margin-bottom:3px;">Sezon Hedefi Taahhüdü</label>
+<select id="jobNegAmbitionSelect">
+<option value="temkinli">Temkinli (Daha rahat hedef, standart bütçe)</option>
+<option value="standart" selected>Standart (Kulüp beklentisi)</option>
+<option value="iddiali">İddialı (Zorlu hedef + %15 Ekstra Bütçe!)</option>
+</select>
+</div>
+<div id="jobNegObjPreview" class="elevated" style="padding:8px 10px;font-size:11px;color:var(--muted);"></div>
+<div style="display:flex;justify-content:space-between;font-size:10.5px;color:var(--muted);">
+<span id="jobNegBudgetPreview">Teklif Edilen Bütçe: €20M</span>
+<span id="jobNegRoundsHint">Kalan Görüşme Hakkı: 3</span>
+</div>
+</div>
+<button id="jobNegSubmitBtn" type="button" class="btn btn-primary" style="width:100%;">Şartları Sun ve İmzala</button>
 </div>
 </div>
 <script>
@@ -9905,6 +10085,1154 @@ processAiManagerCarousel = function() {
           : `🚨 SON DAKİKA: ${victimClub.name}, ${oldMgr.name} ile yollarını ayırdı!` + (newMgr ? ` Kulüp ${newMgr.name} (${newMgr.prefFormation}) ile anlaşmaya vardı.` : ''),
         '#0f172a', '#f87171', 'TH', true);
     }
+  }
+};
+
+})();
+
+
+// =========================================================================
+// v38: EFSANE KARİYER & YAŞAYAN DÜNYA SÜRÜMÜ (14 YENİ SİSTEM)
+// =========================================================================
+(function initV38Patch() {
+
+// -------------------------------------------------------------------------
+// 1. DERBY & RIVALRY SYSTEM
+// -------------------------------------------------------------------------
+const DERBY_PAIRS = [
+  ['gs','fb','Kıtalararası Derbi'], ['gs','bjk','İstanbul Derbisi'], ['fb','bjk','İstanbul Derbisi'],
+  ['gs','ts','Büyük Rekabet'], ['fb','ts','Büyük Rekabet'], ['bjk','ts','Büyük Rekabet'],
+  ['rma','bar','El Clásico'], ['rma','atm','Madrid Derbisi'], ['sev','bet','Endülüs Derbisi'],
+  ['liv','mun','Kuzeybatı Derbisi'], ['liv','mci','Zirve Derbisi'], ['ars','tot','Kuzey Londra Derbisi'],
+  ['ars','che','Londra Derbisi'], ['mci','mun','Manchester Derbisi'], ['liv','eve','Merseyside Derbisi'],
+  ['mil','int','Derby della Madonnina'], ['juv','int','Derby d\'Italia'], ['rom','laz','Derby della Capitale'],
+  ['juv','mil','İtalya Klasiği'], ['bay','bvb','Der Klassiker'], ['psg','om','Le Classique'], ['psg','lyo','Fransa Klasiği']
+];
+
+function getDerbyName(idA, idB) {
+  if (!idA || !idB) return null;
+  const hit = DERBY_PAIRS.find(([a, b]) => (a === idA && b === idB) || (a === idB && b === idA));
+  return hit ? hit[2] : null;
+}
+window.getDerbyName = getDerbyName;
+
+// -------------------------------------------------------------------------
+// 2. DYNAMIC CLUB-TIER OBJECTIVES (Big -> Title/Goals, Small -> Relegation Battle!)
+// -------------------------------------------------------------------------
+buildSeasonObjectives = function(club, ambition) {
+  if (!club) return [];
+  const amb = ambition || 'standart';
+  const r = club.ovr || club.rating || 74;
+  const lm = getLeagueMeta(club.leagueId || 'super_lig');
+  const leagueClubs = getLeagueClubs(club.leagueId || 'super_lig');
+  const totalTeams = Math.max(18, leagueClubs.length);
+  const isTier2 = lm.tier === 2;
+
+  let rankTarget, rankLabel, goalTarget, winTarget;
+  if (isTier2) {
+    if (r >= 71) { rankTarget = 2; rankLabel = `${lm.name} Şampiyonluk / İlk 2 (Üst Lig)`; goalTarget = 52; winTarget = 19; }
+    else if (r >= 68) { rankTarget = 6; rankLabel = `${lm.name} Play-Off Potası (İlk 6)`; goalTarget = 44; winTarget = 15; }
+    else { rankTarget = Math.max(12, totalTeams - 4); rankLabel = `${lm.name}'de Kümede Kal`; goalTarget = 34; winTarget = 10; }
+  } else if (r >= 82) {
+    rankTarget = 1; rankLabel = `${lm.name} Şampiyonluğu (1. Sıra)`; goalTarget = 68; winTarget = 24;
+  } else if (r >= 78) {
+    rankTarget = 3; rankLabel = `${lm.name} Zirve & Avrupa (İlk 3)`; goalTarget = 56; winTarget = 19;
+  } else if (r >= 75) {
+    rankTarget = 6; rankLabel = `${lm.name} Avrupa Yarışı (İlk 6)`; goalTarget = 48; winTarget = 16;
+  } else if (r >= 72) {
+    rankTarget = 11; rankLabel = `${lm.name} Orta Sıralar (İlk 11)`; goalTarget = 39; winTarget = 12;
+  } else {
+    rankTarget = Math.max(14, totalTeams - 3); rankLabel = `${lm.name}'de Kümede Kal (İlk ${rankTarget})`; goalTarget = 32; winTarget = 9;
+  }
+
+  if (amb === 'temkinli') {
+    rankTarget = Math.min(totalTeams - 3, rankTarget + (rankTarget === 1 ? 1 : 2));
+    winTarget = Math.max(7, winTarget - 3);
+    goalTarget = Math.max(26, goalTarget - 6);
+    if (rankTarget > 1) rankLabel = `${lm.name} İlk ${rankTarget} İçinde Bitir`;
+  } else if (amb === 'iddiali') {
+    rankTarget = Math.max(1, rankTarget - (rankTarget <= 3 ? 1 : 2));
+    winTarget = winTarget + 3;
+    goalTarget = goalTarget + 7;
+    rankLabel = rankTarget === 1 ? `${lm.name} Mutlak Şampiyonluk!` : `${lm.name} İddialı Hedef (İlk ${rankTarget})`;
+  }
+
+  return [
+    { id: 'rank', type: 'rank', title: rankLabel, target: rankTarget },
+    { id: 'wins', type: 'wins', title: `Sezonda En Az ${winTarget} Galibiyet`, target: winTarget },
+    { id: 'goals', type: 'goals', title: `Sezonda En Az ${goalTarget} Gol At`, target: goalTarget }
+  ];
+};
+
+// -------------------------------------------------------------------------
+// 3. CLUB & CAREER RECORDS TRACKING
+// -------------------------------------------------------------------------
+function ensureRecordsMeta() {
+  if (!game || !game.managerMeta) return null;
+  if (!game.managerMeta.records) {
+    game.managerMeta.records = {
+      mostExpensiveBuy: null,   // { name, fee, season, club }
+      mostExpensiveSell: null,  // { name, fee, season, club }
+      allTimeScorers: {},       // { name: { goals, club } }
+      individualAwards: []      // [{ title, season, icon }]
+    };
+  }
+  if (!Array.isArray(game.managerMeta.records.individualAwards)) game.managerMeta.records.individualAwards = [];
+  if (!game.managerMeta.records.allTimeScorers) game.managerMeta.records.allTimeScorers = {};
+  return game.managerMeta.records;
+}
+
+function recordTransferInHistory(type, playerName, fee, clubName) {
+  const rec = ensureRecordsMeta();
+  if (!rec || !fee || fee <= 0) return;
+  const season = `${game.seasonYear}-${String(game.seasonYear + 1).slice(2)}`;
+  if (type === 'buy' && (!rec.mostExpensiveBuy || fee > rec.mostExpensiveBuy.fee)) {
+    rec.mostExpensiveBuy = { name: playerName, fee, season, club: clubName };
+  }
+  if (type === 'sell' && (!rec.mostExpensiveSell || fee > rec.mostExpensiveSell.fee)) {
+    rec.mostExpensiveSell = { name: playerName, fee, season, club: clubName };
+  }
+}
+
+function syncScorerRecordsFromMyClub() {
+  const rec = ensureRecordsMeta();
+  const mc = myClub();
+  if (!rec || !mc) return;
+  mc.squad.forEach(p => {
+    if (p.goals > 0) {
+      const prev = rec.allTimeScorers[p.name] || { goals: 0, club: mc.name };
+      if (p.goals > prev.goals) rec.allTimeScorers[p.name] = { goals: p.goals, club: mc.name };
+    }
+  });
+}
+
+// -------------------------------------------------------------------------
+// 4. CAPTAIN & SET-PIECE SPECIALISTS (KAPTAN / PENALTICI / FRİKİKÇİ)
+// -------------------------------------------------------------------------
+function ensureClubRoles(club) {
+  if (!club || !club.squad || !club.squad.length) return null;
+  if (!club.roles) club.roles = { captainId: null, penId: null, fkId: null };
+  const has = (id) => id && club.squad.some(p => p.id === id);
+  if (!has(club.roles.captainId)) {
+    const cap = club.squad.slice().sort((a, b) => (b.age * 0.6 + b.ovr) - (a.age * 0.6 + a.ovr))[0];
+    club.roles.captainId = cap ? cap.id : club.squad[0].id;
+  }
+  if (!has(club.roles.penId)) {
+    const pen = club.squad.filter(p => p.pos !== 'KL').sort((a, b) => (b.ovr + (b.pos === 'SNT' ? 5 : 0)) - (a.ovr + (a.pos === 'SNT' ? 5 : 0)))[0];
+    club.roles.penId = pen ? pen.id : club.squad[0].id;
+  }
+  if (!has(club.roles.fkId)) {
+    const fk = club.squad.filter(p => p.pos !== 'KL').sort((a, b) => (b.ovr + (['OOS','SLK','SĞK','OS'].includes(b.pos) ? 5 : 0)) - (a.ovr + (['OOS','SLK','SĞK','OS'].includes(a.pos) ? 5 : 0)))[0];
+    club.roles.fkId = fk ? fk.id : club.squad[0].id;
+  }
+  return club.roles;
+}
+
+function renderClubRolesSelectors() {
+  const club = myClub();
+  const capSel = document.getElementById('roleCaptainSelect');
+  const penSel = document.getElementById('rolePenaltySelect');
+  const fkSel = document.getElementById('roleFreeKickSelect');
+  if (!club || !capSel || !penSel || !fkSel) return;
+  const roles = ensureClubRoles(club);
+  const outfield = club.squad.filter(p => p.pos !== 'KL').slice().sort((a, b) => b.ovr - a.ovr);
+  const allSorted = club.squad.slice().sort((a, b) => b.ovr - a.ovr);
+  capSel.innerHTML = allSorted.map(p => `<option value="${p.id}">${p.name} (${p.pos} · ${p.ovr})</option>`).join('');
+  penSel.innerHTML = outfield.map(p => `<option value="${p.id}">${p.name} (${p.pos} · ${p.ovr})</option>`).join('');
+  fkSel.innerHTML = outfield.map(p => `<option value="${p.id}">${p.name} (${p.pos} · ${p.ovr})</option>`).join('');
+  capSel.value = roles.captainId;
+  penSel.value = roles.penId;
+  fkSel.value = roles.fkId;
+}
+
+['roleCaptainSelect','rolePenaltySelect','roleFreeKickSelect'].forEach(id => {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener('change', () => {
+    const club = myClub();
+    if (!club) return;
+    ensureClubRoles(club);
+    if (id === 'roleCaptainSelect') club.roles.captainId = el.value;
+    if (id === 'rolePenaltySelect') club.roles.penId = el.value;
+    if (id === 'roleFreeKickSelect') club.roles.fkId = el.value;
+    saveActiveCareer();
+    showToast('Takım rolü güncellendi!');
+  });
+});
+
+// Hook pickScorer so Penalty & Free Kick specialists get realistic extra goal share!
+const _v37PickScorer = pickScorer;
+pickScorer = function(club) {
+  if (club && club.id === game.myClubId && club.roles) {
+    const roll = Math.random();
+    if (roll < 0.14 && club.roles.penId) {
+      const p = club.squad.find(x => x.id === club.roles.penId && club.lineup.includes(x.id));
+      if (p) return p;
+    } else if (roll < 0.24 && club.roles.fkId) {
+      const p = club.squad.find(x => x.id === club.roles.fkId && club.lineup.includes(x.id));
+      if (p) return p;
+    }
+  }
+  return _v37PickScorer(club);
+};
+
+const _v37RenderTactics = renderTactics;
+renderTactics = function() {
+  _v37RenderTactics();
+  renderClubRolesSelectors();
+};
+
+// -------------------------------------------------------------------------
+// 5. SUPER CUP & UEFA SUPER CUP SYSTEM
+// -------------------------------------------------------------------------
+function initSuperCupsForNewSeason(prevStandingsMap, prevCups) {
+  game.superCups = [];
+  const mc = myClub();
+  const userCountry = mc ? getCountryForLeague(mc.leagueId) : 'TR';
+  // 1) Domestic Super Cup (League Champ vs Domestic Cup Champ)
+  const domCupMap = { TR: ['super_lig','tr_cup','TFF Süper Kupa'], EN: ['premier_league','en_fa','Community Shield'], ES: ['la_liga','es_cdr','Supercopa de España'], IT: ['serie_a','it_ci','Supercoppa Italiana'], DE: ['bundesliga','de_dfb','DFL-Supercup'], FR: ['ligue_1','fr_cdf','Trophée des Champions'] };
+  Object.entries(domCupMap).forEach(([ctry, [lid, cid, title]]) => {
+    const st = prevStandingsMap[lid] || [];
+    const lgChamp = st[0];
+    const cObj = prevCups && prevCups[cid];
+    let cupChamp = cObj && cObj.championId ? cObj.championId : st[1];
+    if (cupChamp === lgChamp) cupChamp = st[1];
+    if (lgChamp && cupChamp) {
+      game.superCups.push({ id: `sc_${ctry}`, name: title, country: ctry, home: lgChamp, away: cupChamp, played: false, hg: 0, ag: 0, winnerId: null, penTxt: '' });
+    }
+  });
+  // 2) UEFA Super Cup (UCL Champ vs UEL Champ)
+  const uclC = prevCups && prevCups.ucl && prevCups.ucl.championId;
+  const uelC = prevCups && prevCups.uel && prevCups.uel.championId;
+  if (uclC && uelC && uclC !== uelC) {
+    game.superCups.push({ id: 'sc_uefa', name: 'UEFA Süper Kupa', country: 'EU', home: uclC, away: uelC, played: false, hg: 0, ag: 0, winnerId: null, penTxt: '' });
+  }
+}
+
+function getPendingUserSuperCup() {
+  if (!game || !Array.isArray(game.superCups) || game.isUnemployed || !game.myClubId) return null;
+  return game.superCups.find(sc => !sc.played && (sc.home === game.myClubId || sc.away === game.myClubId)) || null;
+}
+
+function playOrSimSuperCup(sc) {
+  if (!sc || sc.played) return;
+  const h = getClub(sc.home), a = getClub(sc.away);
+  if (!h || !a) { sc.played = true; return; }
+  const rawDiff = (getClubEffectiveOvr(h) + 0.5) - getClubEffectiveOvr(a);
+  const diff = Math.tanh(rawDiff / 9.5) * 1.3;
+  let hg = 0, ag = 0;
+  for (let i = 0; i < 6; i++) {
+    if (Math.random() < Math.max(0.07, Math.min(0.42, 0.21 + diff * 0.11))) hg++;
+    if (Math.random() < Math.max(0.07, Math.min(0.42, 0.20 - diff * 0.11))) ag++;
+  }
+  let winnerId = hg > ag ? h.id : (ag > hg ? a.id : null), penTxt = '';
+  if (!winnerId) {
+    let hp = randInt(3, 5), ap = randInt(3, 5);
+    while (hp === ap) { if (Math.random() < 0.5) hp++; else ap++; }
+    winnerId = hp > ap ? h.id : a.id;
+    penTxt = ` (Pen: ${hp}-${ap})`;
+  }
+  sc.played = true; sc.hg = hg; sc.ag = ag; sc.winnerId = winnerId; sc.penTxt = penTxt;
+  const winC = getClub(winnerId);
+  const seasonStr = `${game.seasonYear}-${String(game.seasonYear + 1).slice(2)}`;
+  if (winnerId === game.myClubId && !game.isUnemployed) {
+    game.trophies.unshift({ id: uid(), title: sc.name, season: seasonStr, clubName: winC.name, clubShort: winC.short, clubBg: winC.bg, clubFg: winC.fg });
+    pushInboxMsg('Yönetim', 'Kulüp Başkanı', `🏆 ${sc.name} Şampiyonuyuz!`, `Sezona müthiş bir kupa zaferiyle başladık hocam! ${h.name} ${hg}-${ag} ${a.name}${penTxt} sonucuyla ${sc.name} müzemize girdi!`);
+    pushSocialPost('club', winC.name, '@' + winC.short.toLowerCase() + 'resmi', `🏆 ŞAMPİYON! ${sc.name} bizim! (${h.short} ${hg}-${ag} ${a.short}${penTxt})`, winC.bg, winC.fg, winC.short, true);
+  } else if (sc.home === game.myClubId || sc.away === game.myClubId) {
+    pushSocialPost('pundit', 'Maç Merkezi', '@MacMerkezi', `${sc.name} Finali: ${h.name} ${hg}-${ag} ${a.name}${penTxt}. Kupayı ${winC.name} kazandı.`, '#0f172a', '#fbbf24', 'MM', true);
+  }
+  // Auto-resolve other AI Super Cups silently
+  (game.superCups || []).forEach(other => {
+    if (!other.played && other.home !== game.myClubId && other.away !== game.myClubId) {
+      playOrSimSuperCup(other);
+    }
+  });
+  saveActiveCareer();
+  showToast(`🏆 ${sc.name}: ${h.short} ${hg}-${ag} ${a.short}${penTxt} (Kazanan: ${winC.short})`);
+  renderHeader(); renderHome();
+}
+
+const scBtn = document.getElementById('simSuperCupBtn');
+if (scBtn) scBtn.addEventListener('click', () => {
+  const sc = getPendingUserSuperCup();
+  if (sc) playOrSimSuperCup(sc);
+});
+
+// -------------------------------------------------------------------------
+// 6. ENHANCE HOME SCREEN (SUPER CUP CARD, DERBY BADGE, ROUNDED COLOR-ICON TEAM PILLS!)
+// -------------------------------------------------------------------------
+const _v37RenderHome = renderHome;
+renderHome = function() {
+  _v37RenderHome();
+  if (!game || game.isUnemployed || !myClub()) {
+    const scCard = document.getElementById('pendingSuperCupCard');
+    if (scCard) scCard.classList.add('hidden');
+    return;
+  }
+  // Super Cup Hero Card
+  const sc = getPendingUserSuperCup();
+  const scCard = document.getElementById('pendingSuperCupCard');
+  if (scCard) {
+    if (sc) {
+      const sh = getClub(sc.home), sa = getClub(sc.away);
+      document.getElementById('scHeroBadge').textContent = `🏆 ${sc.name.toUpperCase()}`;
+      document.getElementById('scHomeCrest').textContent = sh.short; document.getElementById('scHomeCrest').style.background = sh.bg; document.getElementById('scHomeCrest').style.color = sh.fg;
+      document.getElementById('scAwayCrest').textContent = sa.short; document.getElementById('scAwayCrest').style.background = sa.bg; document.getElementById('scAwayCrest').style.color = sa.fg;
+      document.getElementById('scHomeName').textContent = sh.name;
+      document.getElementById('scAwayName').textContent = sa.name;
+      scCard.classList.remove('hidden');
+    } else {
+      scCard.classList.add('hidden');
+    }
+  }
+  // Derby Badge & Rounded Color-Icon Team Form/Formation Pills on Next Match Card
+  const club = myClub();
+  const weekMatches = game.schedule && game.schedule[game.week];
+  const myM = weekMatches ? weekMatches.find(m => m.home === club.id || m.away === club.id) : null;
+  const derbyBadge = document.getElementById('nextMatchDerbyBadge');
+  const hMini = document.getElementById('nextHomeFormMini');
+  const aMini = document.getElementById('nextAwayFormMini');
+  if (myM) {
+    const hc = getClub(myM.home), ac = getClub(myM.away);
+    const dName = getDerbyName(hc.id, ac.id);
+    if (derbyBadge) {
+      derbyBadge.classList.toggle('hidden', !dName);
+      if (dName) derbyBadge.textContent = `🔥 ${dName.toUpperCase()}`;
+    }
+    if (hMini) hMini.textContent = `${hc.formation || '4-2-3-1'} · ${(hc.form || []).slice(-3).join('') || 'Yeni'}`;
+    if (aMini) aMini.textContent = `${ac.formation || '4-2-3-1'} · ${(ac.form || []).slice(-3).join('') || 'Yeni'}`;
+  } else if (derbyBadge) {
+    derbyBadge.classList.add('hidden');
+  }
+};
+
+// -------------------------------------------------------------------------
+// 7. CASH + PLAYER SWAP IN TRANSFER NEGOTIATION (#negotiationModal)
+// -------------------------------------------------------------------------
+function populateNegSwapSelect() {
+  const wrap = document.getElementById('negSwapWrap');
+  const sel = document.getElementById('negSwapSelect');
+  const hint = document.getElementById('negSwapTotalHint');
+  if (!wrap || !sel) return;
+  const club = myClub();
+  if (!negState || negState.isFreeAgent || !club || club.squad.length <= 15) {
+    wrap.classList.add('hidden');
+    return;
+  }
+  wrap.classList.remove('hidden');
+  const stSet = new Set(club.lineup || []);
+  const swappable = club.squad.filter(p => !stSet.has(p.id) && !p.loanFrom).sort((a, b) => b.value - a.value);
+  sel.innerHTML = '<option value="">Takas Yok (Sadece Nakit)</option>' + swappable.map(p => {
+    const tradeVal = Number((p.value * 0.85).toFixed(1));
+    return `<option value="${p.id}">${p.name} (${p.pos} · ${p.ovr}) → +${fmtMoney(tradeVal)} Değer</option>`;
+  }).join('');
+  sel.value = '';
+  if (hint) hint.textContent = '';
+}
+
+function updateNegSwapHint() {
+  const sel = document.getElementById('negSwapSelect');
+  const hint = document.getElementById('negSwapTotalHint');
+  const club = myClub();
+  if (!sel || !hint || !club || !negState) return;
+  const cash = Number(document.getElementById('negFeeRange').value || 0);
+  const sp = sel.value ? club.squad.find(x => x.id === sel.value) : null;
+  if (sp) {
+    const sv = Number((sp.value * 0.85).toFixed(1));
+    negState.swapPlayer = sp;
+    negState.swapValue = sv;
+    hint.textContent = `Toplam Paket: ${fmtMoney(cash)} Nakit + ${sp.name} (${fmtMoney(sv)}) = ${fmtMoney(Number((cash + sv).toFixed(1)))}`;
+  } else {
+    negState.swapPlayer = null;
+    negState.swapValue = 0;
+    hint.textContent = '';
+  }
+}
+
+const swapSelEl = document.getElementById('negSwapSelect');
+if (swapSelEl) swapSelEl.addEventListener('change', updateNegSwapHint);
+const feeRngEl = document.getElementById('negFeeRange');
+if (feeRngEl) feeRngEl.addEventListener('input', updateNegSwapHint);
+
+const _v37StartNeg = startNegotiation;
+startNegotiation = function(player, sourceClubId) {
+  _v37StartNeg(player, sourceClubId);
+  if (negState) {
+    negState.swapPlayer = null;
+    negState.swapValue = 0;
+    populateNegSwapSelect();
+  }
+};
+
+const _v37HandleClubOffer = handleClubOffer;
+handleClubOffer = function() {
+  if (!negState || negState.stage !== 1) return;
+  const club = myClub();
+  const cashOffer = Number(document.getElementById('negFeeRange').value);
+  if (cashOffer > club.budget) { showToast('Transfer bütçen bu nakit teklife yetmiyor!'); return; }
+  const swapVal = negState.swapValue || 0;
+  const totalOffer = Number((cashOffer + swapVal).toFixed(1));
+  if (totalOffer >= negState.minFee) {
+    negState.agreedFee = cashOffer;
+    negState.stage = 2;
+    document.getElementById('negStageBadge').textContent = 'AŞAMA 2 / 2 · MAAŞ & SÖZLEŞME';
+    document.getElementById('negStage1Wrap').classList.add('hidden');
+    document.getElementById('negStage2Wrap').classList.remove('hidden');
+    const wRange = document.getElementById('negWageRange');
+    wRange.min = 0.4; wRange.max = Math.max(12, Number((negState.desiredWage * 2.2).toFixed(1)));
+    wRange.value = Math.max(0.4, Number((negState.desiredWage * 0.96).toFixed(1)));
+    document.getElementById('negWageVal').textContent = `${fmtMoney(wRange.value)} / yıl`;
+    const swapTxt = negState.swapPlayer ? ` + ${negState.swapPlayer.name} takası` : '';
+    document.getElementById('negDialogueBox').textContent = `${negState.sellerClub.name} ile ${fmtMoney(cashOffer)}${swapTxt} karşılığında el sıkıştın! Şimdi ${negState.player.name} yıllık yaklaşık ${fmtMoney(negState.desiredWage)} maaş bekliyor.`;
+  } else {
+    const isInsulting = totalOffer < negState.minFee * 0.78;
+    negState.roundsLeft -= isInsulting ? 2 : 1;
+    if (negState.roundsLeft <= 0) {
+      document.getElementById('negotiationModal').classList.add('hidden');
+      showToast(isInsulting ? `${negState.sellerClub.name} düşük teklife sinirlenip masadan kalktı!` : 'Kulüp masadan kalktı, görüşme iptal oldu');
+      return;
+    }
+    const counter = Number(Math.max(negState.minFee, (negState.askFee * 0.65 + negState.minFee * 0.35)).toFixed(1));
+    negState.askFee = counter;
+    document.getElementById('negRoundsHint').textContent = `Kalan Tur: ${negState.roundsLeft}`;
+    document.getElementById('negDialogueBox').textContent = isInsulting
+      ? `${negState.sellerClub.name}: "Bu paket ciddiyetten çok uzak! Toplamda en az ${fmtMoney(counter)} seviyesine çıkmalısın."`
+      : `${negState.sellerClub.name}: "Teklifin (${fmtMoney(totalOffer)}) biraz düşük kaldı. ${fmtMoney(counter)} değerinde paket sunarsan el sıkışırız."`;
+  }
+};
+
+const _v37HandleWageOffer = handleWageOffer;
+handleWageOffer = function() {
+  const snapSwap = negState ? negState.swapPlayer : null;
+  const snapSeller = negState ? negState.sellerClub : null;
+  const snapFee = negState ? negState.agreedFee : 0;
+  const snapPlayer = negState ? negState.player : null;
+  const club = myClub();
+  const prevLen = club ? club.squad.length : 0;
+  _v37HandleWageOffer();
+  if (club && club.squad.length > prevLen && snapPlayer) {
+    // Transfer succeeded -> complete swap player move & record transfer fee!
+    if (snapSwap && snapSeller) {
+      club.squad = club.squad.filter(x => x.id !== snapSwap.id);
+      snapSeller.squad.push(snapSwap);
+      snapSeller.lineup = autoAssignLineup(snapSeller.squad, snapSeller.formation);
+      showToast(`🔄 ${snapSwap.name} takas kapsamında ${snapSeller.name} ekibine gönderildi!`);
+    }
+    if (snapFee > 0) recordTransferInHistory('buy', snapPlayer.name, snapFee, club.name);
+    saveActiveCareer();
+  }
+};
+
+// -------------------------------------------------------------------------
+// 8. TRANSFER & LOAN LIST + INCOMING AI OFFERS COUNTER-NEGOTIATION!
+// -------------------------------------------------------------------------
+let activeIncOffer = null;
+
+function openIncomingOfferModal(msg) {
+  if (!msg || !msg.incomingOffer || msg.incomingOffer.resolved) return;
+  const club = myClub();
+  const off = msg.incomingOffer;
+  const p = club ? club.squad.find(x => x.id === off.playerId) : null;
+  const buyer = getClub(off.buyerClubId);
+  if (!p || !buyer) { off.resolved = true; showToast('Bu teklif artık geçerli değil.'); return; }
+
+  activeIncOffer = { msg, off, p, buyer };
+  const isLoan = off.offerType === 'loan';
+  document.getElementById('incOfferBadge').textContent = isLoan ? 'GELEN KİRALAMA TEKLİFİ' : 'GELEN TRANSFER TEKLİFİ';
+  document.getElementById('incOfferTitle').textContent = `${p.name} (${p.pos} · Güç ${p.ovr})`;
+  document.getElementById('incOfferSliderLabel').textContent = isLoan ? 'Kiralama Bedeli Karşı Teklifin' : 'Bonservis Karşı Teklifin';
+  const rng = document.getElementById('incOfferRange');
+  const maxWilling = Number((off.fee * 1.45).toFixed(1));
+  rng.min = Number(Math.max(0.4, off.fee * 0.9).toFixed(1));
+  rng.max = Math.max(Number((off.fee * 1.75).toFixed(1)), 5);
+  rng.value = Number((off.fee * 1.18).toFixed(1));
+  off.maxWilling = off.maxWilling || maxWilling;
+  document.getElementById('incOfferVal').textContent = fmtMoney(rng.value);
+  document.getElementById('incOfferCurrentHint').textContent = `Mevcut Teklif: ${fmtMoney(off.fee)}`;
+  document.getElementById('incOfferRoundsHint').textContent = `Kalan Tur: ${off.roundsLeft}`;
+  document.getElementById('incOfferDialogue').textContent = isLoan
+    ? `${buyer.name}: "${p.name} için 1 sezonluğuna ${fmtMoney(off.fee)} kiralama bedeli teklif ediyoruz. Ne dersiniz?"`
+    : `${buyer.name}: "${p.name} için masaya ${fmtMoney(off.fee)} bonservis koyuyoruz. Anlaşabilir miyiz?"`;
+  document.getElementById('inboxModal').classList.add('hidden');
+  document.getElementById('incomingOfferModal').classList.remove('hidden');
+}
+
+const incRng = document.getElementById('incOfferRange');
+if (incRng) incRng.addEventListener('input', (e) => {
+  document.getElementById('incOfferVal').textContent = fmtMoney(e.target.value);
+});
+const closeIncBtn = document.getElementById('closeIncOfferBtn');
+if (closeIncBtn) closeIncBtn.addEventListener('click', () => document.getElementById('incomingOfferModal').classList.add('hidden'));
+
+function finalizeIncomingOffer(fee) {
+  if (!activeIncOffer) return;
+  const { off, p, buyer } = activeIncOffer;
+  const club = myClub();
+  if (!club || club.squad.length <= 14) { showToast('Kadroda en az 14 oyuncu kalmalı!'); return; }
+  off.resolved = true;
+  club.budget = Number((club.budget + fee).toFixed(1));
+  club.squad = club.squad.filter(x => x.id !== p.id);
+  club.lineup = autoAssignLineup(club.squad, club.formation);
+  delete p.isTransferListed; delete p.isLoanListed;
+  if (off.offerType === 'loan') {
+    p.loanedOutFrom = club.id;
+    buyer.squad.push(p);
+    showToast(`🤝 ${p.name}, ${fmtMoney(fee)} bedelle ${buyer.name} ekibine kiralandı!`);
+    pushSocialPost('club', club.name, '@' + club.short.toLowerCase() + 'resmi', `RESMİ | ${p.name}, 1 sezonluğuna ${buyer.name} ekibine kiralandı. Başarılar!`, club.bg, club.fg, club.short, true);
+  } else {
+    buyer.squad.push(p);
+    buyer.budget = Math.max(1, Number((buyer.budget - fee).toFixed(1)));
+    pickBestAiFormationAndLineup(buyer);
+    recordTransferInHistory('sell', p.name, fee, club.name);
+    showToast(`🤝 ${p.name}, ${fmtMoney(fee)} karşılığında ${buyer.name} ekibine satıldı!`);
+    pushSocialPost('club', club.name, '@' + club.short.toLowerCase() + 'resmi', `TEŞEKKÜRLER ${p.name.toUpperCase()} | Oyuncumuz ${fmtMoney(fee)} bonservisle ${buyer.name} kulübüne transfer oldu.`, club.bg, club.fg, club.short, true);
+  }
+  saveActiveCareer();
+  document.getElementById('incomingOfferModal').classList.add('hidden');
+  renderHeader();
+  if (currentTab === 'transfer') renderTransfer(); else renderHome();
+}
+
+const incAccBtn = document.getElementById('incOfferAcceptBtn');
+if (incAccBtn) incAccBtn.addEventListener('click', () => {
+  if (activeIncOffer) finalizeIncomingOffer(activeIncOffer.off.fee);
+});
+const incRejBtn = document.getElementById('incOfferRejectBtn');
+if (incRejBtn) incRejBtn.addEventListener('click', () => {
+  if (!activeIncOffer) return;
+  activeIncOffer.off.resolved = true;
+  saveActiveCareer();
+  document.getElementById('incomingOfferModal').classList.add('hidden');
+  showToast(`${activeIncOffer.buyer.name} teklifi reddedildi.`);
+});
+const incCntBtn = document.getElementById('incOfferCounterBtn');
+if (incCntBtn) incCntBtn.addEventListener('click', () => {
+  if (!activeIncOffer) return;
+  const { off, p, buyer } = activeIncOffer;
+  const asked = Number(document.getElementById('incOfferRange').value);
+  if (asked <= off.maxWilling) {
+    off.fee = asked;
+    finalizeIncomingOffer(asked);
+  } else {
+    off.roundsLeft--;
+    if (off.roundsLeft <= 0) {
+      off.resolved = true; saveActiveCareer();
+      document.getElementById('incomingOfferModal').classList.add('hidden');
+      showToast(`${buyer.name} talebini yüksek bulup masadan kalktı!`);
+      return;
+    }
+    const newOffer = Number(Math.min(off.maxWilling, off.fee + (off.maxWilling - off.fee) * 0.55).toFixed(1));
+    off.fee = newOffer;
+    document.getElementById('incOfferCurrentHint').textContent = `Mevcut Teklif: ${fmtMoney(newOffer)}`;
+    document.getElementById('incOfferRoundsHint').textContent = `Kalan Tur: ${off.roundsLeft}`;
+    document.getElementById('incOfferDialogue').textContent = `${buyer.name}: "${fmtMoney(asked)} bütçemizi aşıyor. Son olarak ${fmtMoney(newOffer)} teklif ediyoruz, el sıkışalım mı?"`;
+  }
+});
+
+// Enhance renderTransfer: Transfer/Loan List toggles in Sell Tab + Transfer Screen Pill Counters!
+const _v37RenderTransfer = renderTransfer;
+renderTransfer = function() {
+  _v37RenderTransfer();
+  const club = myClub();
+  if (!club || game.isUnemployed) return;
+  const sqPill = document.getElementById('transferSquadPillVal');
+  const lsPill = document.getElementById('transferListedPillVal');
+  if (sqPill) sqPill.textContent = `${club.squad.length} Oyuncu`;
+  if (lsPill) lsPill.textContent = `${club.squad.filter(p => p.isTransferListed || p.isLoanListed).length} Oyuncu`;
+
+  if (transferMode === 'sell') {
+    const sellEl = document.getElementById('transferSellList');
+    if (!sellEl) return;
+    sellEl.querySelectorAll('[data-sell-id]').forEach(sBtn => {
+      const pid = sBtn.dataset.sellId;
+      const p = club.squad.find(x => x.id === pid);
+      if (!p) return;
+      const row = sBtn.closest('.player-list-row');
+      const titleEl = row && row.querySelector('.wrap-text');
+      if (titleEl) {
+        if (p.isTransferListed && !titleEl.querySelector('.list-tag-sale')) titleEl.insertAdjacentHTML('beforeend', '<span class="list-tag-sale">Satılık</span>');
+        if (p.isLoanListed && !titleEl.querySelector('.list-tag-loan')) titleEl.insertAdjacentHTML('beforeend', '<span class="list-tag-loan">Kiralık</span>');
+      }
+      if (row && !row.querySelector('[data-toggle-list]')) {
+        const listBtn = document.createElement('button');
+        listBtn.type = 'button';
+        listBtn.dataset.toggleList = pid;
+        listBtn.className = (p.isTransferListed || p.isLoanListed) ? 'btn btn-soft' : 'btn btn-ghost';
+        listBtn.style.cssText = 'padding:5px 8px;font-size:10px;margin-right:4px;';
+        listBtn.textContent = p.isTransferListed ? 'Satılık ✓' : (p.isLoanListed ? 'Kiralık ✓' : 'Listele');
+        listBtn.addEventListener('click', () => {
+          if (!p.isTransferListed && !p.isLoanListed) { p.isTransferListed = true; showToast(`${p.name} Transfer Listesine eklendi — kulüplerden teklifler gelecek!`); }
+          else if (p.isTransferListed) { p.isTransferListed = false; p.isLoanListed = true; showToast(`${p.name} Kiralık Listesine alındı!`); }
+          else { p.isLoanListed = false; showToast(`${p.name} listeden çıkarıldı.`); }
+          saveActiveCareer();
+          renderTransfer();
+        });
+        sBtn.parentNode.insertBefore(listBtn, sBtn);
+      }
+    });
+  }
+};
+
+// -------------------------------------------------------------------------
+// 9. PRE-SIGNING CLUB CONTRACT & OBJECTIVES NEGOTIATION (#jobNegotiationModal)
+// -------------------------------------------------------------------------
+let activeJobNeg = null;
+
+function updateJobNegPreview() {
+  if (!activeJobNeg) return;
+  const amb = document.getElementById('jobNegAmbitionSelect').value;
+  const objs = buildSeasonObjectives(activeJobNeg.club, amb);
+  const mult = amb === 'iddiali' ? 1.15 : (amb === 'temkinli' ? 0.92 : 1.0);
+  const effBudget = Number((activeJobNeg.club.budget * mult).toFixed(1));
+  document.getElementById('jobNegObjPreview').innerHTML = `<strong style="color:var(--text);">Hedefler:</strong> ` + objs.map(o => o.title).join(' · ');
+  document.getElementById('jobNegBudgetPreview').textContent = `Başlangıç Bütçesi: ${fmtMoney(effBudget)}`;
+}
+
+function openJobNegotiationModal(targetClub, inboxMsgId) {
+  if (!targetClub) return;
+  const baseWage = Number(Math.max(0.8, ((targetClub.ovr || 74) - 65) * 0.28).toFixed(1));
+  const maxWage = Number((baseWage * 1.38).toFixed(1));
+  activeJobNeg = { club: targetClub, inboxMsgId, baseWage, maxWage, roundsLeft: 3 };
+
+  document.getElementById('jobNegClubTitle').textContent = `${targetClub.name} (${getLeagueMeta(targetClub.leagueId).name})`;
+  const rng = document.getElementById('jobNegWageRange');
+  rng.min = Number(Math.max(0.4, baseWage * 0.6).toFixed(1));
+  rng.max = Number(Math.max(5, baseWage * 2.1).toFixed(1));
+  rng.value = baseWage;
+  document.getElementById('jobNegWageVal').textContent = `${fmtMoney(baseWage)} / yıl`;
+  document.getElementById('jobNegYearsSelect').value = '2';
+  document.getElementById('jobNegBonusSelect').value = 'mid';
+  document.getElementById('jobNegAmbitionSelect').value = 'standart';
+  document.getElementById('jobNegRoundsHint').textContent = 'Kalan Görüşme Hakkı: 3';
+  document.getElementById('jobNegDialogue').textContent = `${targetClub.name} Başkanı: "Hoş geldin ${game.managerName}. Seninle çalışmak istiyoruz; yıllık ${fmtMoney(baseWage)} maaş ve hedeflerimizi konuşalım."`;
+  updateJobNegPreview();
+
+  document.getElementById('inboxModal').classList.add('hidden');
+  document.getElementById('jobOffersModal').classList.add('hidden');
+  document.getElementById('jobNegotiationModal').classList.remove('hidden');
+}
+
+const jnWageRng = document.getElementById('jobNegWageRange');
+if (jnWageRng) jnWageRng.addEventListener('input', (e) => {
+  document.getElementById('jobNegWageVal').textContent = `${fmtMoney(e.target.value)} / yıl`;
+});
+const jnAmbSel = document.getElementById('jobNegAmbitionSelect');
+if (jnAmbSel) jnAmbSel.addEventListener('change', updateJobNegPreview);
+const closeJnBtn = document.getElementById('closeJobNegBtn');
+if (closeJnBtn) closeJnBtn.addEventListener('click', () => {
+  document.getElementById('jobNegotiationModal').classList.add('hidden');
+  showToast('Görüşmeden ayrıldın, imza atılmadı.');
+});
+
+const jnSubBtn = document.getElementById('jobNegSubmitBtn');
+if (jnSubBtn) jnSubBtn.addEventListener('click', () => {
+  if (!activeJobNeg) return;
+  const { club: target, inboxMsgId } = activeJobNeg;
+  const wage = Number(document.getElementById('jobNegWageRange').value);
+  const years = Number(document.getElementById('jobNegYearsSelect').value);
+  const bonus = document.getElementById('jobNegBonusSelect').value;
+  const amb = document.getElementById('jobNegAmbitionSelect').value;
+
+  const bonusTol = bonus === 'high' ? 0.90 : (bonus === 'low' ? 1.08 : 1.0);
+  const ambTol = amb === 'iddiali' ? 1.15 : (amb === 'temkinli' ? 0.88 : 1.0);
+  const maxAcceptWage = Number((activeJobNeg.maxWage * bonusTol * ambTol).toFixed(1));
+
+  if (wage <= maxAcceptWage) {
+    // AGREEMENT REACHED! Sign with negotiated contract & objectives!
+    if (inboxMsgId) {
+      const msg = (game.inbox || []).find(m => m.id === inboxMsgId);
+      if (msg) msg.offerResolved = true;
+    }
+    const prevMgr = getManagerForClub(target.id);
+    if (prevMgr && !prevMgr.isUser) {
+      archiveManagerStint(prevMgr);
+      prevMgr.clubId = null;
+    }
+    target.managerId = 'USER';
+    if (amb === 'iddiali') target.budget = Number((target.budget * 1.15).toFixed(1));
+    else if (amb === 'temkinli') target.budget = Number((target.budget * 0.92).toFixed(1));
+
+    game.isUnemployed = false;
+    game.unemployedWeeks = 0;
+    const oldClub = myClub();
+    switchUserToClub(target, oldClub && oldClub.id !== target.id ? oldClub : null, false);
+    game.objectives = buildSeasonObjectives(target, amb);
+    game.managerMeta.contract = { clubId: target.id, wage, years, until: game.seasonYear + years, bonus, ambition: amb };
+    saveActiveCareer();
+    document.getElementById('jobNegotiationModal').classList.add('hidden');
+    showToast(`✍️ ${target.name} ile ${years} yıllık (${fmtMoney(wage)}/yıl) sözleşme imzaladın!`);
+    switchTab('home');
+  } else {
+    activeJobNeg.roundsLeft--;
+    if (activeJobNeg.roundsLeft <= 0) {
+      if (inboxMsgId) {
+        const msg = (game.inbox || []).find(m => m.id === inboxMsgId);
+        if (msg) msg.offerResolved = true;
+      }
+      saveActiveCareer();
+      document.getElementById('jobNegotiationModal').classList.add('hidden');
+      showToast(`${target.name} yönetimi şartlarını kabul etmedi; anlaşma sağlanamadı!`);
+      return;
+    }
+    document.getElementById('jobNegRoundsHint').textContent = `Kalan Görüşme Hakkı: ${activeJobNeg.roundsLeft}`;
+    document.getElementById('jobNegDialogue').textContent = `${target.name} Başkanı: "Yıllık ${fmtMoney(wage)} talebin bütçemizi zorluyor. En fazla ${fmtMoney(maxAcceptWage)} civarına çıkabiliriz (veya daha iddialı hedef taahhüt edersen esneyebiliriz)."`;
+  }
+});
+
+// Route Inbox Job Offers through #jobNegotiationModal!
+acceptInboxJobOffer = function(clubId, msgId) {
+  const target = getClub(clubId);
+  if (target) openJobNegotiationModal(target, msgId);
+};
+
+// Also route openJobOffersModal clicks through #jobNegotiationModal!
+const _v37OpenJobOffers = openJobOffersModal;
+openJobOffersModal = function() {
+  _v37OpenJobOffers();
+  const listEl = document.getElementById('jobOffersList');
+  if (!listEl) return;
+  listEl.querySelectorAll('[data-join-club]').forEach(btn => {
+    const clone = btn.cloneNode(true);
+    btn.parentNode.replaceChild(clone, btn);
+    clone.textContent = 'Görüşmeye Otur';
+    clone.addEventListener('click', () => {
+      const target = getClub(clone.dataset.joinClub);
+      if (target) openJobNegotiationModal(target, null);
+    });
+  });
+};
+
+// -------------------------------------------------------------------------
+// 10. INTERACTIVE INBOX REPLIES (PLAYER TALKS, USER RUMOR BOARD MSG, INCOMING OFFERS)
+// -------------------------------------------------------------------------
+const _v37RenderInbox = renderInboxModal;
+renderInboxModal = function() {
+  _v37RenderInbox();
+  const active = (game.inbox || []).find(x => x.id === activeInboxId) || (game.inbox && game.inbox[0]);
+  const wrap = document.getElementById('inboxInteractiveWrap');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  wrap.classList.add('hidden');
+  if (!active) return;
+
+  // A) Incoming AI Transfer / Loan Offer button
+  if (active.incomingOffer && !active.incomingOffer.resolved) {
+    wrap.classList.remove('hidden');
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'btn btn-primary'; b.style.cssText = 'padding:7px 12px;font-size:11.5px;';
+    b.textContent = '🤝 Teklifi Görüş / Karşılık Ver';
+    b.onclick = () => openIncomingOfferModal(active);
+    wrap.appendChild(b);
+  }
+  // B) Player Individual Talk buttons
+  else if (active.playerTalk && !active.playerTalk.resolved) {
+    wrap.classList.remove('hidden');
+    const mc = myClub();
+    const p = mc && mc.squad.find(x => x.id === active.playerTalk.playerId);
+    const addBtn = (txt, cls, fn) => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = `btn ${cls}`; b.style.cssText = 'padding:6px 10px;font-size:11px;';
+      b.textContent = txt; b.onclick = () => { active.playerTalk.resolved = true; fn(); saveActiveCareer(); renderInboxModal(); };
+      wrap.appendChild(b);
+    };
+    addBtn('Daha Fazla Süre Sözü Ver', 'btn-primary', () => {
+      if (p) p.morale = Math.min(100, (p.morale || 60) + 18);
+      showToast(`${p ? p.name : 'Oyuncu'} sözüne sevindi (+Moral)!`);
+    });
+    addBtn('Rotasyonu Açıkla', 'btn-soft', () => {
+      if (p) p.morale = Math.min(100, (p.morale || 60) + 8);
+      showToast(`${p ? p.name : 'Oyuncu'} açıklamanı olgunlukla karşıladı.`);
+    });
+    addBtn('Satılık / Kiralık Listeye Koy', 'btn-ghost', () => {
+      if (p) { if (p.age <= 22) p.isLoanListed = true; else p.isTransferListed = true; p.morale = Math.max(30, (p.morale || 60) - 5); }
+      showToast(`${p ? p.name : 'Oyuncu'} transfer/kiralık listesine alındı!`);
+    });
+  }
+  // C) User Rumor Board Question buttons
+  else if (active.rumorBoard && !active.rumorBoard.resolved) {
+    wrap.classList.remove('hidden');
+    const addBtn = (txt, cls, fn) => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = `btn ${cls}`; b.style.cssText = 'padding:6px 10px;font-size:11px;';
+      b.textContent = txt; b.onclick = () => { active.rumorBoard.resolved = true; fn(); saveActiveCareer(); renderInboxModal(); renderManager(); };
+      wrap.appendChild(b);
+    };
+    addBtn('Kulübüme %100 Sadığım', 'btn-primary', () => {
+      game.managerMeta.trustBonus = (game.managerMeta.trustBonus || 0) + 6;
+      pushSocialPost('pundit', 'Basın Odası', '@BasinOdasi', `${game.managerName}, ${active.rumorBoard.clubName} iddialarını kesin dille yalanladı: "Tek odağım mevcut kulübüm!"`, '#0f172a', '#34d399', 'BO', true);
+      showToast('Başkan yanıtından çok memnun kaldı (+Yönetim Güveni)!');
+    });
+    addBtn('Sezon Sonu Değerlendiririz', 'btn-ghost', () => {
+      game.managerMeta.trustBonus = (game.managerMeta.trustBonus || 0) - 6;
+      pushSocialPost('pundit', 'Kulis Haber', '@KulisHaberTR', `SICAK: ${game.managerName}, ${active.rumorBoard.clubName} söylentilerine açık kapı bıraktı!`, '#1c1917', '#fbbf24', 'KH', true);
+      showToast('Yönetim bu açıklamadan pek hoşlanmadı.');
+    });
+  }
+};
+
+// -------------------------------------------------------------------------
+// 11. MANAGER FORMATION ADOPTION + 2-STAGE SACKING RUMORS + WEEKLY OFFERS & PLAYER TALKS
+// -------------------------------------------------------------------------
+function applyManagerStyleToClub(club, mgr) {
+  if (!club || !mgr) return;
+  club.formation = FORMATIONS[mgr.prefFormation] ? mgr.prefFormation : '4-2-3-1';
+  const styleMap = { 'Hücum': 'ofansif', 'Gegenpress': 'ofansif', 'Topa Sahip': 'dengeli', 'Kontra': 'kontra', 'Savunma': 'defansif' };
+  if (mgr.style && styleMap[mgr.style]) club.mentality = styleMap[mgr.style];
+  club.lineup = autoAssignLineup(club.squad, club.formation);
+}
+
+const _v37HireReplacement = hireReplacementManagerForClub;
+hireReplacementManagerForClub = function(club, excludeMgrId) {
+  const chosen = _v37HireReplacement(club, excludeMgrId);
+  if (chosen && club) applyManagerStyleToClub(club, chosen);
+  return chosen;
+};
+
+// Upgrade processAiManagerCarousel to 2-Stage Sacking:
+// Week N: Official sacking + 2-3 Candidate Rumors on Social Media (+ User Rumor & Board Inbox if user is hot!)
+// Week N+1: Official Club Announcement of the New Manager + Club Formation Transformation!
+processAiManagerCarousel = function() {
+  if (!game || !game.managers) return;
+
+  // Step 0: Finalize any pending vacant clubs from last week -> Official Announcement!
+  game.clubs.forEach(c => {
+    if (c.pendingHire && game.week >= c.pendingHire.announceWeek) {
+      const ph = c.pendingHire;
+      delete c.pendingHire;
+      if (c.id !== game.myClubId) {
+        const newMgr = hireReplacementManagerForClub(c, ph.excludeMgrId);
+        if (newMgr && (c.leagueId === game.activeLeagueId || (c.ovr || 74) >= 79)) {
+          pushSocialPost('club', c.name, '@' + c.short.toLowerCase() + 'resmi',
+            `RESMİ AÇIKLAMA | Kulübümüz, teknik direktörlük görevi için ${newMgr.name} (${newMgr.prefFormation}) ile anlaşmaya varmıştır. Hoş geldin hocam!`,
+            c.bg, c.fg, c.short, true);
+        }
+      }
+    }
+  });
+
+  if (game.week < 5) return;
+
+  // Step 1: User Board Trust Kulis Leak when trust < 52%
+  if (!game.isUnemployed && myClub() && !game.managerMeta.meetingPending) {
+    const myTrust = computeBoardTrust();
+    const lastLeak = game.managerMeta.lastTrustLeakWeek || -10;
+    if (myTrust < 52 && (game.week - lastLeak) >= 4 && Math.random() < 0.65) {
+      game.managerMeta.lastTrustLeakWeek = game.week;
+      const mc = myClub();
+      pushSocialPost('pundit', 'Kulis Haber', '@KulisHaberTR', pick([
+        `KULİS: ${mc.name} yönetiminde ${game.managerName} için sabır tükeniyor! Önümüzdeki maçlarda çıkış gelmezse acil toplantı kapıda.`,
+        `SICAK GELİŞME: ${mc.name} kulislerinden sızan bilgilere göre yönetim ${game.managerName}'nın performansından memnun değil (Güven %${myTrust}).`,
+        `ÖZEL HABER: ${mc.name} taraftarı ve yönetim kanadında ${game.managerName}'nın koltuğu sallanıyor; alternatif hocalar konuşulmaya başlandı.`,
+        `SON KULİS: ${mc.name} soyunma odasında gerilim artıyor; yönetim acil durum planı hazırladı.`
+      ]), '#1c1917', '#f59e0b', 'KH', true);
+    }
+  }
+
+  // Step 2: Gather underperforming AI clubs across 7 leagues
+  const candidates = [];
+  LEAGUES_META.forEach(lm => {
+    const st = getSortedStandings(lm.id);
+    st.forEach((c, idx) => {
+      if (c.id === game.myClubId || c.pendingHire) return;
+      const m = getManagerForClub(c.id);
+      if (!m || m.isUser) return;
+      if ((game.week - (m.hiredWeek || 0)) < 6) return;
+      const rank = idx + 1;
+      const expected = Math.max(1, Math.round(st.length * (1 - ((c.ovr - 66) / 26))));
+      const underperf = rank - expected;
+      const lossStreak = (c.form || []).slice(-4).filter(x => x === 'L').length;
+      const winless5 = (c.form || []).length >= 5 && !(c.form || []).slice(-5).includes('W');
+      const inRelZone = rank > st.length - 3 && game.week >= 9;
+      if (underperf >= 3 || lossStreak >= 3 || winless5 || inRelZone) {
+        const pressure = Math.max(0, underperf) + lossStreak * 1.2 + (winless5 ? 2 : 0) + (inRelZone ? 2 : 0) + (lm.id === game.activeLeagueId ? 2.5 : 0);
+        candidates.push({ club: c, mgr: m, score: pressure });
+      }
+    });
+  });
+  if (!candidates.length) return;
+  candidates.sort((a, b) => b.score - a.score);
+
+  const maxActions = Math.min(2, candidates.length);
+  for (let k = 0; k < maxActions; k++) {
+    const top = candidates[k];
+    const sackProb = k === 0 ? (top.score >= 8 ? 0.68 : 0.48) : (top.score >= 7 ? 0.40 : 0.25);
+    if (Math.random() > sackProb) continue;
+
+    const victimClub = top.club, oldMgr = top.mgr;
+    const resigned = Math.random() < 0.20;
+    archiveManagerStint(oldMgr);
+    oldMgr.clubId = null;
+    victimClub.managerId = null;
+
+    // Pick 2-3 rumored free-agent candidates for Social Media buzz!
+    const freeCands = game.managers.filter(x => !x.clubId && x.id !== oldMgr.id)
+      .sort((a, b) => Math.abs(a.rep - (victimClub.ovr || 74)) - Math.abs(b.rep - (victimClub.ovr || 74)))
+      .slice(0, 3);
+    const candNames = freeCands.map(x => x.name);
+
+    // Check if USER is rumored for this vacant job!
+    const totals = getManagerTotals();
+    const userHot = !game.isUnemployed && totals.p >= 6 && totals.ppg >= 1.85 && Math.abs((victimClub.ovr || 74) - (myClub().ovr || 74)) <= 7;
+    if (userHot && Math.random() < 0.35 && (game.week - (game.managerMeta.lastRumorWeek || -10)) >= 6) {
+      game.managerMeta.lastRumorWeek = game.week;
+      candNames.unshift(game.managerName);
+      pushInboxMsg('Yönetim', `${myClub().name} Başkanı`, `⚠️ ${victimClub.name} İddiaları Hakkında`,
+        `Hocam basında adının ${victimClub.name} ile anıldığını gördük. Bu iddialar taraftarı ve yönetimimizi huzursuz etti. Bize net bir cevap vermeni bekliyoruz.`);
+      if (game.inbox[0]) game.inbox[0].rumorBoard = { clubName: victimClub.name, resolved: false };
+    }
+
+    // Schedule official new manager announcement for next week!
+    victimClub.pendingHire = { announceWeek: game.week + 1, excludeMgrId: oldMgr.id };
+
+    if (victimClub.leagueId === game.activeLeagueId || (victimClub.ovr || 74) >= 79) {
+      pushSocialPost('club', victimClub.name, '@' + victimClub.short.toLowerCase() + 'resmi',
+        resigned
+          ? `KAMUOYUNA DUYURU | Teknik direktörümüz ${oldMgr.name} görevinden istifa etmiştir. Kendisine teşekkür ederiz.`
+          : `KAMUOYUNA DUYURU | Teknik direktörümüz ${oldMgr.name} ile yollarımız ayrılmıştır. Yeni hoca görüşmeleri başlamıştır.`,
+        victimClub.bg, victimClub.fg, victimClub.short, true);
+      if (candNames.length) {
+        pushSocialPost('pundit', 'Transfer Muhabiri', '@TransferHaber',
+          `🔥 KULİS: ${victimClub.name}'de yeni teknik direktör adayları netleşiyor! Masadaki isimler: ${candNames.slice(0, 3).join(', ')}. Resmi açıklama haftaya bekleniyor!`,
+          '#0f172a', '#fbbf24', 'TH', true);
+      }
+    }
+
+    // Send direct Inbox Job Offer if user is unemployed!
+    const userRep = 72 + Math.round((totals.ppg - 1.2) * 8) + (game.trophies || []).length * 4;
+    const alreadyOffered = (game.inbox || []).some(m => m.offerClubId === victimClub.id && !m.offerResolved);
+    if (game.isUnemployed && !alreadyOffered && Math.abs((victimClub.ovr || 74) - userRep) <= 11 && Math.random() < 0.72) {
+      const lName = getLeagueMeta(victimClub.leagueId).name;
+      const st = getSortedStandings(victimClub.leagueId);
+      const r = st.findIndex(x => x.id === victimClub.id) + 1;
+      pushInboxMsg('Yönetim', `${victimClub.name} Başkanı`, `📩 Resmi Teklif: ${victimClub.name}`,
+        `${game.managerName}, ${oldMgr.name} ile yollarımızı ayırdık. ${lName}'de ${r}. sıradayız (Güç ${getClubEffectiveOvr(victimClub)}, Bütçe ${fmtMoney(victimClub.budget)}). Masaya oturup maaş ve hedefleri konuşmak istiyoruz!`);
+      if (game.inbox[0]) { game.inbox[0].offerClubId = victimClub.id; game.inbox[0].offerResolved = false; }
+    }
+  }
+};
+
+// Weekly hook: Generate Incoming Offers for Transfer/Loan-Listed players + Interactive Player Talks + Derby Pre-Match Hype!
+const _v37ProcessWeekly = processWeeklyCycle;
+processWeeklyCycle = function() {
+  _v37ProcessWeekly();
+  const mc = myClub();
+  if (!mc || game.isUnemployed) return;
+  syncScorerRecordsFromMyClub();
+
+  // A) Incoming AI Purchase / Loan Offers for Listed Players (or occasional star bid during transfer windows)
+  const listed = mc.squad.filter(p => (p.isTransferListed || p.isLoanListed) && !p.loanFrom);
+  if (listed.length && Math.random() < 0.58) {
+    const p = pick(listed);
+    const alreadyOpen = (game.inbox || []).some(m => m.incomingOffer && !m.incomingOffer.resolved && m.incomingOffer.playerId === p.id);
+    if (!alreadyOpen) {
+      const buyers = game.clubs.filter(c => c.id !== mc.id && c.budget >= Math.max(1, p.value * 0.5));
+      const buyer = buyers.length ? pick(buyers) : pick(game.clubs.filter(c => c.id !== mc.id));
+      if (buyer) {
+        const isLoan = !!p.isLoanListed && !p.isTransferListed;
+        const fee = isLoan
+          ? Number(Math.max(0.5, p.value * randInt(12, 18) / 100).toFixed(1))
+          : Number(Math.max(0.8, p.value * (0.85 + Math.random() * 0.25)).toFixed(1));
+        pushInboxMsg('Transfer', `${buyer.name} Sportif Direktörü`,
+          isLoan ? `📩 Kiralama Teklifi: ${p.name} (${fmtMoney(fee)})` : `📩 Transfer Teklifi: ${p.name} (${fmtMoney(fee)})`,
+          `Merhaba ${game.managerName}, ${isLoan ? 'kiralık' : 'transfer'} listenizdeki ${p.name} (${p.pos} · Güç ${p.ovr}) için ${fmtMoney(fee)} resmi teklif sunuyoruz. Masaya oturup karşılık verebilirsiniz.`);
+        if (game.inbox[0]) {
+          game.inbox[0].incomingOffer = { playerId: p.id, buyerClubId: buyer.id, offerType: isLoan ? 'loan' : 'buy', fee, roundsLeft: 3, resolved: false };
+        }
+      }
+    }
+  }
+
+  // B) Organic Interactive Player Talk (benched star or rising youngster knocking on your door)
+  if (game.week >= 5 && Math.random() < 0.26) {
+    const stSet = new Set(mc.lineup || []);
+    const talkCand = mc.squad.find(p => !stSet.has(p.id) && !isPlayerUnavailable(p) && p.ovr >= (mc.ovr || 75) - 3 && !(game.inbox || []).some(m => m.playerTalk && !m.playerTalk.resolved && m.playerTalk.playerId === p.id));
+    if (talkCand) {
+      const lines = [
+        `Hocam son haftalarda kulübede beklemek beni zorluyor. Antrenmanlarda çok çalışıyorum, ilk 11'de daha fazla şans istiyorum.`,
+        `Hocam kariyerim için düzenli oynamam şart. Beni ilk 11 planında görüyor musun yoksa kiralık/transfer seçeneklerine mi bakalım?`,
+        `Hocam takıma çok katkı verebileceğime inanıyorum ama süre alamayınca formum düşüyor. Önümüzdeki maçlarda bana güvenebilir misin?`
+      ];
+      pushInboxMsg('Oyuncu', talkCand.name, `💬 Bireysel Görüşme Talebi: ${talkCand.name}`, pick(lines));
+      if (game.inbox[0]) game.inbox[0].playerTalk = { playerId: talkCand.id, resolved: false };
+    }
+  }
+
+  // C) Pre-Match Derby Social Media Hype!
+  const nextWeekMatches = game.schedule && game.schedule[game.week];
+  const nextMyM = nextWeekMatches ? nextWeekMatches.find(m => m.home === mc.id || m.away === mc.id) : null;
+  if (nextMyM) {
+    const dName = getDerbyName(nextMyM.home, nextMyM.away);
+    if (dName) {
+      const hc = getClub(nextMyM.home), ac = getClub(nextMyM.away);
+      pushSocialPost('fan', 'Tribün Sesi', '@TribunSesi',
+        pick([
+          `🔥 ${dName.toUpperCase()} HAFTASI! ${hc.name} - ${ac.name} maçı için nefesler tutuldu, biletler saniyeler içinde tükendi!`,
+          `⚡ DEV DERBİ KAPIDA! ${hc.name} vs ${ac.name} — ${game.managerName} bu büyük sınavdan zaferle çıkabilecek mi?`,
+          `🏟️ Şehirde tek gündem ${dName}! Taraftarlar koreografi hazırlığında, sahada kıran kırana mücadele bekleniyor!`
+        ]), '#dc2626', '#fef08a', '🔥', true);
+    }
+  }
+};
+
+// -------------------------------------------------------------------------
+// 12. 3× EXPANDED PRESS CONFERENCE, HALFTIME & SOCIAL MEDIA DIALOGUES!
+// -------------------------------------------------------------------------
+const EXTRA_PRESS_QUESTIONS = [
+  { q: 'Son haftalardaki oyun planınız ve kadro rotasyonunuz taraftarlar arasında çok konuşuluyor. Bu konuda ne söylersiniz?',
+    opts: [
+      { txt: 'Her oyuncuma güveniyorum, uzun maratonda rotasyon şart.', morale: 5, trust: 3, post: 'oyuncularına tam destek verdi.' },
+      { txt: 'Sahada sadece en hazır ve en çok mücadele edenler formayı giyer.', morale: 2, trust: 5, post: 'forma rekabetinin altını çizdi.' },
+      { txt: 'Taktik detayları soyunma odasında konuşuruz, basında değil.', morale: 3, trust: 1, post: 'taktik sırlarını vermedi.' }
+    ]
+  },
+  { q: 'Transfer dönemi ve kadro derinliği hakkında taraftara bir mesajınız var mı?',
+    opts: [
+      { txt: 'Elimizdeki kadro harika ama fırsat çıkarsa nokta atışı yapabiliriz.', morale: 4, trust: 4, post: 'nokta atışı transfer sinyali verdi.' },
+      { txt: 'Altyapıdan gelen gençlerimize şans verip geleceği kuruyoruz.', morale: 6, trust: 4, post: 'genç oyunculara güvendiğini açıkladı.' },
+      { txt: 'Şu an sadece sıradaki maça odaklıyız, transfer konuşmanın zamanı değil.', morale: 3, trust: 3, post: 'odak noktasının sadece saha olduğunu vurguladı.' }
+    ]
+  },
+  { q: 'Hakem kararları ve maçın sertlik düzeyi hakkında ne düşünüyorsunuz?',
+    opts: [
+      { txt: 'Hakemler hakkında konuşmam, biz kendi oyunumuza ve gollerimize bakarız.', morale: 3, trust: 6, post: 'hakem tartışmalarına girmedi.' },
+      { txt: 'Oyuncularımın sahada daha iyi korunmasını bekliyorum.', morale: 6, trust: -1, post: 'oyuncularını sert şekilde savundu.' },
+      { txt: 'Büyük maçlarda tansiyon yüksek olur, önemli olan soğukkanlı kalmak.', morale: 4, trust: 4, post: 'soğukkanlılık mesajı verdi.' }
+    ]
+  },
+  { q: 'Zirve yarışındaki rakiplerinizin formunu nasıl değerlendiriyorsunuz?',
+    opts: [
+      { txt: 'Rakiplere saygı duyuyoruz ama kendi oyunumuzu oynarsak kimse bizi durduramaz.', morale: 6, trust: 4, post: 'şampiyonluk iddiasını ortaya koydu!' },
+      { txt: 'Lig çok zorlu ve dengeli; her hafta final havasında oynuyoruz.', morale: 4, trust: 5, post: 'her maça final gözüyle baktıklarını söyledi.' },
+      { txt: 'Başkalarının ne yaptığıyla ilgilenmiyorum, kendi puanımıza bakarız.', morale: 3, trust: 3, post: 'rakiplerle ilgilenmediğini net şekilde belirtti.' }
+    ]
+  }
+];
+
+// Inject extra rich Turkish press questions dynamically if press pool is used
+if (typeof PRESS_BANK !== 'undefined' && Array.isArray(PRESS_BANK)) {
+  EXTRA_PRESS_QUESTIONS.forEach(item => PRESS_BANK.push(item));
+}
+
+// -------------------------------------------------------------------------
+// 13. ENHANCE MANAGER TAB: HORIZONTAL TROPHIES, DISTINCT INDIVIDUAL AWARDS & CLUB RECORDS!
+// -------------------------------------------------------------------------
+const _v37RenderManager = renderManager;
+renderManager = function() {
+  _v37RenderManager();
+  if (!game) return;
+  syncScorerRecordsFromMyClub();
+
+  // A) Horizontal Trophy Strip
+  const tBox = document.getElementById('mgrTrophiesBox');
+  if (tBox) {
+    const trophies = game.trophies || [];
+    if (trophies.length) {
+      tBox.innerHTML = `<div class="trophy-strip">` + trophies.map(t => `
+        <div class="trophy-strip-card">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
+            <span style="font-size:18px;">🏆</span>
+            <span style="font-size:9.5px;font-weight:800;color:#fbbf24;">${t.season}</span>
+          </div>
+          <div style="font-size:12px;font-weight:800;line-height:1.25;color:var(--text);">${t.title}</div>
+          <div style="display:flex;align-items:center;gap:5px;margin-top:2px;">
+            <span class="club-crest" style="width:18px;height:18px;font-size:7.5px;background:${t.clubBg || '#334155'};color:${t.clubFg || '#fff'};">${t.clubShort || 'KLB'}</span>
+            <span class="truncate" style="font-size:10px;color:var(--muted);">${t.clubName}</span>
+          </div>
+        </div>`).join('') + `</div>`;
+    } else {
+      tBox.innerHTML = '<div style="font-size:11.5px;color:var(--muted);padding:4px 0;">Henüz kazanılmış kupa yok — ilk kupan burada yatay vitrinde sergilenecek.</div>';
+    }
+  }
+
+  // B) Distinct Individual Awards (purple/cyan pills with unique icons!)
+  const rec = ensureRecordsMeta();
+  const indWrap = document.getElementById('mgrIndAwardsWrap');
+  const indBox = document.getElementById('mgrIndAwardsBox');
+  if (indWrap && indBox && rec) {
+    const inds = rec.individualAwards || [];
+    if (inds.length) {
+      indWrap.classList.remove('hidden');
+      indBox.innerHTML = inds.map(a => `<span class="ind-award-pill"><span class="ind-award-ico">${a.icon || '🎖️'}</span><span>${a.title} (${a.season})</span></span>`).join('');
+    } else {
+      indWrap.classList.add('hidden');
+    }
+  }
+
+  // C) Club & Career Records Book
+  const recGrid = document.getElementById('mgrRecordsGrid');
+  if (recGrid && rec) {
+    const bw = game.managerMeta.biggestWin;
+    const topScorerEntry = Object.entries(rec.allTimeScorers || {}).sort((a, b) => b[1].goals - a[1].goals)[0];
+    recGrid.innerHTML = `
+      <div class="record-tile"><div style="font-size:10px;color:var(--muted);">⚽ En Golcü Oyuncu</div><div class="truncate" style="font-size:12px;font-weight:800;margin-top:2px;">${topScorerEntry ? `${topScorerEntry[0]} (${topScorerEntry[1].goals} Gol)` : 'Henüz yok'}</div></div>
+      <div class="record-tile"><div style="font-size:10px;color:var(--muted);">🔥 En Farklı Galibiyet</div><div class="truncate" style="font-size:12px;font-weight:800;margin-top:2px;">${bw ? `${bw.myG}-${bw.opG} vs ${bw.oppName}` : 'Henüz yok'}</div></div>
+      <div class="record-tile"><div style="font-size:10px;color:var(--muted);">💸 En Pahalı Alım</div><div class="truncate" style="font-size:12px;font-weight:800;margin-top:2px;color:#34d399;">${rec.mostExpensiveBuy ? `${rec.mostExpensiveBuy.name} (${fmtMoney(rec.mostExpensiveBuy.fee)})` : 'Henüz yok'}</div></div>
+      <div class="record-tile"><div style="font-size:10px;color:var(--muted);">💰 En Pahalı Satış</div><div class="truncate" style="font-size:12px;font-weight:800;margin-top:2px;color:#fbbf24;">${rec.mostExpensiveSell ? `${rec.mostExpensiveSell.name} (${fmtMoney(rec.mostExpensiveSell.fee)})` : 'Henüz yok'}</div></div>`;
+  }
+};
+
+// Also upgrade AI Manager Modal trophies vs individual awards visual distinction!
+const _v37OpenAiMgr = openAiManagerModal;
+openAiManagerModal = function(mgrId) {
+  _v37OpenAiMgr(mgrId);
+  const m = (game.managers || []).find(x => x.id === mgrId);
+  const tEl = document.getElementById('aiMgrTrophies');
+  if (!m || !tEl) return;
+  const cups = m.trophies || [];
+  const inds = m.awards || [];
+  if (!cups.length && !inds.length) return;
+  tEl.innerHTML = `
+    ${cups.length ? `<div class="trophy-strip" style="width:100%;">${cups.map(t => `<span class="pot-badge" style="flex:0 0 auto;background:rgba(251,191,36,0.18);color:#fbbf24;border:1px solid rgba(251,191,36,0.4);">🏆 ${t}</span>`).join('')}</div>` : ''}
+    ${inds.length ? `<div class="ind-award-strip" style="width:100%;margin-top:4px;">${inds.map(a => `<span class="ind-award-pill" style="padding:4px 9px;font-size:10px;"><span class="ind-award-ico" style="width:16px;height:16px;font-size:9px;">🎖️</span>${a}</span>`).join('')}</div>` : ''}`;
+};
+
+// Stamp Manager of the Year into user's individualAwards when user wins it!
+const _v37ComputeAwards = computeSeasonAwards;
+computeSeasonAwards = function() {
+  const aw = _v37ComputeAwards();
+  if (aw && aw.bestMgr && aw.bestMgr.isUser) {
+    const rec = ensureRecordsMeta();
+    const sStr = `${game.seasonYear}-${String(game.seasonYear + 1).slice(2)}`;
+    if (rec && !rec.individualAwards.some(a => a.title === 'Yılın Teknik Direktörü' && a.season === sStr)) {
+      rec.individualAwards.unshift({ title: 'Yılın Teknik Direktörü', season: sStr, icon: '👔' });
+    }
+  }
+  return aw;
+};
+
+// Hook completeNewSeasonTransition to initialize Super Cups & ensure all AI clubs adopt their manager's formation!
+const _v37CompleteSeason = completeNewSeasonTransition;
+completeNewSeasonTransition = function() {
+  const prevStandingsMap = {};
+  LEAGUES_META.forEach(lm => { prevStandingsMap[lm.id] = getSortedStandings(lm.id).map(c => c.id); });
+  const prevCups = game.cups ? JSON.parse(JSON.stringify(game.cups)) : null;
+  _v37CompleteSeason();
+  initSuperCupsForNewSeason(prevStandingsMap, prevCups);
+  // Ensure every AI club plays its manager's preferred formation!
+  game.clubs.forEach(c => {
+    if (c.id !== game.myClubId) {
+      const m = getManagerForClub(c.id);
+      if (m) applyManagerStyleToClub(c, m);
+    }
+  });
+  saveActiveCareer();
+};
+
+// Also ensure AI clubs play their manager's preferred formation on new career / load!
+const _v37EnterCareer = enterCareer;
+enterCareer = function(careerObj) {
+  _v37EnterCareer(careerObj);
+  if (game && game.clubs) {
+    game.clubs.forEach(c => {
+      if (c.id !== game.myClubId) {
+        const m = getManagerForClub(c.id);
+        if (m && FORMATIONS[m.prefFormation] && c.formation !== m.prefFormation) {
+          applyManagerStyleToClub(c, m);
+        }
+      }
+    });
+    if (myClub()) ensureClubRoles(myClub());
   }
 };
 
