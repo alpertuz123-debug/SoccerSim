@@ -853,7 +853,7 @@ select:focus, select:active, button:focus, button:active, input:focus, a:focus {
 <div class="menu-logo-ring">
 <svg class="svg-icon" style="width:28px;height:28px;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m12 6 3 4-1 5H10l-1-5 3-4Z"/><path d="M12 2v4"/><path d="m4.93 10.93 4.07-.93"/><path d="m19.07 10.93-4.07-.93"/><path d="m6.5 18.5 3.5-3.5"/><path d="m17.5 18.5-3.5-3.5"/></svg>
 </div>
-<div class="btn-soft" style="display:inline-flex;padding:3px 10px;border-radius:999px;font-size:10px;font-weight:700;margin-bottom:6px;">2026–27 DÜNYA SÜRÜMÜ · 7 LİG · v50</div>
+<div class="btn-soft" style="display:inline-flex;padding:3px 10px;border-radius:999px;font-size:10px;font-weight:700;margin-bottom:6px;">2026–27 DÜNYA SÜRÜMÜ · 7 LİG · v51</div>
 <h1 style="font-size:24px;font-weight:800;margin:0 0 4px;letter-spacing:-0.02em;">Soccer Simulator</h1>
 <p style="font-size:12px;color:var(--muted);margin:0;">Kendi teknik direktörlük kariyerini kur ve yönet.</p>
 </div>
@@ -16751,7 +16751,7 @@ enterCareer = function(careerObj) {
 
 
 // =========================================================================
-// v50: SMART OPEN-LANE PASSING, PLAYING OUT FROM THE BACK, EMERGENCY-ONLY
+// v51: SMART OPEN-LANE PASSING, PLAYING OUT FROM THE BACK, EMERGENCY-ONLY
 //      LONG CLEARANCES, SMOOTH 2s OUTRO & 15-19 HIGHLIGHTS PER MATCH!
 // =========================================================================
 (function initMatch2DV47() {
@@ -18735,6 +18735,454 @@ enterCareer = function(careerObj) {
     }
 
     _v49DecideFM(pl);
+  };
+})();
+
+
+// =========================================================================
+// v51: RARE GENUINE-ONLY "TAKIM SAKİNCE ÇIKTI", WIDE-OPEN FLANK/RUNNER PASS
+//      PRIORITY, REALISTIC SHOTS & GOALS, HI-DPI SUPER-SHARP CANVAS,
+//      THEME-REACTIVE 2D PITCH, CALMER FM TEMPO & HARD ANTI-OVERLAP SOLVER!
+// =========================================================================
+(function initMatch2DV51() {
+  const eng = window.Match2DEngine;
+  if (!eng) return;
+
+  const PITCH_W = 105;
+  const PITCH_H = 68;
+
+  eng.lastPitchTheme = null;
+  eng.v51WideOpenPasses = 0;
+  eng.v51CalmBuildCap = 0;
+
+  // 1. THEME-REACTIVE 2D PITCH PALETTES (MATCHES TACTICS PITCH FOR DARK / LIGHT / STADIUM / GLASS!)
+  const PITCH_THEMES = {
+    dark:    { surround: '#071b11', stripeA: '#103b22', stripeB: '#144729', line: 'rgba(255,255,255,0.74)', net: 'rgba(255,255,255,0.14)' },
+    light:   { surround: '#1d472f', stripeA: '#265c3d', stripeB: '#2d6a47', line: 'rgba(255,255,255,0.84)', net: 'rgba(255,255,255,0.20)' },
+    stadium: { surround: '#072213', stripeA: '#124a27', stripeB: '#175930', line: 'rgba(220,252,231,0.80)', net: 'rgba(220,252,231,0.18)' },
+    glass:   { surround: '#082919', stripeA: '#0c4026', stripeB: '#105030', line: 'rgba(255,255,255,0.82)', net: 'rgba(255,255,255,0.20)' }
+  };
+
+  eng.getActivePitchTheme = function() {
+    const t = (typeof document !== 'undefined' && document.body && document.body.dataset && document.body.dataset.theme) || 'dark';
+    return PITCH_THEMES[t] ? t : 'dark';
+  };
+
+  // 2. HI-DPI SUPER-SHARP CANVAS RESOLUTION (2.5x - 3.5x SUPERSAMPLED FOR CRISP PLAYERS & PITCH!)
+  eng.resize = function() {
+    if (!this.canvas) return;
+    const stage = document.getElementById('live2dStage');
+    const rect = stage && stage.getBoundingClientRect ? stage.getBoundingClientRect() : { width: 380, height: 246 };
+    const w = Math.max(260, Math.round(rect.width || 380));
+    const h = Math.max(168, Math.round(rect.height || Math.round(w * PITCH_H / PITCH_W)));
+    const rawDpr = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
+    const dpr = Math.max(2.5, Math.min(3.5, rawDpr * 1.25));
+    const curTheme = this.getActivePitchTheme();
+    if (this.cw === w && this.ch === h && this.dpr === dpr && this.lastPitchTheme === curTheme && this.pitchCache) return;
+    this.cw = w; this.ch = h; this.dpr = dpr;
+    this.lastPitchTheme = curTheme;
+    this.padX = Math.max(12, Math.round(w * 0.036));
+    this.padY = Math.max(10, Math.round(h * 0.044));
+    this.canvas.width = Math.round(w * dpr);
+    this.canvas.height = Math.round(h * dpr);
+    this.canvas.style.width = w + 'px';
+    this.canvas.style.height = h + 'px';
+    if (this.ctx) {
+      this.ctx.imageSmoothingEnabled = true;
+      if ('imageSmoothingQuality' in this.ctx) this.ctx.imageSmoothingQuality = 'high';
+    }
+    this.buildPitchCache();
+  };
+
+  eng.buildPitchCache = function() {
+    if (typeof document === 'undefined' || !document.createElement) return;
+    const off = document.createElement('canvas');
+    off.width = Math.round(this.cw * this.dpr);
+    off.height = Math.round(this.ch * this.dpr);
+    const ctx = off.getContext && off.getContext('2d');
+    if (!ctx) return;
+    ctx.scale(this.dpr, this.dpr);
+    ctx.imageSmoothingEnabled = true;
+    if ('imageSmoothingQuality' in ctx) ctx.imageSmoothingQuality = 'high';
+
+    const themeKey = this.getActivePitchTheme();
+    this.lastPitchTheme = themeKey;
+    const pal = PITCH_THEMES[themeKey] || PITCH_THEMES.dark;
+
+    const innerW = this.cw - this.padX * 2;
+    const innerH = this.ch - this.padY * 2;
+    const px = (mx) => this.padX + (mx / PITCH_W) * innerW;
+    const py = (my) => this.padY + (my / PITCH_H) * innerH;
+    const sx = (m) => (m / PITCH_W) * innerW;
+    const sy = (m) => (m / PITCH_H) * innerH;
+
+    // 1. Outer grass surround (theme-matched)
+    ctx.fillStyle = pal.surround;
+    ctx.fillRect(0, 0, this.cw, this.ch);
+
+    // 2. Alternating vertical mowing stripes (10 crisp stripes)
+    const stripes = 10;
+    const sw = innerW / stripes;
+    for (let i = 0; i < stripes; i++) {
+      ctx.fillStyle = i % 2 === 0 ? pal.stripeA : pal.stripeB;
+      ctx.fillRect(this.padX + i * sw, this.padY, sw + 0.5, innerH);
+    }
+
+    // 3. Crisp pitch lines
+    ctx.strokeStyle = pal.line;
+    ctx.lineWidth = Math.max(1.15, this.cw * 0.0022);
+    ctx.strokeRect(this.padX, this.padY, innerW, innerH);
+
+    // Halfway line & center circle
+    ctx.beginPath();
+    ctx.moveTo(px(PITCH_W / 2), this.padY);
+    ctx.lineTo(px(PITCH_W / 2), this.padY + innerH);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.ellipse(px(PITCH_W / 2), py(PITCH_H / 2), sx(9.15), sy(9.15), 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = pal.line;
+    ctx.beginPath();
+    ctx.arc(px(PITCH_W / 2), py(PITCH_H / 2), 2.1, 0, Math.PI * 2);
+    ctx.fill();
+
+    const drawHalfBoxes = (isLeft) => {
+      const boxW = sx(16.5), boxH = sy(40.32), boxY = py((PITCH_H - 40.32) / 2);
+      const sixW = sx(5.5), sixH = sy(18.32), sixY = py((PITCH_H - 18.32) / 2);
+      const gx = isLeft ? this.padX : (this.padX + innerW - boxW);
+      const sxx = isLeft ? this.padX : (this.padX + innerW - sixW);
+      ctx.strokeRect(gx, boxY, boxW, boxH);
+      ctx.strokeRect(sxx, sixY, sixW, sixH);
+
+      const spotX = px(isLeft ? 11 : PITCH_W - 11);
+      ctx.beginPath();
+      ctx.arc(spotX, py(PITCH_H / 2), 1.9, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.beginPath();
+      if (isLeft) ctx.arc(spotX, py(PITCH_H / 2), sx(9.15), -0.65, 0.65);
+      else ctx.arc(spotX, py(PITCH_H / 2), sx(9.15), Math.PI - 0.65, Math.PI + 0.65);
+      ctx.stroke();
+
+      const goalH = sy(7.32), goalY = py((PITCH_H - 7.32) / 2);
+      const goalDepth = Math.max(5, this.padX * 0.65);
+      const goalX = isLeft ? (this.padX - goalDepth) : (this.padX + innerW);
+      ctx.fillStyle = pal.net;
+      ctx.fillRect(goalX, goalY, goalDepth, goalH);
+      ctx.strokeStyle = '#ffffff';
+      ctx.strokeRect(goalX, goalY, goalDepth, goalH);
+      ctx.strokeStyle = pal.line;
+    };
+    drawHalfBoxes(true);
+    drawHalfBoxes(false);
+
+    const cr = Math.max(4, sx(1.6));
+    [[this.padX, this.padY, 0, Math.PI/2], [this.padX+innerW, this.padY, Math.PI/2, Math.PI],
+     [this.padX+innerW, this.padY+innerH, Math.PI, Math.PI*1.5], [this.padX, this.padY+innerH, Math.PI*1.5, Math.PI*2]].forEach(([cx, cy, a1, a2]) => {
+      ctx.beginPath(); ctx.arc(cx, cy, cr, a1, a2); ctx.stroke();
+    });
+
+    this.pitchCache = off;
+  };
+
+  // Auto-rebuild pitch cache immediately whenever the user switches theme!
+  const _v50Render = eng.render.bind(eng);
+  eng.render = function() {
+    const curTheme = this.getActivePitchTheme();
+    if (curTheme !== this.lastPitchTheme) {
+      this.buildPitchCache();
+    }
+    if (this.ctx) {
+      this.ctx.imageSmoothingEnabled = true;
+      if ('imageSmoothingQuality' in this.ctx) this.ctx.imageSmoothingQuality = 'high';
+    }
+    _v50Render();
+  };
+
+  // 3. CALMER, MORE READABLE FM TEMPO (SLOWER PROGRESSION SO YOU CAN ENJOY EVERY PASS & RUN!)
+  eng.getAdaptivePace = function() {
+    const b = this.ball;
+    if (b && b.isShot) return 0.78;           // Crisp, dramatic shot & GK dive
+    if (this.kickoffStage > 0) return 0.56;
+    if (this.highlightOutro > 0) return 0.54;
+    if (!this.owner && b && Math.hypot(b.vx, b.vy) > 15) return 0.66; // Readable crisp pass flight
+    const nearBox = b && (b.x > PITCH_W - 24 || b.x < 24);
+    if (nearBox) return 0.60;                 // Tense box play
+    if (this.highlightFlippedOnce) return 0.62;
+    return 0.44;                              // Calm, readable FM Mobile build-up!
+  };
+
+  // 4. HARD 2-PASS PHYSICAL ANTI-OVERLAP SOLVER (PLAYERS NEVER CLIP OR STACK INSIDE EACH OTHER!)
+  const _v50StepPlayers = eng.stepPlayers.bind(eng);
+  eng.stepPlayers = function(dt) {
+    _v50StepPlayers(dt);
+
+    // 2-pass hard position resolution so visual discs NEVER overlap on mobile screens!
+    for (let pass = 0; pass < 2; pass++) {
+      for (let i = 0; i < this.players.length; i++) {
+        const a = this.players[i];
+        if (a.sentOff || a.pos === 'KL') continue;
+        for (let j = i + 1; j < this.players.length; j++) {
+          const b2 = this.players[j];
+          if (b2.sentOff || b2.pos === 'KL') continue;
+          const dx = a.x - b2.x, dy = a.y - b2.y;
+          const d = Math.hypot(dx, dy);
+          if (d < 0.001) {
+            a.x += 0.5; b2.x -= 0.5;
+            continue;
+          }
+          const isCarrierPair = this.owner && (this.owner.id === a.id || this.owner.id === b2.id);
+          // Hard minimum visual disc separation: 3.1m general, 2.45m when directly challenging carrier!
+          const minR = (a.side === b2.side) ? 3.5 : (isCarrierPair ? 2.45 : 3.10);
+          if (d < minR) {
+            const overlap = (minR - d) * 0.52;
+            const ux = dx / d, uy = dy / d;
+            a.x = Math.max(2.5, Math.min(PITCH_W - 2.5, a.x + ux * overlap));
+            a.y = Math.max(2.5, Math.min(PITCH_H - 2.5, a.y + uy * overlap));
+            b2.x = Math.max(2.5, Math.min(PITCH_W - 2.5, b2.x - ux * overlap));
+            b2.y = Math.max(2.5, Math.min(PITCH_H - 2.5, b2.y - uy * overlap));
+          }
+        }
+      }
+    }
+  };
+
+  // 5. SMART PASSING (ALWAYS SPOTS WIDE-OPEN WINGERS/RUNNERS!) +
+  //    RARE GENUINE-ONLY "TAKIM SAKİNCE ÇIKTI" (NEVER KILLS FORWARD ATTACKS!) +
+  //    REALISTIC DANGEROUS CHANCES & GOALS!
+  const _v50DecideFM = eng.decideFMAction.bind(eng);
+  eng.decideFMAction = function(pl) {
+    const isHome = pl.side === 'home';
+    const dir = isHome ? 1 : -1;
+    const defSide = isHome ? 'away' : 'home';
+    const goalX = isHome ? PITCH_W : 0;
+    const distGoal = Math.hypot(goalX - pl.x, PITCH_H / 2 - pl.y);
+    const angleY = Math.abs(pl.y - PITCH_H / 2);
+    const tp = this.getTacticalProfile(pl.side);
+
+    // Goalkeeper safe distribution
+    if (pl.pos === 'KL') {
+      _v50DecideFM(pl);
+      return;
+    }
+
+    // DEFENDING TEAM WON THE BALL INSIDE A HIGHLIGHT:
+    // - NEVER kill a forward/dangerous transition with "Takım sakince çıktı"!
+    // - Only conclude with "Takım sakince çıktı" when genuinely recycling BACKWARDS in own defensive third (and capped <= 3 per match)!
+    if (this.highlightActive && !this.highlightResolved && pl.side !== this.highlightSide) {
+      const inOwnDeepBox = isHome ? (pl.x < 14.5) : (pl.x > PITCH_W - 14.5);
+      const inOwnThird = isHome ? (pl.x < 34) : (pl.x > PITCH_W - 34);
+
+      let nearestPressD = 99;
+      for (let i = 0; i < this.players.length; i++) {
+        const op = this.players[i];
+        if (op.side !== pl.side && !op.sentOff) {
+          const d = Math.hypot(op.x - pl.x, op.y - pl.y);
+          if (d < nearestPressD) nearestPressD = d;
+        }
+      }
+
+      const allOpen = this.findOpenTeammates(pl, 50).filter(x => x.blockers === 0 && x.m.pos !== 'KL');
+      const fwdRunners = allOpen.filter(x => (x.m.x - pl.x) * dir > 4 && !this.isPlayerOffside(x.m, this.ball.x));
+
+      // PRIORITY 1: CONTINUE LIVE ATTACK / COUNTER whenever ANY forward runner or open lane exists!
+      if (fwdRunners.length >= 1 || (this.hasOpenDriveLane(pl) && !inOwnDeepBox)) {
+        this.highlightFlippedOnce = true;
+        this.highlightSide = pl.side;
+        this.highlightTimer = Math.max(this.highlightTimer, 16.0);
+        this.highlightPasses = 1;
+        this.countersFlipped++;
+        const counterClub = isHome ? (liveState && liveState.home) : (liveState && liveState.away);
+        const hud = document.getElementById('live2dHudTag');
+        if (hud && counterClub) {
+          hud.textContent = `🚀 KONTRA ATAK · ${counterClub.short} (${liveState ? liveState.minute : ''}')`;
+          hud.style.background = 'rgba(245,158,11,0.94)';
+          hud.style.color = '#0f172a';
+        }
+        if (fwdRunners.length >= 1) {
+          // Pick the most open / furthest forward runner (e.g. wide-open winger or striker!)
+          fwdRunners.sort((a, b) => (b.minOppD * 1.4 + (b.m.x - pl.x) * dir) - (a.minOppD * 1.4 + (a.m.x - pl.x) * dir));
+          const runner = fwdRunners[0].m;
+          const leadX = Math.max(5, Math.min(PITCH_W - 5, runner.x + dir * 6.0));
+          this.kickBall(pl, leadX, runner.y, 'through_ball', runner);
+          this.forwardPassCount++;
+          if (isHome) this.aiMetrics.passesHome++; else this.aiMetrics.passesAway++;
+          this.emit2DEvent({ type: 'pass', side: pl.side, player: pl, passType: 'through_ball' });
+        } else {
+          pl.drivingToGoal = true;
+          pl.holdTimer = 0.62;
+          this.soloDrives++;
+        }
+        return;
+      }
+
+      // PRIORITY 2: Genuine backward safety pass in own third -> rare "Takım sakince çıktı" (capped <= 3/match!)
+      const backSafe = this.findOpenTeammates(pl, 36).filter(x => x.blockers === 0 && (x.m.x - pl.x) * dir < -2);
+      if (inOwnThird && backSafe.length >= 1 && this.v51CalmBuildCap < 3 && !(inOwnDeepBox && nearestPressD < 2.6)) {
+        const safeMate = backSafe[0].m;
+        this.kickBall(pl, safeMate.x, safeMate.y, 'short_pass', safeMate);
+        this.emit2DEvent({ type: 'pass', side: pl.side, player: pl, passType: 'short_pass' });
+        this.buildOutPlays++;
+        this.calmRecycles++;
+        this.v51CalmBuildCap++;
+        this.concludeHighlight('🔄 TAKIM SAKİNCE ÇIKTI', 'rgba(15,23,42,0.88)', 1.75);
+        return;
+      }
+
+      // PRIORITY 3: Extreme emergency inside own box -> booming 50m clearance!
+      if (inOwnDeepBox && nearestPressD < 3.4) {
+        this.bootRealClearance(pl);
+        this.clearancesCount++;
+        this.concludeHighlight('🦵 TEHLİKE UZAKLAŞTIRILDI!', 'rgba(30,41,59,0.9)', 1.95);
+        return;
+      }
+
+      // Otherwise keep the highlight alive as this team builds up!
+      this.highlightSide = pl.side;
+      this.highlightTimer = Math.max(this.highlightTimer, 14.0);
+    }
+
+    // ATTACKING TEAM:
+    // PRIORITY 1: 1v1 WITH GK OR CLEAR SCORING CHANCE -> SHOOT!
+    const defsAhead = this.countDefendersAhead(pl);
+    const isOneOnOne = defsAhead <= 1 && distGoal <= 27 && angleY <= 18;
+    const inBox = distGoal <= 22.0 && angleY <= 17.5;
+    const edgeShot = distGoal <= 26.0 && angleY <= 15.0 && this.highlightPasses >= 1 && Math.random() < 0.62;
+
+    if (isOneOnOne && distGoal > 18.5) {
+      pl.drivingToGoal = true;
+      pl.holdTimer = 0.42;
+      this.soloDrives++;
+      return;
+    }
+
+    if (inBox || edgeShot || (isOneOnOne && distGoal <= 18.5)) {
+      // Crisp, clinical corner placement for realistic goal conversion (~2.3-3.2 goals/match!)
+      const cornerBias = (Math.random() < 0.5 ? -1 : 1) * (1.35 + Math.random() * 2.15);
+      this.kickBall(pl, goalX, PITCH_H / 2 + cornerBias, 'shot', null);
+      if (isOneOnOne) this.v50OneOnOneShots++;
+      if (isHome) this.aiMetrics.shotsHome++; else this.aiMetrics.shotsAway++;
+      const xg = (inBox || isOneOnOne)
+        ? Number(Math.max(0.18, Math.min(0.65, (23.0 - distGoal) * 0.032 * (1 - angleY / 28))).toFixed(2))
+        : Number(Math.max(0.06, Math.min(0.15, (28 - distGoal) * 0.015)).toFixed(2));
+      this.ball.shotDist = distGoal;
+      this.emit2DEvent({ type: 'shot', side: pl.side, player: pl, xg, distGoal });
+      return;
+    }
+
+    // PRIORITY 2: WING CROSS / CUTBACK FROM FINAL THIRD
+    const inFinalThird = isHome ? (pl.x > 77) : (pl.x < 28);
+    const isWide = pl.y < 16 || pl.y > PITCH_H - 16;
+    if (inFinalThird && isWide && Math.random() < 0.84) {
+      const boxMates = this.players.filter(m =>
+        m.side === pl.side && m.id !== pl.id && !m.sentOff &&
+        !this.isPlayerOffside(m, this.ball.x) &&
+        ['SNT', 'OOS', 'SLK', 'SĞK', 'OS'].includes(m.pos)
+      );
+      if (boxMates.length) {
+        boxMates.sort((a, b) => ((b.x - a.x) * dir));
+        const target = boxMates[0];
+        const bx = Math.max(8, Math.min(PITCH_W - 8, target.x + dir * 2.4));
+        const by = Math.max(20, Math.min(48, target.y));
+        this.kickBall(pl, bx, by, 'cross', target);
+        this.highlightPasses++;
+        this.forwardPassCount++;
+        if (isHome) this.aiMetrics.passesHome++; else this.aiMetrics.passesAway++;
+        this.emit2DEvent({ type: 'pass', side: pl.side, player: pl, passType: 'cross' });
+        return;
+      }
+    }
+
+    // PRIORITY 3: WIDE-OPEN RUNNER / FLANK SWITCH + SMART SHORT-PASSING PROGRESSION!
+    const offLine = this.getOffsideLineX(defSide);
+    const rawOpts = this.findOpenTeammates(pl, 50).filter(x => x.m.pos !== 'KL');
+
+    const validOpts = [];
+    for (let i = 0; i < rawOpts.length; i++) {
+      const o = rawOpts[i];
+      const mOff = this.isPlayerOffside(o.m, this.ball.x);
+      const offMargin = isHome ? (o.m.x - offLine) : (offLine - o.m.x);
+      if (mOff && offMargin > 0.85) {
+        this.blatantOffsidesAvoided++;
+        continue;
+      }
+      o.mOff = mOff;
+      validOpts.push(o);
+    }
+
+    if (validOpts.length) {
+      // STRICT FORWARD/LATERAL PRIORITY: Never turn backwards if ANY unblocked forward/lateral onside option exists!
+      const cleanForward = validOpts.filter(o => o.blockers === 0 && !o.mOff && (o.m.x - pl.x) * dir >= -1.5);
+      const pool = cleanForward.length ? cleanForward : validOpts;
+
+      let best = null, bestScore = -999;
+      for (let i = 0; i < pool.length; i++) {
+        const o = pool[i];
+        const m = o.m;
+        const fwdGain = (m.x - pl.x) * dir;
+        const mDistGoal = Math.hypot(goalX - m.x, PITCH_H / 2 - m.y);
+        const isShortMed = o.dist >= 6.5 && o.dist <= 24.0;
+        const isWideOpenRunner = !o.mOff && o.blockers === 0 && o.minOppD >= 6.0 && fwdGain > 2.5 && ['SLK','SĞK','SNT','OOS','SLB','SĞB'].includes(m.pos);
+
+        let score = fwdGain * 1.55 + Math.min(13, o.minOppD) * 1.75 - o.blockers * 34 + (Math.random() - 0.5) * 2.0;
+
+        // HUGE BONUS FOR WIDE-OPEN FLANK / RUNNER (e.g., wide-open right winger making a run — NEVER ignore them!)
+        if (isWideOpenRunner) score += 34;
+        // Strong bonus for clean short/medium progressive passes
+        if (isShortMed && o.blockers === 0 && o.minOppD >= 2.4 && fwdGain >= 0) score += 16;
+        // Killer pass into the box!
+        if (!o.mOff && mDistGoal <= 22 && o.blockers === 0) score += 34;
+        else if (!o.mOff && mDistGoal <= 30 && fwdGain > 3 && o.blockers === 0) score += 18;
+
+        if (o.mOff) score -= 54;
+        if (fwdGain < -2) score -= 46; // Strictly last resort!
+        if (score > bestScore) { bestScore = score; best = o; }
+      }
+
+      if (best) {
+        const m = best.m;
+        const fwd = (m.x - pl.x) * dir;
+        const isWideSwitch = !best.mOff && best.blockers === 0 && best.minOppD >= 6.0 && fwd > 2.5 && ['SLK','SĞK','SNT','OOS','SLB','SĞB'].includes(m.pos);
+        if (isWideSwitch) this.v51WideOpenPasses++;
+
+        const isThrough = (m.state === 'run' || ['SNT','SLK','SĞK','OOS'].includes(m.pos)) && fwd > 5 && best.dist > 10 && best.dist <= 30 && best.blockers === 0 && !best.mOff;
+        const pType = isThrough ? 'through_ball' : (best.dist > 26 ? 'long_pass' : 'short_pass');
+
+        let tx, ty;
+        if (isThrough) {
+          const leadDist = Math.min(6.4, Math.max(3.2, (isHome ? (PITCH_W - 9 - m.x) : (m.x - 9)) * 0.55));
+          tx = Math.max(5, Math.min(PITCH_W - 5, m.x + dir * leadDist));
+          ty = Math.max(5, Math.min(PITCH_H - 5, m.y + (PITCH_H / 2 - m.y) * 0.08));
+        } else {
+          tx = Math.max(4, Math.min(PITCH_W - 4, m.x + m.vx * 0.14));
+          ty = Math.max(4, Math.min(PITCH_H - 4, m.y + m.vy * 0.14));
+        }
+
+        this.kickBall(pl, tx, ty, pType, m);
+        this.highlightPasses++;
+        if (fwd >= -1.5) this.forwardPassCount++; else this.backwardPassCount++;
+        if (isHome) this.aiMetrics.passesHome++; else this.aiMetrics.passesAway++;
+        this.emit2DEvent({ type: 'pass', side: pl.side, player: pl, passType: pType });
+        return;
+      }
+    }
+
+    _v50DecideFM(pl);
+  };
+
+  // Generous highlight timer (26s) to match the calmer FM tempo so attacks reach real shots & goals!
+  const _v49StartHL = eng.startHighlightSequence.bind(eng);
+  eng.startHighlightSequence = function(attSide) {
+    _v49StartHL(attSide);
+    this.highlightTimer = 26.0;
+  };
+
+  const _v44InitRef = eng.initForMatch.bind(eng);
+  eng.initForMatch = function(home, away) {
+    this.v51CalmBuildCap = 0;
+    this.v51WideOpenPasses = 0;
+    _v44InitRef(home, away);
   };
 })();
 
