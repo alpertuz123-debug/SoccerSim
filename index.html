@@ -853,7 +853,7 @@ select:focus, select:active, button:focus, button:active, input:focus, a:focus {
 <div class="menu-logo-ring">
 <svg class="svg-icon" style="width:28px;height:28px;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m12 6 3 4-1 5H10l-1-5 3-4Z"/><path d="M12 2v4"/><path d="m4.93 10.93 4.07-.93"/><path d="m19.07 10.93-4.07-.93"/><path d="m6.5 18.5 3.5-3.5"/><path d="m17.5 18.5-3.5-3.5"/></svg>
 </div>
-<div class="btn-soft" style="display:inline-flex;padding:3px 10px;border-radius:999px;font-size:10px;font-weight:700;margin-bottom:6px;">2026–27 DÜNYA SÜRÜMÜ · 7 LİG · v57</div>
+<div class="btn-soft" style="display:inline-flex;padding:3px 10px;border-radius:999px;font-size:10px;font-weight:700;margin-bottom:6px;">2026–27 DÜNYA SÜRÜMÜ · 7 LİG · v58</div>
 <h1 style="font-size:24px;font-weight:800;margin:0 0 4px;letter-spacing:-0.02em;">Soccer Simulator</h1>
 <p style="font-size:12px;color:var(--muted);margin:0;">Kendi teknik direktörlük kariyerini kur ve yönet.</p>
 </div>
@@ -13417,7 +13417,7 @@ enterCareer = function(careerObj) {
       if (ev.gk && Math.random() < 0.65) {
         addFeedItem(min, ev.corner
           ? `🧤 ${ev.gk.name} müthiş uzandı, topu kornere çeldi!`
-          : `🧤 ${ev.gk.name} kritik bir kurtarışla gole izin vermedi!`, { type: 'neutral' });
+          : `🧤 ${ev.gk.name} ${['kritik bir kurtarışla gole izin vermedi!','parmaklarının ucuyla topu çıkardı!','müthiş bir refleksle gole set çekti!','köşeye giden topu harika uzanarak tuttu!','kalesinde devleşti, mutlak golü önledi!'][Math.floor(Math.random()*5)]}`, { type: 'neutral' });
       }
       updateLiveScoreboard();
     } else if (ev.type === 'goal') {
@@ -16751,7 +16751,7 @@ enterCareer = function(careerObj) {
 
 
 // =========================================================================
-// v57: SMART OPEN-LANE PASSING, PLAYING OUT FROM THE BACK, EMERGENCY-ONLY
+// v58: SMART OPEN-LANE PASSING, PLAYING OUT FROM THE BACK, EMERGENCY-ONLY
 //      LONG CLEARANCES, SMOOTH 2s OUTRO & 15-19 HIGHLIGHTS PER MATCH!
 // =========================================================================
 (function initMatch2DV47() {
@@ -22178,6 +22178,168 @@ enterCareer = function(careerObj) {
     this.v57CornerRestDefSum = 0;
     this.v57CornerDefBoxSum = 0;
     this.v57CornerChecks = 0;
+  };
+})();
+
+
+// =========================================================================
+// v58: DYNAMIC BALL-ZONE TEAM SHIFTING & GRADUAL PENDULUM SYSTEM
+//      - SMOOTH LOW-PASS BALL ANCHOR (GRADUAL, NATURAL TEAM TRANSITIONS!)
+//      - DEFENDING COMPACT BALL-SIDE SHIFTING (TUCKS FAR WING/FB, CLOSES HALF-SPACES)
+//      - ATTACKING BALL-SIDE TRIANGLES + WEAK-SIDE WIDTH PRESERVATION
+//      - 2ND CB COVER CUSHION + HONEST COUNTER->ATTACK HUD TRANSITION
+// =========================================================================
+(function initMatch2DV58() {
+  const eng = window.Match2DEngine;
+  if (!eng) return;
+
+  const PITCH_W = 105;
+  const PITCH_H = 68;
+
+  eng.smoothBallX = PITCH_W / 2;
+  eng.smoothBallY = PITCH_H / 2;
+
+  // Reset smoothed tactical ball anchor cleanly on match & highlight starts
+  const _v57Init = eng.initForMatch.bind(eng);
+  eng.initForMatch = function(home, away) {
+    _v57Init(home, away);
+    this.smoothBallX = PITCH_W / 2;
+    this.smoothBallY = PITCH_H / 2;
+  };
+
+  const _v57StartHL = eng.startHighlightSequence.bind(eng);
+  eng.startHighlightSequence = function(attSide) {
+    _v57StartHL(attSide);
+    this.smoothBallX = this.ball ? this.ball.x : (PITCH_W / 2);
+    this.smoothBallY = this.ball ? this.ball.y : (PITCH_H / 2);
+  };
+
+  // Update smoothed tactical ball anchor gradually each tick + keep counter HUD honest!
+  const _v56StepPlayers = eng.stepPlayers.bind(eng);
+  eng.stepPlayers = function(dt) {
+    if (this.ball) {
+      // Smooth low-pass filter (~0.45s natural tactical shift lag — players glide smoothly when ball switches flanks!)
+      const alpha = Math.min(1, dt * 2.2);
+      this.smoothBallX += (this.ball.x - this.smoothBallX) * alpha;
+      this.smoothBallY += (this.ball.y - this.smoothBallY) * alpha;
+    }
+
+    // Honest HUD transition: if a counter-attack slows down and >= 5 defenders recover behind the ball, switch badge to organized attack!
+    if (this.highlightActive && !this.highlightResolved && this.highlightFlippedOnce && this.ball) {
+      const attSide = this.highlightSide;
+      const defSide = attSide === 'home' ? 'away' : 'home';
+      const isH = attSide === 'home';
+      let defsRecovered = 0;
+      for (let i = 0; i < this.players.length; i++) {
+        const p = this.players[i];
+        if (p.side === defSide && !p.sentOff && p.pos !== 'KL') {
+          if (isH ? (p.x > this.ball.x - 1) : (p.x < this.ball.x + 1)) defsRecovered++;
+        }
+      }
+      if (defsRecovered >= 6 && this.highlightPasses >= 3) {
+        const hud = document.getElementById('live2dHudTag');
+        const attClub = isH ? (liveState && liveState.home) : (liveState && liveState.away);
+        if (hud && attClub && hud.textContent && hud.textContent.includes('KONTRA')) {
+          hud.textContent = `🔥 ORGANİZE ATAK · ${attClub.short} (${liveState ? liveState.minute : ''}')`;
+          hud.style.background = 'rgba(220,38,38,0.88)';
+          hud.style.color = '#ffffff';
+        }
+      }
+    }
+
+    _v56StepPlayers(dt);
+  };
+
+  // DYNAMIC BALL-ZONE TEAM SHIFTING LAYER (wraps v56 computeStructuredTarget cleanly!)
+  const _v56ComputeTarget = eng.computeStructuredTarget.bind(eng);
+  eng.computeStructuredTarget = function(pl, ballX, ballY, teamHasBall, tp) {
+    // Feed smoothed ball coordinates so team shifts gradually instead of snapping on fast cross-field switches!
+    const sbX = (typeof this.smoothBallX === 'number') ? this.smoothBallX : ballX;
+    const sbY = (typeof this.smoothBallY === 'number') ? this.smoothBallY : ballY;
+    const res = _v56ComputeTarget(pl, sbX, sbY, teamHasBall, tp);
+    if (pl.pos === 'KL') return res;
+
+    // Respect active timed off-ball intents (overlaps, depth runs, check-to-feet)
+    if (teamHasBall && pl.offIntent && pl.offIntent.timer > 0) return res;
+
+    const isHome = pl.side === 'home';
+    const pos = pl.pos;
+    const rt = this.getClubPhilosophy(pl.side);
+    const slot = pl.fSlot || { depth: 0.5, width: 0, colCount: 1 };
+
+    // Normalized lateral ball position: -1.0 (top touchline) .. 0.0 (center) .. +1.0 (bottom touchline)
+    const ballLat = Math.max(-1, Math.min(1, (sbY - PITCH_H / 2) / (PITCH_H / 2 - 4)));
+    const absLat = Math.abs(ballLat);
+    const isBallCentral = absLat < 0.26;
+    const isPlayerOnBallSide = (ballLat !== 0) && (Math.sign(slot.width) === Math.sign(ballLat));
+    const isPlayerOnFarSide = (ballLat !== 0) && (Math.sign(slot.width) === -Math.sign(ballLat)) && Math.abs(slot.width) >= 0.35;
+
+    if (!teamHasBall) {
+      // --- DEFENDING TEAM: COMPACT BALL-SIDE SHIFTING ("KAYMA & ALAN DARALTMA") ---
+      // Entire defending block shifts coherently toward ball's side & compresses horizontally to close half-spaces!
+      if (!isBallCentral) {
+        let shiftMeters = 0;
+        let compactFactor = 1.0;
+
+        if (pos === 'SLB' || pos === 'SĞB') {
+          shiftMeters = isPlayerOnBallSide ? (ballLat * 7.5) : (ballLat * 14.5); // Far FB tucks inside to protect back post!
+          compactFactor = 0.92;
+        } else if (pos === 'STP') {
+          shiftMeters = ballLat * 11.5;
+          compactFactor = 0.90;
+          // 2nd CB (far-side CB) holds clean 3.2m cover depth behind near CB instead of sandwiching striker!
+          if (isPlayerOnFarSide) {
+            const defDir = isHome ? -1 : 1;
+            res.x = Math.max(5.5, Math.min(PITCH_W - 5.5, res.x + defDir * 2.6));
+          }
+        } else if (pos === 'DOS' || pos === 'OS' || pos === 'OOS') {
+          shiftMeters = ballLat * 15.0; // Midfield shifts strongly to overload ball-side & close central corridors!
+          compactFactor = 0.88;
+        } else if (pos === 'SLK' || pos === 'SĞK') {
+          shiftMeters = isPlayerOnBallSide ? (ballLat * 9.0) : (ballLat * 17.5); // Far winger tucks into opposite half-space!
+          compactFactor = 0.89;
+        } else if (pos === 'SNT') {
+          shiftMeters = ballLat * 7.5;
+        }
+
+        // Blend smoothly toward shifted compact defensive Y
+        const centeredY = PITCH_H / 2 + (res.y - PITCH_H / 2) * compactFactor + shiftMeters;
+        res.y = res.y * 0.48 + centeredY * 0.52;
+      } else {
+        // Ball is CENTRAL: defend central lanes tightly, keep balanced horizontal compactness
+        const compactCenterY = PITCH_H / 2 + (res.y - PITCH_H / 2) * 0.88;
+        res.y = res.y * 0.55 + compactCenterY * 0.45;
+      }
+    } else {
+      // --- ATTACKING TEAM: BALL-SIDE PASSING TRIANGLES + WEAK-SIDE WIDTH PRESERVATION! ---
+      if (!isBallCentral) {
+        if (isPlayerOnFarSide && (pos === 'SLK' || pos === 'SĞK' || pos === 'SLB' || pos === 'SĞB')) {
+          // FAR-SIDE WIDE PLAYER: Hold touchline width so switch of play stays wide open!
+          const wideAnchorY = slot.width < 0 ? 6.5 : (PITCH_H - 6.5);
+          res.y = res.y * 0.35 + wideAnchorY * 0.65;
+        } else if (pos === 'DOS' || pos === 'OS' || pos === 'OOS') {
+          // Midfielders shift smoothly toward ball-side half-space to offer crisp short/medium passing triangles!
+          const triShift = ballLat * (isPlayerOnBallSide ? 11.5 : 8.0);
+          res.y = res.y * 0.50 + (PITCH_H / 2 + (res.y - PITCH_H / 2) * 0.85 + triShift) * 0.50;
+        } else if (pos === 'STP') {
+          // CBs shift moderately to provide safe diagonal recycle angle
+          res.y = res.y * 0.65 + (res.y + ballLat * 6.5) * 0.35;
+        } else if (pos === 'SNT') {
+          // Striker shades slightly toward ball-side channel while keeping central goal threat
+          res.y = res.y * 0.65 + (PITCH_H / 2 + ballLat * 9.5) * 0.35;
+        }
+      } else {
+        // Ball is CENTRAL: maintain crisp central midfield connections & balanced wide wingers on both flanks!
+        if (pos === 'SLK' || pos === 'SĞK') {
+          const wideAnchorY = slot.width < 0 ? 7.5 : (PITCH_H - 7.5);
+          res.y = res.y * 0.45 + wideAnchorY * 0.55;
+        }
+      }
+    }
+
+    res.x = Math.max(5, Math.min(PITCH_W - 5, res.x));
+    res.y = Math.max(4.5, Math.min(PITCH_H - 4.5, res.y));
+    return res;
   };
 })();
 
