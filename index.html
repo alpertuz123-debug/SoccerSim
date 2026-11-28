@@ -853,7 +853,7 @@ select:focus, select:active, button:focus, button:active, input:focus, a:focus {
 <div class="menu-logo-ring">
 <svg class="svg-icon" style="width:28px;height:28px;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m12 6 3 4-1 5H10l-1-5 3-4Z"/><path d="M12 2v4"/><path d="m4.93 10.93 4.07-.93"/><path d="m19.07 10.93-4.07-.93"/><path d="m6.5 18.5 3.5-3.5"/><path d="m17.5 18.5-3.5-3.5"/></svg>
 </div>
-<div class="btn-soft" style="display:inline-flex;padding:3px 10px;border-radius:999px;font-size:10px;font-weight:700;margin-bottom:6px;">2026–27 DÜNYA SÜRÜMÜ · 7 LİG · v58</div>
+<div class="btn-soft" style="display:inline-flex;padding:3px 10px;border-radius:999px;font-size:10px;font-weight:700;margin-bottom:6px;">2026–27 DÜNYA SÜRÜMÜ · 7 LİG · v59</div>
 <h1 style="font-size:24px;font-weight:800;margin:0 0 4px;letter-spacing:-0.02em;">Soccer Simulator</h1>
 <p style="font-size:12px;color:var(--muted);margin:0;">Kendi teknik direktörlük kariyerini kur ve yönet.</p>
 </div>
@@ -16751,7 +16751,7 @@ enterCareer = function(careerObj) {
 
 
 // =========================================================================
-// v58: SMART OPEN-LANE PASSING, PLAYING OUT FROM THE BACK, EMERGENCY-ONLY
+// v59: SMART OPEN-LANE PASSING, PLAYING OUT FROM THE BACK, EMERGENCY-ONLY
 //      LONG CLEARANCES, SMOOTH 2s OUTRO & 15-19 HIGHLIGHTS PER MATCH!
 // =========================================================================
 (function initMatch2DV47() {
@@ -22340,6 +22340,308 @@ enterCareer = function(careerObj) {
     res.x = Math.max(5, Math.min(PITCH_W - 5, res.x));
     res.y = Math.max(4.5, Math.min(PITCH_H - 4.5, res.y));
     return res;
+  };
+})();
+
+
+// =========================================================================
+// v59: CONTINUOUS POST-PLAY OUTRO & DECOUPLED VISUAL TRANSITION ENGINE
+//      - ZERO ABRUPT FREEZE BEFORE OR DURING OVERLAY FADE!
+//      - DECOUPLES LOGICAL END FROM VISUAL TRANSITION (FADE RUNS WHILE LIVE!)
+//      - OUTCOME-SPECIFIC FOLLOW-THROUGH: GOAL CELEBRATION, GK HOLD RETREAT,
+//        BLOCK/REBOUND REACTION, OUT-OF-BOUNDS DECELERATION & RESTART PREP
+//      - ZERO OVERLAPPING HIGHLIGHTS DURING TRANSITIONS
+// =========================================================================
+(function initMatch2DV59() {
+  const eng = window.Match2DEngine;
+  if (!eng) return;
+
+  const PITCH_W = 105;
+  const PITCH_H = 68;
+
+  eng.outroOutcome = 'normal';     // 'goal' | 'save_hold' | 'block_rebound' | 'out_of_bounds' | 'clearance' | 'turnover'
+  eng.outroScorer = null;
+  eng.outroGoalSide = null;
+  eng.outroTotalSec = 1.4;
+  eng.v59OutroFadeSamples = 0;
+  eng.v59OutroMovingDuringFade = 0;
+  eng.v59OutcomesSeen = { goal: 0, save_hold: 0, block_rebound: 0, out_of_bounds: 0, clearance: 0, turnover: 0 };
+
+  // Classify outcome cleanly whenever concludeHighlight is called
+  const _v43Conclude = eng.concludeHighlight.bind(eng);
+  eng.concludeHighlight = function(hudText, hudBg, outroSec) {
+    if (!this.highlightActive || this.highlightResolved) return;
+    const txt = String(hudText || '').toUpperCase();
+    if (txt.includes('TAÇ') || txt.includes('AUT') || txt.includes('KORNER') || txt.includes('OFSAYT')) {
+      this.outroOutcome = 'out_of_bounds';
+    } else if (txt.includes('KALECİ')) {
+      this.outroOutcome = 'save_hold';
+    } else if (txt.includes('UZAKLAŞTIR')) {
+      this.outroOutcome = 'clearance';
+    } else {
+      this.outroOutcome = 'turnover';
+    }
+    const dur = Math.max(1.35, outroSec || 1.45);
+    this.outroTotalSec = dur;
+    this.v59OutcomesSeen[this.outroOutcome] = (this.v59OutcomesSeen[this.outroOutcome] || 0) + 1;
+    _v43Conclude(hudText, hudBg, dur);
+  };
+
+  // Also capture goal / save / block outcomes triggered directly from shot resolution!
+  eng.eventCallbacks.push((ev) => {
+    if (!eng.highlightActive) return;
+    if (ev.type === 'goal') {
+      eng.outroOutcome = 'goal';
+      eng.outroScorer = ev.shooter || null;
+      eng.outroGoalSide = ev.side || null;
+      eng.outroTotalSec = 1.75;
+      eng.highlightOutro = Math.max(eng.highlightOutro || 0, 1.75);
+      eng.v59OutcomesSeen.goal++;
+    } else if (ev.type === 'save') {
+      eng.outroOutcome = ev.corner ? 'block_rebound' : 'save_hold';
+      eng.outroTotalSec = 1.50;
+      eng.highlightOutro = Math.max(eng.highlightOutro || 0, 1.50);
+      eng.v59OutcomesSeen[eng.outroOutcome]++;
+    }
+  });
+
+  // Reset outro metadata on new highlight
+  const _v58StartHL = eng.startHighlightSequence.bind(eng);
+  eng.startHighlightSequence = function(attSide) {
+    this.outroOutcome = 'normal';
+    this.outroScorer = null;
+    this.outroGoalSide = null;
+    this.outroTotalSec = 1.4;
+    _v58StartHL(attSide);
+  };
+
+  // Helper: Smooth steering during outro (natural deceleration + purposeful football follow-through!)
+  const steerSmooth = (pl, tx, ty, speedLimit, dt, damp) => {
+    const dx = tx - pl.x, dy = ty - pl.y;
+    const dist = Math.hypot(dx, dy);
+    const desVx = dist > 0.6 ? (dx / dist) * Math.min(speedLimit, dist * 2.2) : (pl.vx * damp);
+    const desVy = dist > 0.6 ? (dy / dist) * Math.min(speedLimit, dist * 2.2) : (pl.vy * damp);
+    const blend = Math.min(1, dt * 4.2);
+    pl.vx += (desVx - pl.vx) * blend;
+    pl.vy += (desVy - pl.vy) * blend;
+    pl.x = Math.max(2.0, Math.min(PITCH_W - 2.0, pl.x + pl.vx * dt));
+    pl.y = Math.max(2.0, Math.min(PITCH_H - 2.0, pl.y + pl.vy * dt));
+  };
+
+  // Outcome-Specific Continuous Follow-Through Behavior (NEVER freezes all players!)
+  eng.stepOutroPlayers = function(dt) {
+    const b = this.ball;
+    const outcome = this.lastActionType === 'block' ? 'block_rebound' : this.outroOutcome;
+    if (this.lastActionType === 'block' && !this._v59BlockCounted) {
+      this._v59BlockCounted = true;
+      this.v59OutcomesSeen.block_rebound++;
+    }
+
+    if (outcome === 'goal') {
+      // GOAL CELEBRATION: Scorer wheels toward corner flag, nearest 3 teammates jog to celebrate, opponents slowly jog back!
+      const scorer = this.outroScorer;
+      const gSide = this.outroGoalSide || (scorer && scorer.side) || this.highlightSide;
+      const isH = gSide === 'home';
+      const celebX = isH ? (PITCH_W - 7) : 7;
+      const celebY = (scorer && scorer.y < PITCH_H / 2) ? 7.5 : (PITCH_H - 7.5);
+      const mates = scorer ? this.players
+        .filter(p => p.side === gSide && p.id !== scorer.id && !p.sentOff && p.pos !== 'KL')
+        .sort((a, c) => Math.hypot(a.x - scorer.x, a.y - scorer.y) - Math.hypot(c.x - scorer.x, c.y - scorer.y))
+        .slice(0, 3) : [];
+      const celebSet = new Set(mates.map(m => m.id));
+
+      for (let i = 0; i < this.players.length; i++) {
+        const pl = this.players[i];
+        if (pl.sentOff) continue;
+        if (scorer && pl.id === scorer.id) {
+          steerSmooth(pl, celebX, celebY, 6.2, dt, 0.94);
+        } else if (celebSet.has(pl.id) && scorer) {
+          steerSmooth(pl, scorer.x, scorer.y, 4.8, dt, 0.94);
+        } else if (pl.pos === 'KL') {
+          steerSmooth(pl, pl.side === 'home' ? 4.5 : PITCH_W - 4.5, PITCH_H / 2, 2.2, dt, 0.92);
+        } else {
+          // Other players naturally decelerate and begin jogging calmly toward own half / kickoff shape
+          const resetX = pl.side === 'home' ? Math.min(PITCH_W / 2 - 4, pl.baseX) : Math.max(PITCH_W / 2 + 4, pl.baseX);
+          steerSmooth(pl, resetX, pl.baseY, pl.side === gSide ? 2.6 : 2.1, dt, 0.93);
+        }
+      }
+      return;
+    }
+
+    if (outcome === 'save_hold' || (this.gkHoldSafe && this.owner && this.owner.pos === 'KL')) {
+      // GK CONTROLS BALL: GK walks calmly forward inside box, attackers jog back to defend, defenders spread out to build!
+      const gk = (this.owner && this.owner.pos === 'KL') ? this.owner : this.players.find(p => p.pos === 'KL' && Math.hypot(p.x - b.x, p.y - b.y) < 12);
+      const gkSide = gk ? gk.side : (b.x < PITCH_W / 2 ? 'home' : 'away');
+      const gkDir = gkSide === 'home' ? 1 : -1;
+
+      for (let i = 0; i < this.players.length; i++) {
+        const pl = this.players[i];
+        if (pl.sentOff) continue;
+        if (gk && pl.id === gk.id) {
+          // GK steps calmly toward edge of 6-yard box holding the ball safely!
+          const tx = gkSide === 'home' ? 8.5 : (PITCH_W - 8.5);
+          steerSmooth(pl, tx, PITCH_H / 2 + (pl.y - PITCH_H / 2) * 0.4, 2.2, dt, 0.90);
+          b.x = pl.x + gkDir * 1.0; b.y = pl.y; b.z = 0; b.vx = pl.vx; b.vy = pl.vy;
+        } else if (pl.side === gkSide) {
+          // Defending team spreads out calmly into build-up outlets!
+          const spreadX = Math.max(10, Math.min(PITCH_W - 10, pl.x + gkDir * 8.5));
+          const spreadY = pl.y < PITCH_H / 2 ? Math.max(6, pl.y - 4.5) : Math.min(PITCH_H - 6, pl.y + 4.5);
+          steerSmooth(pl, spreadX, spreadY, 3.6, dt, 0.94);
+        } else {
+          // Attacking team retreats naturally back toward midfield!
+          const retX = Math.max(10, Math.min(PITCH_W - 10, pl.x + gkDir * 10.0));
+          steerSmooth(pl, retX, pl.baseY, 3.8, dt, 0.94);
+        }
+      }
+      return;
+    }
+
+    if (outcome === 'block_rebound') {
+      // SHOT BLOCKED / REBOUND: Nearest players actively react toward the deflected ball, others adjust stride!
+      const sorted = this.players
+        .filter(p => !p.sentOff && p.pos !== 'KL')
+        .sort((a, c) => Math.hypot(a.x - b.x, a.y - b.y) - Math.hypot(c.x - b.x, c.y - b.y));
+      const chasers = new Set(sorted.slice(0, 3).map(p => p.id));
+
+      for (let i = 0; i < this.players.length; i++) {
+        const pl = this.players[i];
+        if (pl.sentOff) continue;
+        if (chasers.has(pl.id)) {
+          steerSmooth(pl, b.x, b.y, 5.8, dt, 0.95);
+        } else {
+          // Surrounding players drift smoothly with the ball's new direction
+          const tx = Math.max(5, Math.min(PITCH_W - 5, pl.x + Math.sign(b.vx || 0) * 5));
+          const ty = Math.max(5, Math.min(PITCH_H - 5, pl.y + Math.sign(b.vy || 0) * 4));
+          steerSmooth(pl, tx, ty, 3.2, dt, 0.94);
+        }
+      }
+      return;
+    }
+
+    if (outcome === 'out_of_bounds') {
+      // OUT OF BOUNDS (Throw-in / Goal Kick / Corner / Offside): Nearest player jogs toward ball, others decelerate smoothly into shape!
+      const nearest = this.players
+        .filter(p => !p.sentOff && p.pos !== 'KL')
+        .sort((a, c) => Math.hypot(a.x - b.x, a.y - b.y) - Math.hypot(c.x - b.x, c.y - b.y))[0];
+
+      for (let i = 0; i < this.players.length; i++) {
+        const pl = this.players[i];
+        if (pl.sentOff) continue;
+        if (nearest && pl.id === nearest.id) {
+          steerSmooth(pl, b.x, b.y, 3.8, dt, 0.94);
+        } else {
+          // Gradual natural slowdown while drifting toward balanced shape (no sudden stop!)
+          steerSmooth(pl, pl.x + pl.vx * 0.45, pl.y + pl.vy * 0.45, Math.max(1.8, Math.hypot(pl.vx, pl.vy) * 0.85), dt, 0.94);
+        }
+      }
+      return;
+    }
+
+    // CLEARANCE / TURNOVER: Players continue transitioning naturally with the ball's flight!
+    const ballDirX = Math.sign(b.vx || (this.lastTouchSide === 'home' ? 1 : -1));
+    for (let i = 0; i < this.players.length; i++) {
+      const pl = this.players[i];
+      if (pl.sentOff) continue;
+      if (pl.pos === 'KL') {
+        steerSmooth(pl, pl.side === 'home' ? 5.5 : PITCH_W - 5.5, PITCH_H / 2, 2.0, dt, 0.92);
+      } else {
+        const tx = Math.max(5, Math.min(PITCH_W - 5, pl.x + ballDirX * 8.0));
+        const ty = Math.max(5, Math.min(PITCH_H - 5, pl.y + (b.y - pl.y) * 0.15));
+        steerSmooth(pl, tx, ty, 4.0, dt, 0.95);
+      }
+    }
+  };
+
+  // DECOUPLED VISUAL FADE + CONTINUOUS OUTRO SIMULATION IN stepPhysics!
+  const _v57StepPhysics = eng.stepPhysics.bind(eng);
+  eng.stepPhysics = function(dt) {
+    if (this.goalBannerTimer > 0) {
+      this.goalBannerTimer = Math.max(0, this.goalBannerTimer - dt);
+      if (this.goalBannerTimer === 0) {
+        const bEl = document.getElementById('live2dGoalBanner');
+        if (bEl) bEl.classList.add('hidden');
+      }
+    }
+    if (!liveState || liveState.finished || liveState.paused) return;
+
+    // Intercept ONLY the highlight outro phase in Highlights mode so players keep moving smoothly THROUGH the visual fade!
+    if (this.viewMode !== 'full' && this.kickoffStage === 0 && this.highlightActive && this.highlightOutro > 0) {
+      const adaptiveDt = dt * this.getAdaptivePace();
+      this.highlightOutro -= adaptiveDt;
+      const b = this.ball;
+
+      // 1. Real continuous ball flight/roll during outro (clearances, rebounds, passes)
+      if (!this.gkHoldSafe && !this.pendingKickoffSide && this.outroOutcome !== 'out_of_bounds') {
+        b.x += b.vx * adaptiveDt;
+        b.y += b.vy * adaptiveDt;
+        if (b.z > 0 || b.vz > 0) {
+          b.z += b.vz * adaptiveDt;
+          b.vz -= 18.5 * adaptiveDt;
+          if (b.z <= 0) {
+            b.z = 0;
+            b.vz = Math.abs(b.vz) > 2.0 ? -b.vz * 0.46 : 0;
+            b.vx *= 0.88; b.vy *= 0.88;
+          }
+          const airD = Math.pow(0.985, adaptiveDt * 30);
+          b.vx *= airD; b.vy *= airD;
+        } else {
+          const turfD = Math.pow(0.976, adaptiveDt * 30);
+          b.vx *= turfD; b.vy *= turfD;
+        }
+        if (Math.hypot(b.vx, b.vy) > 10) {
+          this.ballTrail.push({ x: b.x, y: b.y, z: b.z || 0 });
+          if (this.ballTrail.length > 7) this.ballTrail.shift();
+        }
+        b.x = Math.max(0.5, Math.min(PITCH_W - 0.5, b.x));
+        b.y = Math.max(0.5, Math.min(PITCH_H - 0.5, b.y));
+      }
+
+      // 2. Outcome-specific continuous player movement (ZERO abrupt freeze!)
+      this.stepOutroPlayers(adaptiveDt);
+
+      // 3. Smooth visual fade-in of #live2dFastOverlay during the LAST 0.55s of outro (EXCEPT when heading to post-goal kickoff!)
+      //    Because the overlay fades in WHILE stepOutroPlayers is STILL running, players NEVER freeze before darkening!
+      const fadeWindow = 0.55;
+      if (!this.pendingKickoffSide && this.highlightOutro <= fadeWindow && this.highlightOutro > 0) {
+        const fadeProgress = Math.max(0, Math.min(1, 1 - (this.highlightOutro / fadeWindow)));
+        const ov = document.getElementById('live2dFastOverlay');
+        if (ov) {
+          ov.style.transition = 'none'; // Driven smoothly per-frame by simulation continuity!
+          ov.style.opacity = fadeProgress.toFixed(3);
+        }
+        // Telemetry: verify players are actively moving during the visual fade!
+        this.v59OutroFadeSamples++;
+        const movingNow = this.players.some(p => !p.sentOff && Math.hypot(p.vx, p.vy) > 1.2);
+        if (movingNow) this.v59OutroMovingDuringFade++;
+      }
+
+      // 4. Clean logical completion ONLY after visual fade has reached 1.0 (no overlap with any new highlight!)
+      if (this.highlightOutro <= 0) {
+        b.isClearance = false;
+        this._v59BlockCounted = false;
+        if (this.pendingKickoffSide) {
+          const ks = this.pendingKickoffSide;
+          this.pendingKickoffSide = null;
+          this.beginRealKickoffSequence(ks);
+        } else {
+          this.gkHoldSafe = false;
+          this.endHighlightSequence();
+          const ov = document.getElementById('live2dFastOverlay');
+          if (ov) { ov.style.opacity = '1'; ov.style.transition = 'opacity 0.35s ease'; }
+        }
+      }
+      return;
+    }
+
+    _v57StepPhysics(dt);
+  };
+
+  const _v58Init = eng.initForMatch.bind(eng);
+  eng.initForMatch = function(home, away) {
+    _v58Init(home, away);
+    this.v59OutroFadeSamples = 0;
+    this.v59OutroMovingDuringFade = 0;
+    this.v59OutcomesSeen = { goal: 0, save_hold: 0, block_rebound: 0, out_of_bounds: 0, clearance: 0, turnover: 0 };
   };
 })();
 
