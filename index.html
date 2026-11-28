@@ -853,7 +853,7 @@ select:focus, select:active, button:focus, button:active, input:focus, a:focus {
 <div class="menu-logo-ring">
 <svg class="svg-icon" style="width:28px;height:28px;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m12 6 3 4-1 5H10l-1-5 3-4Z"/><path d="M12 2v4"/><path d="m4.93 10.93 4.07-.93"/><path d="m19.07 10.93-4.07-.93"/><path d="m6.5 18.5 3.5-3.5"/><path d="m17.5 18.5-3.5-3.5"/></svg>
 </div>
-<div class="btn-soft" style="display:inline-flex;padding:3px 10px;border-radius:999px;font-size:10px;font-weight:700;margin-bottom:6px;">2026–27 DÜNYA SÜRÜMÜ · 7 LİG · v45</div>
+<div class="btn-soft" style="display:inline-flex;padding:3px 10px;border-radius:999px;font-size:10px;font-weight:700;margin-bottom:6px;">2026–27 DÜNYA SÜRÜMÜ · 7 LİG · v46</div>
 <h1 style="font-size:24px;font-weight:800;margin:0 0 4px;letter-spacing:-0.02em;">Soccer Simulator</h1>
 <p style="font-size:12px;color:var(--muted);margin:0;">Kendi teknik direktörlük kariyerini kur ve yönet.</p>
 </div>
@@ -16351,6 +16351,401 @@ enterCareer = function(careerObj) {
     this.calmRecycles = 0;
     this.highlightFlippedOnce = false;
     _v44Init(home, away);
+  };
+})();
+
+
+// =========================================================================
+// v46: 10 DISTINCT FM SCENARIOS (PENALTY, 1v1, CROSS, CUTBACK, CORNER, FK,
+//      3v2 COUNTER, SCREAMER, TIKI-TAKA, HIGH PRESS) + REAL CLIMAX RATE!
+// =========================================================================
+(function initMatch2DV46() {
+  const eng = window.Match2DEngine;
+  if (!eng) return;
+
+  const PITCH_W = 105;
+  const PITCH_H = 68;
+
+  const SCENARIOS_V46 = [
+    'one_on_one_through',
+    'wing_cross_header',
+    'cutback_tapin',
+    'fast_counter_3v2',
+    'tiki_taka_box',
+    'corner_kick',
+    'free_kick_direct',
+    'long_shot_screamer',
+    'high_press_steal',
+    'penalty_kick'
+  ];
+
+  const SCEN_HUD_V46 = {
+    one_on_one_through: '⚡ ARA PAS · KARŞI KARŞIYA',
+    wing_cross_header: '🎯 KANAT ORTASI · KAFA TOPU',
+    cutback_tapin: '🔥 ÇİZGİYE İNİŞ · GERİ ÇIKARMA',
+    fast_counter_3v2: '🚀 3\'E 2 HIZLI KONTRA',
+    tiki_taka_box: '⚽ TİKİ-TAKA · CEZA SAHASI',
+    corner_kick: '🚩 KÖŞE VURUŞU',
+    free_kick_direct: '🎯 TEHLİKELİ FRİKİK',
+    long_shot_screamer: '💥 UZAKTAN ŞUT FIRSATI',
+    high_press_steal: '🔥 ÖNDE PRES · TOP KAPMA',
+    penalty_kick: '⚠️ PENALTI VURUŞU!'
+  };
+
+  eng.recentScenarios = []; // Remember last 3 scenarios so highlights NEVER feel repetitive!
+  eng.v46ScenarioCounts = {};
+  eng.penaltiesTaken = 0;
+  eng.setPieceWait = 0;     // Dramatic 0.75s run-up pause before penalty / free kick!
+  eng.pendingSetPiece = null;
+
+  // 1. REAL BOOMING CLEARANCES (36 m/s HIGH ARC — VISUALLY UNMISTAKABLE FROM PASSES!)
+  eng.bootRealClearance = function(pl) {
+    const isHome = pl.side === 'home';
+    const b = this.ball;
+    const dir = isHome ? 1 : -1;
+    // Smash ball high & far diagonally toward touchline / past halfway!
+    const clearAngle = (Math.random() < 0.5 ? -1 : 1) * (0.45 + Math.random() * 0.35);
+    const spd = 34 + Math.random() * 5;
+    b.vx = Math.cos(clearAngle) * dir * spd;
+    b.vy = Math.sin(clearAngle) * spd;
+    b.vz = 13.5 + Math.random() * 2.5; // High booming sky-clearance!
+    b.isShot = false;
+    this.owner = null;
+    this.passTargetId = null;
+    this.lastPasserId = pl.id;
+    this.lastTouchSide = pl.side;
+    this.ballCooldown = 0.5;
+    this.lastActionType = 'clearance';
+  };
+
+  // 2. PREVENT RANDOM MIDFIELD TACKLES FROM KILLING HIGHLIGHTS BEFORE THEY EVEN REACH THE BOX!
+  //    During a highlight's attacking sequence, let the attacking play actually unfold to a real shot/save/goal/block!
+  const _v45StepPlayers = eng.stepPlayers.bind(eng);
+  eng.stepPlayers = function(dt) {
+    // Handle dramatic set-piece run-up pause (Penalty Kick / Free Kick)
+    if (this.setPieceWait > 0 && this.pendingSetPiece) {
+      this.setPieceWait -= dt;
+      const sp = this.pendingSetPiece;
+      if (sp.taker) {
+        // Taker jogs smoothly toward the ball!
+        const dx = this.ball.x - sp.taker.x, dy = this.ball.y - sp.taker.y;
+        const d = Math.hypot(dx, dy);
+        if (d > 1.0) {
+          sp.taker.x += (dx / d) * 4.5 * dt;
+          sp.taker.y += (dy / d) * 4.5 * dt;
+        }
+      }
+      if (this.setPieceWait <= 0) {
+        const exec = this.pendingSetPiece;
+        this.pendingSetPiece = null;
+        exec.fire();
+      }
+      return;
+    }
+
+    // Keep tackle cooldown slightly calmer during first 4 seconds of a highlight so attacks reach the box!
+    if (this.highlightActive && !this.highlightResolved && this.highlightTimer > 8.0 && this.tackleCooldown < 0.25) {
+      this.tackleCooldown = 0.35;
+    }
+    _v45StepPlayers(dt);
+  };
+
+  // 3. ENSURE ATTACKERS FINISH CHANCES CLEANLY + BOOMING CLEARANCES ON REAL TURNOVERS!
+  const _v45DecideFM = eng.decideFMAction.bind(eng);
+  eng.decideFMAction = function(pl) {
+    const isHome = pl.side === 'home';
+    const dir = isHome ? 1 : -1;
+    const goalX = isHome ? PITCH_W : 0;
+    const distGoal = Math.hypot(goalX - pl.x, PITCH_H / 2 - pl.y);
+    const angleY = Math.abs(pl.y - PITCH_H / 2);
+
+    // If defending team wins ball in highlight -> either LIVE COUNTER FLIP (38%), CALM CB RECYCLE (34%), or REAL BOOMING CLEARANCE (28%)!
+    if (this.highlightActive && !this.highlightResolved && pl.side !== this.highlightSide && pl.pos !== 'KL') {
+      const inOwnBox = isHome ? (pl.x < 18) : (pl.x > PITCH_W - 18);
+      const fwdMates = this.players.filter(m => m.side === pl.side && m.id !== pl.id && !m.sentOff && ((m.x - pl.x) * dir > 8));
+
+      if (!this.highlightFlippedOnce && !inOwnBox && fwdMates.length >= 1 && Math.random() < 0.40) {
+        this.highlightFlippedOnce = true;
+        this.highlightSide = pl.side;
+        this.highlightTimer = 11.5;
+        this.highlightPasses = 1;
+        this.countersFlipped++;
+        const counterClub = isHome ? (liveState && liveState.home) : (liveState && liveState.away);
+        const hud = document.getElementById('live2dHudTag');
+        if (hud && counterClub) {
+          hud.textContent = `🚀 KONTRA ATAK · ${counterClub.short} (${liveState ? liveState.minute : ''}')`;
+          hud.style.background = 'rgba(245,158,11,0.94)';
+          hud.style.color = '#0f172a';
+        }
+        fwdMates.sort((a, b) => ((b.x - a.x) * dir));
+        const runner = fwdMates[0];
+        this.kickBall(pl, Math.max(6, Math.min(PITCH_W - 6, runner.x + dir * 8)), runner.y, 'through_ball', runner);
+        this.emit2DEvent({ type: 'pass', side: pl.side, player: pl, passType: 'through_ball' });
+        return;
+      }
+
+      if (!inOwnBox && Math.random() < 0.55) {
+        const safeMate = this.players.find(m => m.side === pl.side && m.id !== pl.id && !m.sentOff && ['STP','KL','DOS'].includes(m.pos));
+        if (safeMate) {
+          this.kickBall(pl, safeMate.x, safeMate.y, 'short_pass', safeMate);
+          this.calmRecycles++;
+          this.concludeHighlight('🔄 OYUN SOĞUTULDU · GERİ PAS', 'rgba(15,23,42,0.88)', 1.25);
+          return;
+        }
+      }
+
+      // REAL BOOMING HIGH CLEARANCE (not a weak pass!)
+      this.bootRealClearance(pl);
+      this.clearancesCount++;
+      this.concludeHighlight('🦵 SAVUNMA UZAKLAŞTIRDI!', 'rgba(30,41,59,0.9)', 1.1);
+      return;
+    }
+
+    // Attacking team inside highlight: if in good shooting range (<21m) or long-shot scenario (<26m), FIRE A REAL SHOT!
+    if (this.highlightActive && pl.side === this.highlightSide && pl.pos !== 'KL') {
+      const isScreamer = this.lastScenario === 'long_shot_screamer' && distGoal <= 26.5 && angleY <= 14;
+      const inBox = distGoal <= 20.5 && angleY <= 16.5;
+      if (inBox || (isScreamer && Math.random() < 0.85)) {
+        const cornerBias = (Math.random() < 0.5 ? -1 : 1) * (0.9 + Math.random() * 2.4);
+        this.kickBall(pl, goalX, PITCH_H / 2 + cornerBias, 'shot', null);
+        if (isHome) this.aiMetrics.shotsHome++; else this.aiMetrics.shotsAway++;
+        const xg = inBox
+          ? Number(Math.max(0.14, Math.min(0.56, (21.5 - distGoal) * 0.030 * (1 - angleY / 28))).toFixed(2))
+          : Number(Math.max(0.05, Math.min(0.12, (28 - distGoal) * 0.014)).toFixed(2));
+        this.ball.shotDist = distGoal;
+        this.emit2DEvent({ type: 'shot', side: pl.side, player: pl, xg, distGoal });
+        return;
+      }
+    }
+
+    _v45DecideFM(pl);
+  };
+
+  // 4. 10 TRULY DISTINCT, ANTI-REPEAT HIGHLIGHT SCENARIOS!
+  eng.startHighlightSequence = function(attSide) {
+    const isHome = attSide === 'home';
+    const dir = isHome ? 1 : -1;
+    const defSide = isHome ? 'away' : 'home';
+    const attClub = isHome ? liveState.home : liveState.away;
+    const attTP = this.getTacticalProfile(attSide);
+    const defTP = this.getTacticalProfile(defSide);
+
+    // Weighted scenario picker excluding the last 3 used scenarios!
+    let pool = SCENARIOS_V46.filter(s => !this.recentScenarios.includes(s));
+    // Keep Penalty Kick rare & realistic (~7% chance per highlight, max ~1 per 2 matches!)
+    if (Math.random() > 0.08) pool = pool.filter(s => s !== 'penalty_kick');
+    if (!pool.length) pool = SCENARIOS_V46.filter(s => s !== 'penalty_kick');
+    const scen = pick(pool);
+    this.lastScenario = scen;
+    this.recentScenarios.push(scen);
+    if (this.recentScenarios.length > 3) this.recentScenarios.shift();
+    this.v46ScenarioCounts[scen] = (this.v46ScenarioCounts[scen] || 0) + 1;
+
+    this.highlightActive = true;
+    this.highlightResolved = false;
+    this.highlightFlippedOnce = false;
+    this.highlightSide = attSide;
+    this.highlightTimer = 13.0;
+    this.highlightOutro = 0;
+    this.highlightPasses = 0;
+    this.highlightsShown++;
+    this.tackleCooldown = 1.1; // Let the opening pass/run breathe!
+    this.gkHoldSafe = false;
+    this.pendingKickoffSide = null;
+    this.kickoffStage = 0;
+    this.setPieceWait = 0;
+    this.pendingSetPiece = null;
+    this.offsideSnap = new Set();
+    this.offsideLineFlash = null;
+    this.ballTrail = [];
+
+    const attPs = this.players.filter(p => p.side === attSide && !p.sentOff && p.pos !== 'KL');
+    const defPs = this.players.filter(p => p.side === defSide && !p.sentOff && p.pos !== 'KL');
+    const defGk = this.players.find(p => p.side === defSide && p.pos === 'KL' && !p.sentOff);
+    const goalX = isHome ? PITCH_W : 0;
+
+    const placeBase = (bx, by) => {
+      this.ball = { x: bx, y: by, z: 0, vx: 0, vy: 0, vz: 0, isShot: false };
+      for (let i = 0; i < this.players.length; i++) {
+        const pl = this.players[i];
+        if (pl.sentOff) continue;
+        pl.vx = 0; pl.vy = 0; pl.recoverTimer = 0;
+        const st = this.computeStructuredTarget(pl, bx, by, pl.side === attSide, pl.side === attSide ? attTP : defTP);
+        pl.x = st.x; pl.y = st.y; pl.state = st.state;
+      }
+    };
+
+    let carrier = null;
+
+    if (scen === 'penalty_kick') {
+      // REAL PENALTY KICK AT 11m SPOT!
+      const px = isHome ? (PITCH_W - 11) : 11;
+      placeBase(px, PITCH_H / 2);
+      // Push all other outfield players outside the 16.5m box!
+      const penRoleId = attClub && attClub.roles && attClub.roles.penId;
+      const taker = (penRoleId && attPs.find(p => p.id === penRoleId)) || attPs.find(p => p.pos === 'SNT') || attPs[0];
+      this.players.forEach(p => {
+        if (p === taker || p === defGk || p.pos === 'KL') return;
+        p.x = isHome ? Math.min(PITCH_W - 18.5, p.x) : Math.max(18.5, p.x);
+      });
+      if (defGk) { defGk.x = isHome ? (PITCH_W - 2.2) : 2.2; defGk.y = PITCH_H / 2; }
+      if (taker) {
+        taker.x = px - dir * 4.5; taker.y = PITCH_H / 2;
+        this.owner = null;
+        this.penaltiesTaken++;
+        if (liveState && !liveState.finished) {
+          addFeedItem(Math.max(1, liveState.minute || 1), `⚠️ PENALTI! ${attClub.name} penaltı kazandı! Topun başında ${taker.name}!`, { type: 'attack', club: attClub });
+        }
+        this.setPieceWait = 0.85;
+        this.pendingSetPiece = {
+          taker,
+          fire: () => {
+            const aimY = PITCH_H / 2 + (Math.random() < 0.5 ? -2.7 : 2.7);
+            this.kickBall(taker, goalX, aimY, 'shot', null);
+            this.ball.shotDist = 11;
+            if (isHome) this.aiMetrics.shotsHome++; else this.aiMetrics.shotsAway++;
+            this.emit2DEvent({ type: 'shot', side: attSide, player: taker, xg: 0.76, distGoal: 11 });
+          }
+        };
+      }
+    } else if (scen === 'one_on_one_through') {
+      // Razor-sharp through-ball splitting CBs -> Striker 1v1 with GK!
+      const bx = isHome ? 68 : 37, by = PITCH_H / 2 + (Math.random() - 0.5) * 14;
+      placeBase(bx, by);
+      const passer = attPs.find(p => ['OOS','OS','DOS'].includes(p.pos)) || attPs[0];
+      const st = attPs.find(p => p !== passer && ['SNT','SLK','SĞK'].includes(p.pos)) || attPs[1];
+      if (passer && st) {
+        passer.x = bx; passer.y = by;
+        st.x = isHome ? 82 : 23; st.y = PITCH_H / 2 + (Math.random() - 0.5) * 10;
+        // Split the 2 CBs slightly so the through-ball threads the gap!
+        defPs.filter(d => d.pos === 'STP').forEach((cb, idx) => {
+          cb.x = isHome ? 83 : 22;
+          cb.y = idx === 0 ? 25 : 43;
+        });
+        this.owner = passer;
+        this.kickBall(passer, st.x + dir * 7.5, st.y, 'through_ball', st);
+        this.highlightPasses = 2;
+      }
+    } else if (scen === 'wing_cross_header') {
+      // Winger drives wide & whips a lofted cross for the striker's header!
+      const topFlank = Math.random() < 0.5;
+      const wx = isHome ? 86 : 19, wy = topFlank ? 8 : (PITCH_H - 8);
+      placeBase(wx, wy);
+      const winger = attPs.find(p => (topFlank ? p.pos === 'SLK' : p.pos === 'SĞK')) || attPs.find(p => ['SLK','SĞK','SLB','SĞB'].includes(p.pos)) || attPs[0];
+      const st = attPs.find(p => p !== winger && ['SNT','OOS'].includes(p.pos)) || attPs[1];
+      if (winger && st) {
+        winger.x = wx; winger.y = wy;
+        st.x = isHome ? 93 : 12; st.y = PITCH_H / 2 + (topFlank ? 4 : -4);
+        this.owner = winger;
+        this.kickBall(winger, st.x + dir * 1.5, st.y, 'cross', st);
+        this.highlightPasses = 2;
+      }
+    } else if (scen === 'cutback_tapin') {
+      // Winger reaches byline & cuts back to penalty spot for arriving CAM!
+      const topFlank = Math.random() < 0.5;
+      const wx = isHome ? 96 : 9, wy = topFlank ? 14 : (PITCH_H - 14);
+      placeBase(wx, wy);
+      const winger = attPs.find(p => ['SLK','SĞK','SLB','SĞB'].includes(p.pos)) || attPs[0];
+      const finisher = attPs.find(p => p !== winger && ['OOS','SNT','OS'].includes(p.pos)) || attPs[1];
+      if (winger && finisher) {
+        winger.x = wx; winger.y = wy;
+        finisher.x = isHome ? 90 : 15; finisher.y = PITCH_H / 2 + (topFlank ? 3 : -3);
+        this.owner = winger;
+        this.kickBall(winger, finisher.x, finisher.y, 'short_pass', finisher);
+        this.highlightPasses = 2;
+      }
+    } else if (scen === 'fast_counter_3v2') {
+      // 3-Lane Lightning Counter from Midfield against 2 Retreating CBs!
+      const bx = isHome ? 52 : 53, by = PITCH_H / 2;
+      placeBase(bx, by);
+      const lanes = [14, 34, 54];
+      const trio = attPs.filter(p => ['SLK','SNT','SĞK','OOS'].includes(p.pos)).slice(0, 3);
+      trio.forEach((a, idx) => { a.x = isHome ? (58 + idx * 5) : (47 - idx * 5); a.y = lanes[idx % 3]; a.state = 'run'; });
+      // Only 2 CBs back, rest behind ball!
+      defPs.forEach((d, idx) => {
+        if (d.pos === 'STP') { d.x = isHome ? 76 : 29; d.y = idx % 2 === 0 ? 25 : 43; }
+        else { d.x = isHome ? Math.min(54, d.x) : Math.max(51, d.x); }
+      });
+      carrier = trio[1] || attPs[0];
+      if (carrier) { carrier.x = bx; carrier.y = by; }
+    } else if (scen === 'tiki_taka_box') {
+      // Crisp 1-2 passing triangle right outside the penalty box!
+      const bx = isHome ? 74 : 31, by = PITCH_H / 2 + (Math.random() - 0.5) * 14;
+      placeBase(bx, by);
+      carrier = attPs.find(p => ['OOS','OS','DOS'].includes(p.pos)) || attPs[0];
+      if (carrier) { carrier.x = bx; carrier.y = by; }
+      this.highlightPasses = 1;
+    } else if (scen === 'corner_kick') {
+      const topC = Math.random() < 0.5;
+      const cx = isHome ? PITCH_W - 1.5 : 1.5, cy = topC ? 2.0 : (PITCH_H - 2.0);
+      placeBase(isHome ? 92 : 13, PITCH_H / 2);
+      this.ball = { x: cx, y: cy, z: 0, vx: 0, vy: 0, vz: 0, isShot: false };
+      const taker = attPs.find(p => ['SLK','SĞK','OOS','OS'].includes(p.pos)) || attPs[0];
+      const boxX = isHome ? PITCH_W - 10.5 : 10.5;
+      attPs.filter(p => p !== taker).slice(0, 5).forEach((a, idx) => { a.x = boxX + (Math.random() - 0.5) * 5; a.y = 24 + idx * 4.8; });
+      defPs.slice(0, 6).forEach((d, idx) => { d.x = boxX + dir * 1.6; d.y = 22 + idx * 4.6; });
+      if (taker) {
+        taker.x = cx; taker.y = cy;
+        const targetH = attPs.find(p => p !== taker && ['SNT','STP'].includes(p.pos)) || attPs[1];
+        this.owner = taker;
+        this.kickBall(taker, boxX + dir * 1.2, targetH ? targetH.y : PITCH_H / 2, 'cross', targetH);
+        this.highlightPasses = 2;
+      }
+    } else if (scen === 'free_kick_direct') {
+      const fx = isHome ? PITCH_W - 22 : 22, fy = PITCH_H / 2 + (Math.random() - 0.5) * 14;
+      placeBase(fx, fy);
+      const fkRoleId = attClub && attClub.roles && attClub.roles.fkId;
+      const taker = (fkRoleId && attPs.find(p => p.id === fkRoleId)) || attPs.find(p => ['OOS','SNT','SLK','SĞK'].includes(p.pos)) || attPs[0];
+      defPs.slice(0, 4).forEach((d, idx) => { d.x = fx + dir * 8.5; d.y = fy + (PITCH_H / 2 - fy) * 0.35 + (idx - 1.5) * 1.5; });
+      if (taker) {
+        taker.x = fx - dir * 3.5; taker.y = fy;
+        this.owner = null;
+        this.setPieceWait = 0.75;
+        this.pendingSetPiece = {
+          taker,
+          fire: () => {
+            const aimY = PITCH_H / 2 + (Math.random() < 0.5 ? -2.5 : 2.5);
+            this.kickBall(taker, goalX, aimY, 'shot', null);
+            this.ball.shotDist = 22;
+            if (isHome) this.aiMetrics.shotsHome++; else this.aiMetrics.shotsAway++;
+            this.emit2DEvent({ type: 'shot', side: attSide, player: taker, xg: 0.12, distGoal: 22 });
+          }
+        };
+      }
+    } else if (scen === 'long_shot_screamer') {
+      // Midfielder receives layoff at 23m & unleashes a screamer!
+      const bx = isHome ? 80 : 25, by = PITCH_H / 2 + (Math.random() - 0.5) * 14;
+      placeBase(bx, by);
+      carrier = attPs.find(p => ['OOS','OS','SLK','SĞK'].includes(p.pos)) || attPs[0];
+      if (carrier) { carrier.x = bx; carrier.y = by; }
+      this.highlightPasses = 2;
+    } else if (scen === 'high_press_steal') {
+      // Forward steals ball high up from opponent defender near edge of box!
+      const bx = isHome ? 82 : 23, by = PITCH_H / 2 + (Math.random() - 0.5) * 18;
+      placeBase(bx, by);
+      carrier = attPs.find(p => ['SNT','SLK','SĞK','OOS'].includes(p.pos)) || attPs[0];
+      if (carrier) { carrier.x = bx; carrier.y = by; }
+      // Stun nearest defender who just lost possession!
+      const stunnedDef = defPs.sort((a, b) => Math.hypot(a.x - bx, a.y - by) - Math.hypot(b.x - bx, b.y - by))[0];
+      if (stunnedDef) stunnedDef.recoverTimer = 1.8;
+      this.highlightPasses = 1;
+    }
+
+    if (carrier) {
+      this.owner = carrier;
+      this.lastTouchSide = attSide;
+      carrier.holdTimer = 0.65;
+      carrier.state = 'carry';
+    }
+
+    const ov = document.getElementById('live2dFastOverlay');
+    if (ov) ov.style.opacity = '0';
+    const hud = document.getElementById('live2dHudTag');
+    if (hud && attClub) {
+      hud.textContent = `${SCEN_HUD_V46[scen] || '🔥 ATAK'} · ${attClub.short} (${liveState.minute}')`;
+      hud.style.background = scen === 'penalty_kick' ? 'rgba(234,179,8,0.95)' : 'rgba(220,38,38,0.88)';
+      hud.style.color = scen === 'penalty_kick' ? '#0f172a' : '#ffffff';
+    }
   };
 })();
 
