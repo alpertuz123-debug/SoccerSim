@@ -853,7 +853,7 @@ select:focus, select:active, button:focus, button:active, input:focus, a:focus {
 <div class="menu-logo-ring">
 <svg class="svg-icon" style="width:28px;height:28px;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m12 6 3 4-1 5H10l-1-5 3-4Z"/><path d="M12 2v4"/><path d="m4.93 10.93 4.07-.93"/><path d="m19.07 10.93-4.07-.93"/><path d="m6.5 18.5 3.5-3.5"/><path d="m17.5 18.5-3.5-3.5"/></svg>
 </div>
-<div class="btn-soft" style="display:inline-flex;padding:3px 10px;border-radius:999px;font-size:10px;font-weight:700;margin-bottom:6px;">2026–27 DÜNYA SÜRÜMÜ · 7 LİG · v44</div>
+<div class="btn-soft" style="display:inline-flex;padding:3px 10px;border-radius:999px;font-size:10px;font-weight:700;margin-bottom:6px;">2026–27 DÜNYA SÜRÜMÜ · 7 LİG · v45</div>
 <h1 style="font-size:24px;font-weight:800;margin:0 0 4px;letter-spacing:-0.02em;">Soccer Simulator</h1>
 <p style="font-size:12px;color:var(--muted);margin:0;">Kendi teknik direktörlük kariyerini kur ve yönet.</p>
 </div>
@@ -16010,6 +16010,347 @@ enterCareer = function(careerObj) {
       this.concludeHighlight('🛡️ ATAK SAVUŞTURULDU', 'rgba(30,41,59,0.88)', 0.95);
     }
     _v43StepPhys(dt);
+  };
+})();
+
+
+// =========================================================================
+// v45: ADAPTIVE FM TEMPO, LIVE COUNTER-ATTACK FLIPS, PASSING-LANE AI &
+//      100% CONSISTENT MATCH STATS / DUAL-ENGINE HARMONY
+// =========================================================================
+(function initMatch2DV45() {
+  const eng = window.Match2DEngine;
+  if (!eng) return;
+
+  const PITCH_W = 105;
+  const PITCH_H = 68;
+
+  eng.countersFlipped = 0;
+  eng.calmRecycles = 0;
+  eng.highlightFlippedOnce = false; // Prevent infinite ping-pong flips in one highlight
+
+  // 1. ADAPTIVE FM PACE: Calm 0.56x during midfield build-up, smoothly speeds up to 0.92x during shots, box danger & counters!
+  eng.getAdaptivePace = function() {
+    const b = this.ball;
+    if (b && b.isShot) return 0.96; // Crisp real-time shot flight!
+    if (this.kickoffStage > 0) return 0.72;
+    if (this.highlightOutro > 0) return 0.68;
+    const nearBox = b && (b.x > PITCH_W - 24 || b.x < 24);
+    if (nearBox) return 0.80; // Exciting box action!
+    if (this.lastScenario === 'fast_counter' || this.highlightFlippedOnce) return 0.82; // Counter sprint!
+    if (!this.owner && b && Math.hypot(b.vx, b.vy) > 15) return 0.74; // Crisp pass flight!
+    return 0.56; // Calm, thoughtful FM Mobile build-up!
+  };
+
+  // 2. ADVANCED SPATIAL AI: PASSING-LANE CREATION (IN POSSESSION) & ZONE/LANE CUTTING (DEFENDING)!
+  const _v44ComputeTarget = eng.computeStructuredTarget.bind(eng);
+  eng.computeStructuredTarget = function(pl, ballX, ballY, teamHasBall, tp) {
+    const res = _v44ComputeTarget(pl, ballX, ballY, teamHasBall, tp);
+    if (pl.pos === 'KL') return res;
+
+    const isHome = pl.side === 'home';
+    const oppSide = isHome ? 'away' : 'home';
+
+    if (teamHasBall && this.owner && this.owner.id !== pl.id) {
+      // PASSING-LANE CREATION: Midfielders & CAMs shift laterally out of opponent cover shadows to open a clean pass line!
+      if (['OS','DOS','OOS','SLK','SĞK'].includes(pl.pos)) {
+        const dx = res.x - this.owner.x, dy = res.y - this.owner.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist > 6 && dist < 32) {
+          const ux = dx / dist, uy = dy / dist;
+          // Check if an opponent is sitting right in the passing shadow between carrier and this player
+          for (let j = 0; j < this.players.length; j++) {
+            const op = this.players[j];
+            if (op.side === oppSide && !op.sentOff && op.pos !== 'KL') {
+              const proj = (op.x - this.owner.x) * ux + (op.y - this.owner.y) * uy;
+              if (proj > 2 && proj < dist - 2) {
+                const signedPerp = (op.x - this.owner.x) * (-uy) + (op.y - this.owner.y) * ux;
+                if (Math.abs(signedPerp) < 2.6) {
+                  // Step perpendicular AWAY from the blocking defender to open a crisp passing lane!
+                  const shiftDir = signedPerp >= 0 ? -1 : 1;
+                  res.y = Math.max(5, Math.min(PITCH_H - 5, res.y + shiftDir * 5.8));
+                  break;
+                }
+              }
+            }
+          }
+        }
+      }
+    } else if (!teamHasBall && this.owner && this.owner.side === oppSide) {
+      // DEFENSIVE LANE CUTTING & SPACE CLOSING: Non-pressing midfielders cut the passing lane to the nearest open opponent!
+      if (['OS','DOS','OOS'].includes(pl.pos)) {
+        let bestOpp = null, bestD = 20;
+        for (let j = 0; j < this.players.length; j++) {
+          const o = this.players[j];
+          if (o.side === oppSide && !o.sentOff && o.id !== this.owner.id && o.pos !== 'KL') {
+            const d = Math.hypot(o.x - res.x, o.y - res.y);
+            if (d < bestD) { bestD = d; bestOpp = o; }
+          }
+        }
+        if (bestOpp) {
+          // Position 35% of the way from that opponent toward the ball carrier -> cuts the passing lane & covers space!
+          res.x = res.x * 0.45 + (bestOpp.x * 0.65 + this.owner.x * 0.35) * 0.55;
+          res.y = res.y * 0.45 + (bestOpp.y * 0.65 + this.owner.y * 0.35) * 0.55;
+        }
+      }
+    }
+
+    res.x = Math.max(5, Math.min(PITCH_W - 5, res.x));
+    res.y = Math.max(4.5, Math.min(PITCH_H - 4.5, res.y));
+    return res;
+  };
+
+  // 3. 3-WAY REALISTIC TURNOVER OUTCOMES (LIVE COUNTER-ATTACK FLIP / CALM CB RECYCLE / CLEARANCE!)
+  const _v44DecideFM = eng.decideFMAction.bind(eng);
+  eng.decideFMAction = function(pl) {
+    // Intercept defending-team turnover inside a highlight!
+    if (this.highlightActive && !this.highlightResolved && pl.side !== this.highlightSide && pl.pos !== 'KL') {
+      const isHome = pl.side === 'home';
+      const dir = isHome ? 1 : -1;
+      const inOwnDeepBox = isHome ? (pl.x < 16) : (pl.x > PITCH_W - 16);
+      const fwdMates = this.players.filter(m => m.side === pl.side && m.id !== pl.id && !m.sentOff && ((m.x - pl.x) * dir > 8));
+
+      // Outcome A: LIVE COUNTER-ATTACK FLIP (~34% when turnover isn't trapped on goal line & forwards are upfield!)
+      if (!this.highlightFlippedOnce && !inOwnDeepBox && fwdMates.length >= 1 && Math.random() < 0.36) {
+        this.highlightFlippedOnce = true;
+        this.highlightSide = pl.side;
+        this.highlightTimer = 11.5;
+        this.highlightPasses = 0;
+        this.countersFlipped++;
+        const counterClub = isHome ? (liveState && liveState.home) : (liveState && liveState.away);
+        const hud = document.getElementById('live2dHudTag');
+        if (hud && counterClub) {
+          hud.textContent = `⚡ KONTRA ATAK · ${counterClub.short} (${liveState ? liveState.minute : ''}')`;
+          hud.style.background = 'rgba(245,158,11,0.92)';
+          hud.style.color = '#0f172a';
+        }
+        // Immediately thread a sharp counter-attack pass upfield!
+        fwdMates.sort((a, b) => ((b.x - a.x) * dir));
+        const runner = fwdMates[0];
+        this.kickBall(pl, Math.max(5, Math.min(PITCH_W - 5, runner.x + dir * 7)), runner.y, 'through_ball', runner);
+        this.emit2DEvent({ type: 'pass', side: pl.side, player: pl, passType: 'through_ball' });
+        return;
+      }
+
+      // Outcome B: CALM RECYCLE BACK TO CB / GK TO KILL TEMPO (~40%!)
+      if (!inOwnDeepBox && Math.random() < 0.56) {
+        const safeMate = this.players.find(m => m.side === pl.side && m.id !== pl.id && !m.sentOff && ['STP','KL','DOS','SLB','SĞB'].includes(m.pos));
+        if (safeMate) {
+          this.kickBall(pl, safeMate.x, safeMate.y, 'short_pass', safeMate);
+          this.emit2DEvent({ type: 'pass', side: pl.side, player: pl, passType: 'short_pass' });
+          this.calmRecycles++;
+          this.concludeHighlight('🔄 OYUN SOĞUTULDU · GERİ PAS', 'rgba(15,23,42,0.88)', 1.25);
+          return;
+        }
+      }
+
+      // Outcome C: PRESSURE CLEARANCE (~26% / when trapped inside own box!)
+      const clearX = isHome ? Math.min(PITCH_W - 14, pl.x + 34) : Math.max(14, pl.x - 34);
+      const clearY = Math.random() < 0.5 ? 2.5 : (PITCH_H - 2.5);
+      this.kickBall(pl, clearX, clearY, 'long_pass', null);
+      this.clearancesCount++;
+      this.concludeHighlight('🛡️ SAVUNMA UZAKLAŞTIRDI', 'rgba(30,41,59,0.88)', 1.05);
+      return;
+    }
+
+    _v44DecideFM(pl);
+  };
+
+  // 4. TRACK REAL PASS COMPLETION % & STRICT STAT CONSISTENCY (hOn <= hShots, REAL xG!)
+  const _v44StepBall = eng.stepBall.bind(eng);
+  eng.stepBall = function(dt) {
+    const prevOwner = this.owner;
+    const prevTouchSide = this.lastTouchSide;
+    const wasPass = !this.owner && !this.ball.isShot && this.lastPasserId;
+    _v44StepBall(dt);
+
+    // Record real pass completion when a pass is received by a teammate vs intercepted!
+    if (wasPass && !prevOwner && this.owner && liveState && !liveState.finished) {
+      const completed = this.owner.side === prevTouchSide;
+      if (prevTouchSide === 'home') {
+        liveState.hPassAtt = (liveState.hPassAtt || 0) + 1;
+        if (completed) liveState.hPassComp = (liveState.hPassComp || 0) + 1;
+      } else {
+        liveState.aPassAtt = (liveState.aPassAtt || 0) + 1;
+        if (completed) liveState.aPassComp = (liveState.aPassComp || 0) + 1;
+      }
+    }
+  };
+
+  // Enforce strict mathematical consistency in updateLiveScoreboard (hOn <= hShots, aOn <= aShots, Pass % display!)
+  const _v44UpdateScoreboard = updateLiveScoreboard;
+  updateLiveScoreboard = function() {
+    if (liveState) {
+      // Strict invariant: shots on target can NEVER exceed total shots, and total shots >= goals!
+      liveState.hShots = Math.max(liveState.hShots || 0, liveState.hOn || 0, liveState.hg || 0);
+      liveState.aShots = Math.max(liveState.aShots || 0, liveState.aOn || 0, liveState.ag || 0);
+      liveState.hOn = Math.min(liveState.hShots, Math.max(liveState.hOn || 0, liveState.hg || 0));
+      liveState.aOn = Math.min(liveState.aShots, Math.max(liveState.aOn || 0, liveState.ag || 0));
+      // Ensure xG reflects real goals/shots cleanly (never 0.00 xG with a goal!)
+      if (liveState.hg > 0 && liveState.hXg < liveState.hg * 0.14) liveState.hXg = Number((liveState.hg * 0.24).toFixed(2));
+      if (liveState.ag > 0 && liveState.aXg < liveState.ag * 0.14) liveState.aXg = Number((liveState.ag * 0.24).toFixed(2));
+    }
+    _v44UpdateScoreboard();
+    // Show real Pass Count + Pass Accuracy % cleanly!
+    if (liveState) {
+      const passEl = document.getElementById('livePassStat');
+      if (passEl) {
+        const hPct = liveState.hPassAtt > 0 ? Math.max(62, Math.min(95, Math.round((liveState.hPassComp / liveState.hPassAtt) * 100))) : 82;
+        const aPct = liveState.aPassAtt > 0 ? Math.max(62, Math.min(95, Math.round((liveState.aPassComp / liveState.aPassAtt) * 100))) : 79;
+        passEl.textContent = `${liveState.hPasses} (%${hPct}) - ${liveState.aPasses} (%${aPct})`;
+      }
+    }
+  };
+
+  // 5. OVERRIDE stepPhysics TO USE ADAPTIVE FM TEMPO + ALLOW LIVE COUNTER-ATTACKS WITHOUT CUTTING EARLY!
+  eng.stepPhysics = function(dt) {
+    if (this.goalBannerTimer > 0) {
+      this.goalBannerTimer = Math.max(0, this.goalBannerTimer - dt);
+      if (this.goalBannerTimer === 0) {
+        const b = document.getElementById('live2dGoalBanner');
+        if (b) b.classList.add('hidden');
+      }
+    }
+    if (!liveState || liveState.finished || liveState.paused) return;
+
+    const adaptiveDt = dt * this.getAdaptivePace();
+
+    if (this.kickoffStage > 0) {
+      this.stepKickoffSequence(adaptiveDt);
+      return;
+    }
+
+    if (this.viewMode === 'full') {
+      const ov = document.getElementById('live2dFastOverlay');
+      if (ov) ov.style.opacity = '0';
+      if (this.pendingKickoffSide) {
+        const ks = this.pendingKickoffSide;
+        this.pendingKickoffSide = null;
+        this.beginRealKickoffSequence(ks);
+        return;
+      }
+      this.stepPlayers(adaptiveDt);
+      this.stepBall(adaptiveDt);
+      liveState.totalPossTicks = (liveState.totalPossTicks || 0) + 1;
+      if (this.lastTouchSide === 'home') liveState.hPossTicks = (liveState.hPossTicks || 0) + 1;
+      liveState.hPoss = Math.max(25, Math.min(75, Math.round((liveState.hPossTicks / Math.max(1, liveState.totalPossTicks)) * 100)));
+      this.simSeconds += dt;
+      const curMin = Math.min(90, Math.floor(this.simSeconds));
+      if (curMin > this.lastRecordedMin) {
+        for (let m = this.lastRecordedMin + 1; m <= curMin; m++) {
+          this.lastRecordedMin = m;
+          this.onMatchMinuteAdvance(m);
+          if (!liveState || liveState.paused || liveState.finished) break;
+        }
+      }
+      return;
+    }
+
+    // FM MOBILE "ÖNEMLİ ANLAR" MODE
+    if (this.highlightActive) {
+      if (this.highlightOutro > 0) {
+        this.highlightOutro -= adaptiveDt;
+        if (!this.gkHoldSafe) {
+          this.owner = null;
+          this.ball.isShot = false;
+          this.ball.vx *= 0.93; this.ball.vy *= 0.93;
+          this.ball.x = Math.max(1.5, Math.min(PITCH_W - 1.5, this.ball.x + this.ball.vx * adaptiveDt));
+          this.ball.y = Math.max(1.5, Math.min(PITCH_H - 1.5, this.ball.y + this.ball.vy * adaptiveDt));
+        }
+        for (let i = 0; i < this.players.length; i++) {
+          const pl = this.players[i];
+          if (pl.sentOff) continue;
+          pl.vx *= 0.95; pl.vy *= 0.95;
+          pl.x = Math.max(2, Math.min(PITCH_W - 2, pl.x + pl.vx * adaptiveDt));
+          pl.y = Math.max(2, Math.min(PITCH_H - 2, pl.y + pl.vy * adaptiveDt));
+        }
+        if (this.highlightOutro <= 0) {
+          if (this.pendingKickoffSide) {
+            const ks = this.pendingKickoffSide;
+            this.pendingKickoffSide = null;
+            this.beginRealKickoffSequence(ks);
+          } else {
+            this.gkHoldSafe = false;
+            this.endHighlightSequence();
+          }
+        }
+        return;
+      }
+
+      this.stepPlayers(adaptiveDt);
+      this.stepBall(adaptiveDt);
+
+      this.highlightTimer -= adaptiveDt;
+      if (this.highlightTimer <= 0 && !this.highlightResolved) {
+        this.concludeHighlight('🔄 TEMPO DÜŞTÜ · ORTA SAHA', 'rgba(30,41,59,0.88)', 0.95);
+      }
+      return;
+    }
+
+    // BETWEEN HIGHLIGHTS: Smooth fast-flow clock with realistic team-strength possession & pass accuracy!
+    this.fastMinAccum += dt * 2.5;
+    while (this.fastMinAccum >= 1.0 && !this.highlightActive && !liveState.paused && !liveState.finished) {
+      this.fastMinAccum -= 1.0;
+      const nextMin = Math.min(90, this.lastRecordedMin + 1);
+      if (nextMin > this.lastRecordedMin) {
+        this.lastRecordedMin = nextMin;
+        const hb = getTacticalBonus(liveState.home), ab = getTacticalBonus(liveState.away);
+        const hPow = getClubEffectiveOvr(liveState.home) + 1.5 + hb.att - ab.def - (liveState.hReds * 4.5);
+        const aPow = getClubEffectiveOvr(liveState.away) + ab.att - hb.def - (liveState.aReds * 4.5);
+        const homeShare = Math.max(0.32, Math.min(0.68, 0.50 + (hPow - aPow) * 0.019));
+        liveState.totalPossTicks = (liveState.totalPossTicks || 0) + 1;
+        const hAtt = Math.random() < homeShare ? randInt(4, 7) : randInt(2, 4);
+        const aAtt = Math.random() < homeShare ? randInt(2, 4) : randInt(4, 7);
+        const hCompRate = Math.max(0.70, Math.min(0.91, 0.78 + (getClubEffectiveOvr(liveState.home) - 74) * 0.006));
+        const aCompRate = Math.max(0.70, Math.min(0.91, 0.78 + (getClubEffectiveOvr(liveState.away) - 74) * 0.006));
+        const hComp = Math.round(hAtt * hCompRate);
+        const aComp = Math.round(aAtt * aCompRate);
+        if (Math.random() < homeShare) liveState.hPossTicks = (liveState.hPossTicks || 0) + 1;
+        liveState.hPasses += hComp; liveState.aPasses += aComp;
+        liveState.hPassAtt = (liveState.hPassAtt || 0) + hAtt;
+        liveState.hPassComp = (liveState.hPassComp || 0) + hComp;
+        liveState.aPassAtt = (liveState.aPassAtt || 0) + aAtt;
+        liveState.aPassComp = (liveState.aPassComp || 0) + aComp;
+        liveState.hPoss = Math.max(25, Math.min(75, Math.round((liveState.hPossTicks / Math.max(1, liveState.totalPossTicks)) * 100)));
+
+        const ov = document.getElementById('live2dFastOverlay');
+        const sEl = document.getElementById('live2dFastStatus');
+        const subEl = document.getElementById('live2dFastSub');
+        const mh = document.getElementById('live2dMomBarH');
+        const ma = document.getElementById('live2dMomBarA');
+        if (ov) ov.style.opacity = '1';
+        if (sEl) sEl.textContent = `⚡ MAÇ AKIYOR · ${nextMin}'`;
+        if (subEl) subEl.textContent = `${liveState.home.short} %${liveState.hPoss} — %${100 - liveState.hPoss} ${liveState.away.short} · Tehlikeli atak bekleniyor...`;
+        if (mh) mh.style.width = `${liveState.hPoss}%`;
+        if (ma) ma.style.width = `${100 - liveState.hPoss}%`;
+
+        this.onMatchMinuteAdvance(nextMin);
+        if (liveState.paused || liveState.finished) break;
+
+        if (this.highlightCooldownMin > 0) this.highlightCooldownMin--;
+        if (nextMin >= 4 && nextMin <= 88 && this.highlightCooldownMin === 0 && Math.random() < 0.21) {
+          const attSide = Math.random() < homeShare ? 'home' : 'away';
+          this.highlightCooldownMin = 4;
+          this.startHighlightSequence(attSide);
+          break;
+        }
+      }
+    }
+  };
+
+  // Reset v45 flags on every new highlight & match
+  const _v44StartHL = eng.startHighlightSequence.bind(eng);
+  eng.startHighlightSequence = function(attSide) {
+    this.highlightFlippedOnce = false;
+    _v44StartHL(attSide);
+  };
+
+  const _v44Init = eng.initForMatch.bind(eng);
+  eng.initForMatch = function(home, away) {
+    this.countersFlipped = 0;
+    this.calmRecycles = 0;
+    this.highlightFlippedOnce = false;
+    _v44Init(home, away);
   };
 })();
 
