@@ -853,7 +853,7 @@ select:focus, select:active, button:focus, button:active, input:focus, a:focus {
 <div class="menu-logo-ring">
 <svg class="svg-icon" style="width:28px;height:28px;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m12 6 3 4-1 5H10l-1-5 3-4Z"/><path d="M12 2v4"/><path d="m4.93 10.93 4.07-.93"/><path d="m19.07 10.93-4.07-.93"/><path d="m6.5 18.5 3.5-3.5"/><path d="m17.5 18.5-3.5-3.5"/></svg>
 </div>
-<div class="btn-soft" style="display:inline-flex;padding:3px 10px;border-radius:999px;font-size:10px;font-weight:700;margin-bottom:6px;">2026–27 DÜNYA SÜRÜMÜ · 7 LİG · v59</div>
+<div class="btn-soft" style="display:inline-flex;padding:3px 10px;border-radius:999px;font-size:10px;font-weight:700;margin-bottom:6px;">2026–27 DÜNYA SÜRÜMÜ · 7 LİG · v60</div>
 <h1 style="font-size:24px;font-weight:800;margin:0 0 4px;letter-spacing:-0.02em;">Soccer Simulator</h1>
 <p style="font-size:12px;color:var(--muted);margin:0;">Kendi teknik direktörlük kariyerini kur ve yönet.</p>
 </div>
@@ -16751,7 +16751,7 @@ enterCareer = function(careerObj) {
 
 
 // =========================================================================
-// v59: SMART OPEN-LANE PASSING, PLAYING OUT FROM THE BACK, EMERGENCY-ONLY
+// v60: SMART OPEN-LANE PASSING, PLAYING OUT FROM THE BACK, EMERGENCY-ONLY
 //      LONG CLEARANCES, SMOOTH 2s OUTRO & 15-19 HIGHLIGHTS PER MATCH!
 // =========================================================================
 (function initMatch2DV47() {
@@ -19429,10 +19429,10 @@ enterCareer = function(careerObj) {
       b.vz -= 18.5 * dt;
       if (b.z <= 0) {
         b.z = 0;
-        if (Math.abs(b.vz) > 1.8) { b.vz = -b.vz * 0.46; b.vx *= 0.88; b.vy *= 0.88; }
+        if (Math.abs(b.vz) > 1.8) { b.vz = -b.vz * 0.50; b.vx *= 0.96; b.vy *= 0.96; }
         else b.vz = 0;
       }
-      const airDamp = Math.pow(0.974, dt * 30);
+      const airDamp = Math.pow(0.988, dt * 30);
       b.vx *= airDamp; b.vy *= airDamp;
     } else {
       const turfDamp = Math.pow(0.978, dt * 30);
@@ -22642,6 +22642,301 @@ enterCareer = function(careerObj) {
     this.v59OutroFadeSamples = 0;
     this.v59OutroMovingDuringFade = 0;
     this.v59OutcomesSeen = { goal: 0, save_hold: 0, block_rebound: 0, out_of_bounds: 0, clearance: 0, turnover: 0 };
+  };
+})();
+
+
+// =========================================================================
+// v60: OUTRO PASS RECEPTION & NATURAL CARRY DURING FADE, FASTER DRIVEN LONG
+//      BALLS WITH REALISTIC WET-TURF BOUNCE, COHESIVE CONNECTED TEAM UNIT
+//      (NEITHER SCATTERED NOR BUNCHED) & MODERATE REALISTIC BALL-ZONE SHIFT!
+// =========================================================================
+(function initMatch2DV60() {
+  const eng = window.Match2DEngine;
+  if (!eng) return;
+
+  const PITCH_W = 105;
+  const PITCH_H = 68;
+
+  eng.v60OutroReceptions = 0;
+  eng.v60LongSpeedSum = 0;
+  eng.v60LongSpeedCnt = 0;
+
+  // 1. FASTER, DRIVEN LONG PASSES (REALISTIC TRAJECTORY + CRISP AIR SPEED!)
+  const _v54Kick = eng.kickBall.bind(eng);
+  eng.kickBall = function(fromAgent, tx, ty, type, targetAgent) {
+    _v54Kick(fromAgent, tx, ty, type, targetAgent);
+    if (type === 'long_pass' && fromAgent) {
+      const b = this.ball;
+      const dx = tx - fromAgent.x, dy = ty - fromAgent.y;
+      const dist = Math.max(10, Math.hypot(dx, dy));
+      // Driven, realistic long-pass arc (not a slow floating moon-ball!)
+      const targetSpd = Math.min(46.0, Math.max(34.0, dist * 0.95 + 15.5));
+      const curSpd = Math.hypot(b.vx, b.vy);
+      if (curSpd > 0.5) {
+        const sc = targetSpd / curSpd;
+        b.vx *= sc;
+        b.vy *= sc;
+      }
+      b.vz = Math.min(9.4, Math.max(6.4, 4.8 + dist * 0.10));
+      this.v60LongSpeedSum += targetSpd;
+      this.v60LongSpeedCnt++;
+    }
+  };
+
+  // Keep long-pass flight snappy & readable in getAdaptivePace
+  const _v52Pace = eng.getAdaptivePace.bind(eng);
+  eng.getAdaptivePace = function() {
+    const b = this.ball;
+    if (!this.owner && b && b.isLoftedLong && Math.hypot(b.vx, b.vy) > 16) return 0.84;
+    return _v52Pace();
+  };
+
+  // 2. OUTRO PASS RECEPTION & NATURAL CARRY (NO GHOST FLY-BY PASSES AT HIGHLIGHT END!)
+  const _v59StepOutroPlayers = eng.stepOutroPlayers.bind(eng);
+  eng.stepOutroPlayers = function(dt) {
+    const b = this.ball;
+    const outcome = this.lastActionType === 'block' ? 'block_rebound' : this.outroOutcome;
+
+    if (outcome === 'turnover') {
+      // If an outlet pass is in flight during turnover outro, let the intended receiver ACTUALLY CATCH & CARRY IT!
+      if (!this.owner && b.z < 2.2) {
+        let catcher = null, bestD = 2.8;
+        for (let i = 0; i < this.players.length; i++) {
+          const pl = this.players[i];
+          if (pl.sentOff || pl.id === this.lastPasserId) continue;
+          const d = Math.hypot(pl.x - b.x, pl.y - b.y);
+          const reach = (this.passTargetId && pl.id === this.passTargetId) ? 2.8 : 2.0;
+          if (d < reach && d < bestD) { bestD = d; catcher = pl; }
+        }
+        if (catcher) {
+          this.owner = catcher;
+          this.lastTouchSide = catcher.side;
+          this.passTargetId = null;
+          this.v60OutroReceptions++;
+        }
+      }
+
+      // If receiver has caught the ball, they dribble calmly forward while teammates transition naturally!
+      if (this.owner && !this.owner.sentOff) {
+        const car = this.owner;
+        const dir = car.side === 'home' ? 1 : -1;
+        const tx = Math.max(8, Math.min(PITCH_W - 8, car.x + dir * 10));
+        const ty = Math.max(8, Math.min(PITCH_H - 8, car.y + (PITCH_H / 2 - car.y) * 0.18));
+        const dx = tx - car.x, dy = ty - car.y, d = Math.max(0.5, Math.hypot(dx, dy));
+        const spd = 4.6;
+        car.vx += ((dx / d) * spd - car.vx) * Math.min(1, dt * 5.0);
+        car.vy += ((dy / d) * spd - car.vy) * Math.min(1, dt * 5.0);
+        car.x = Math.max(2, Math.min(PITCH_W - 2, car.x + car.vx * dt));
+        car.y = Math.max(2, Math.min(PITCH_H - 2, car.y + car.vy * dt));
+        // Glue ball cleanly to carrier's feet!
+        const vm = Math.max(0.5, Math.hypot(car.vx, car.vy));
+        b.x = Math.max(1.2, Math.min(PITCH_W - 1.2, car.x + (car.vx / vm) * 1.1));
+        b.y = Math.max(1.2, Math.min(PITCH_H - 1.2, car.y + (car.vy / vm) * 1.1));
+        b.z = 0; b.vx = car.vx; b.vy = car.vy; b.vz = 0;
+
+        // Teammates & opponents jog naturally in sync with the carrier!
+        for (let i = 0; i < this.players.length; i++) {
+          const pl = this.players[i];
+          if (pl.sentOff || pl.id === car.id) continue;
+          const ptx = Math.max(5, Math.min(PITCH_W - 5, pl.x + dir * 6.5));
+          const pty = Math.max(5, Math.min(PITCH_H - 5, pl.y + (car.y - pl.y) * 0.10));
+          const pdx = ptx - pl.x, pdy = pty - pl.y, pd = Math.max(0.5, Math.hypot(pdx, pdy));
+          const pspd = pl.pos === 'KL' ? 1.8 : 3.4;
+          pl.vx += ((pdx / pd) * pspd - pl.vx) * Math.min(1, dt * 4.0);
+          pl.vy += ((pdy / pd) * pspd - pl.vy) * Math.min(1, dt * 4.0);
+          pl.x = Math.max(2, Math.min(PITCH_W - 2, pl.x + pl.vx * dt));
+          pl.y = Math.max(2, Math.min(PITCH_H - 2, pl.y + pl.vy * dt));
+        }
+        return;
+      }
+
+      // While outlet pass is still travelling toward intended receiver, guide receiver smoothly onto the ball!
+      if (this.passTargetId) {
+        const rec = this.players.find(p => p.id === this.passTargetId && !p.sentOff);
+        if (rec) {
+          const dx = b.x - rec.x, dy = b.y - rec.y, d = Math.max(0.5, Math.hypot(dx, dy));
+          rec.vx += ((dx / d) * 5.2 - rec.vx) * Math.min(1, dt * 5.5);
+          rec.vy += ((dy / d) * 5.2 - rec.vy) * Math.min(1, dt * 5.5);
+          rec.x = Math.max(2, Math.min(PITCH_W - 2, rec.x + rec.vx * dt));
+          rec.y = Math.max(2, Math.min(PITCH_H - 2, rec.y + rec.vy * dt));
+        }
+      }
+    }
+
+    _v59StepOutroPlayers(dt);
+  };
+
+  // Also ensure outro ball physics uses the same realistic 0.96 wet-turf bounce retention & respects owned ball!
+  const _v59StepPhysics = eng.stepPhysics.bind(eng);
+  eng.stepPhysics = function(dt) {
+    // If carrier already caught the turnover outro pass, keep ball velocity synced cleanly
+    if (this.highlightActive && this.highlightOutro > 0 && this.outroOutcome === 'turnover' && this.owner) {
+      const b = this.ball;
+      b.vx = this.owner.vx; b.vy = this.owner.vy; b.z = 0; b.vz = 0;
+    }
+    _v59StepPhysics(dt);
+  };
+
+  // 3. COHESIVE CONNECTED TEAM UNIT (NEITHER TOO SCATTERED NOR TOO BUNCHED) + MODERATE REALISTIC BALL-ZONE SHIFT!
+  //    Replaces v58's over-aggressive lateral swing with balanced FM team cohesion (~9-11m lateral shift, 34-40m attack depth, 24-28m defense depth!)
+  const _v56ComputeRef = eng.computeStructuredTarget.bind(eng);
+  // Capture v56's base by overriding cleanly on top of v58 using direct team-centroid cohesion + moderate lateral shift!
+  eng.computeStructuredTarget = function(pl, ballX, ballY, teamHasBall, tp) {
+    const sbX = (typeof this.smoothBallX === 'number') ? this.smoothBallX : ballX;
+    const sbY = (typeof this.smoothBallY === 'number') ? this.smoothBallY : ballY;
+    const isHome = pl.side === 'home';
+    const dir = isHome ? 1 : -1;
+    const oppSide = isHome ? 'away' : 'home';
+    const pos = pl.pos;
+    const rt = this.getClubPhilosophy(pl.side);
+
+    if (pos === 'KL') {
+      const prog = isHome ? (sbX / PITCH_W) : ((PITCH_W - sbX) / PITCH_W);
+      return {
+        x: isHome ? (3.5 + prog * 10) : (PITCH_W - 3.5 - prog * 10),
+        y: PITCH_H / 2 + Math.max(-5.5, Math.min(5.5, (sbY - PITCH_H / 2) * 0.24)),
+        state: 'defend'
+      };
+    }
+
+    // Honor timed off-ball intents in possession (overlaps, depth runs, check-to-feet)
+    if (teamHasBall && pl.offIntent && pl.offIntent.timer > 0 && (!this.owner || this.owner.id !== pl.id)) {
+      let ix = pl.offIntent.x, iy = pl.offIntent.y;
+      if (['SNT', 'SLK', 'SĞK', 'OOS'].includes(pos)) {
+        const offLine = this.getOffsideLineX(oppSide);
+        if (isHome && ix > offLine - 1.2) ix = Math.min(offLine - 1.2, Math.max(ballX + 2.0, offLine - 1.2));
+        if (!isHome && ix < offLine + 1.2) ix = Math.max(offLine + 1.2, Math.min(ballX - 2.0, offLine + 1.2));
+      }
+      return {
+        x: Math.max(5, Math.min(PITCH_W - 5, ix)),
+        y: Math.max(5.0, Math.min(PITCH_H - 5.0, iy)),
+        state: pl.offIntent.type === 'check_to_feet' ? 'support' : 'run'
+      };
+    }
+
+    if (!pl.fSlot) this.assignPlayerRoles(pl.side);
+    const slot = pl.fSlot || { depth: 0.5, width: 0, colCount: 1 };
+    const prog = isHome ? (sbX / PITCH_W) : ((PITCH_W - sbX) / PITCH_W);
+    const isBackLine = slot.depth <= 0.12 || ['STP', 'SLB', 'SĞB'].includes(pos);
+    const isWinger = (pos === 'SLK' || pos === 'SĞK');
+
+    // MODERATE, REALISTIC LATERAL BALL-ZONE SHIFT (~8-11m total team swing, NOT 18m!)
+    const ballLat = Math.max(-1, Math.min(1, (sbY - PITCH_H / 2) / (PITCH_H / 2 - 4)));
+    const isFarSide = (ballLat !== 0) && (Math.sign(slot.width) === -Math.sign(ballLat)) && Math.abs(slot.width) >= 0.35;
+
+    if (teamHasBall) {
+      // COHESIVE ATTACKING UNIT: ~34-40m total depth (11-13m between lines!), ~46-50m width!
+      const backDepth = Math.max(0.18, Math.min(0.46, prog - 0.19 + rt.lineShift * 0.6));
+      const unitDepth = 0.36; // ~37.8m connected team length from CBs to Striker!
+      const frontDepth = Math.min(0.92, backDepth + unitDepth);
+      let targetProg = backDepth + slot.depth * (frontDepth - backDepth);
+
+      if (pl.fmRole === 'DLF') targetProg -= 0.05;
+      else if (pl.fmRole === 'WB' && prog > 0.48) targetProg = Math.min(0.84, targetProg + 0.11);
+
+      let halfSpanY = 20.5 * rt.widthMult;
+      if (pos === 'STP') halfSpanY = slot.colCount >= 3 ? 12.5 : 7.5;
+      else if (pos === 'SLB' || pos === 'SĞB') halfSpanY = Math.min(25.5, 23.0 * rt.widthMult);
+      else if (isWinger) halfSpanY = Math.min(25.5, 23.5 * rt.widthMult);
+      else if (pos === 'SNT' && slot.colCount >= 2) halfSpanY = 9.5;
+      else if (pos === 'DOS' && slot.colCount >= 2) halfSpanY = 8.5;
+      else if (pos === 'OS') halfSpanY = 12.5 * rt.widthMult;
+
+      // Gentle lateral shift (3.5-6.5m) toward ball side, while far winger preserves balanced width
+      const latShift = (isFarSide && (isWinger || pos === 'SLB' || pos === 'SĞB')) ? (ballLat * 2.0) : (ballLat * 6.2);
+      let tx = isHome ? (targetProg * PITCH_W) : ((1 - targetProg) * PITCH_W);
+      let ty = PITCH_H / 2 + slot.width * halfSpanY + latShift;
+      let state = slot.depth >= 0.65 ? 'run' : 'support';
+
+      // Strict onside discipline
+      if (['SNT', 'SLK', 'SĞK', 'OOS'].includes(pos)) {
+        const offLine = this.getOffsideLineX(oppSide);
+        if (isHome && tx > offLine - 1.3) tx = Math.min(offLine - 1.3, Math.max(ballX + 2.0, offLine - 1.3));
+        if (!isHome && tx < offLine + 1.3) tx = Math.max(offLine + 1.3, Math.min(ballX - 2.0, offLine + 1.3));
+      }
+
+      return {
+        x: Math.max(5.5, Math.min(PITCH_W - 5.5, tx)),
+        y: Math.max(5.5, Math.min(PITCH_H - 5.5, ty)),
+        state
+      };
+    }
+
+    // COHESIVE DEFENDING UNIT: ~24-28m compact depth, ~36-40m width, MODERATE ~8-10m lateral shift!
+    const syncDefProg = Math.max(0.11, Math.min(0.44, prog - 0.21 + rt.lineShift + rt.pressLine));
+    const blockSpan = rt.press === 'dusuk' ? 0.22 : (rt.press === 'yuksek' ? 0.28 : 0.25);
+    const formProg = isBackLine ? syncDefProg : Math.min(0.68, syncDefProg + slot.depth * blockSpan);
+    const fx = isHome ? (formProg * PITCH_W) : ((1 - formProg) * PITCH_W);
+
+    let defHalfSpanY = 18.0;
+    if (pos === 'STP') defHalfSpanY = slot.colCount >= 3 ? 11.0 : 6.0;
+    else if (pos === 'SLB' || pos === 'SĞB') defHalfSpanY = 18.0;
+    else if (pos === 'DOS' || pos === 'OS') defHalfSpanY = 11.0;
+
+    // Realistic moderate lateral shift (~8.5m for midfield/near-side, far winger tucks gently ~10m)
+    const defLatShift = (isFarSide && (isWinger || pos === 'SLB' || pos === 'SĞB')) ? (ballLat * 10.5) : (ballLat * 8.2);
+    const formY = PITCH_H / 2 + slot.width * defHalfSpanY + defLatShift;
+
+    if (pos === 'SNT') {
+      if (rt.press !== 'dusuk' && this.owner && this.owner.side === oppSide && this.owner.pos === 'STP') {
+        const ownGoalX = isHome ? 0 : PITCH_W;
+        const dx = ownGoalX - this.owner.x, dy = PITCH_H / 2 - this.owner.y;
+        const d = Math.max(1, Math.hypot(dx, dy));
+        return {
+          x: Math.max(6, Math.min(PITCH_W - 6, this.owner.x + (dx / d) * rt.standoff)),
+          y: Math.max(6, Math.min(PITCH_H - 6, this.owner.y + (dy / d) * 1.4)),
+          state: 'run'
+        };
+      }
+      // Keep striker connected ~16-18m ahead of midfield bank (not isolated 35m away!)
+      const outletProg = Math.min(0.62, syncDefProg + blockSpan + 0.14);
+      return {
+        x: Math.max(8, Math.min(PITCH_W - 8, isHome ? (outletProg * PITCH_W) : ((1 - outletProg) * PITCH_W))),
+        y: Math.max(9, Math.min(PITCH_H - 9, PITCH_H / 2 + slot.width * 9 + ballLat * 5.5)),
+        state: 'support'
+      };
+    }
+
+    // Blend cohesive formation block with tight 1-to-1 man-marking (respecting pressing intensity!)
+    const assignedMap = this.v49MarkingMap.get(pl.side);
+    const markTarget = assignedMap ? assignedMap.get(pl.id) : null;
+    if (markTarget && !markTarget.sentOff) {
+      const predX = markTarget.x + (markTarget.vx || 0) * 0.20;
+      const predY = markTarget.y + (markTarget.vy || 0) * 0.20;
+      const ownGoalX = isHome ? 0 : PITCH_W;
+      const toGoalX = ownGoalX - predX, toGoalY = (PITCH_H / 2) - predY;
+      const gDist = Math.max(1, Math.hypot(toGoalX, toGoalY));
+      const mx = predX + (toGoalX / gDist) * rt.markCushion;
+      const my = predY + (toGoalY / gDist) * (rt.markCushion * 0.55);
+
+      const ballNear = isHome ? (ballX < 62) : (ballX > 43);
+      const wMark = ballNear ? (rt.wMark * 0.85) : (rt.wMark * 0.50);
+      let rx = mx * wMark + fx * (1 - wMark);
+      if (isBackLine) rx = Math.max(fx - 2.4, Math.min(fx + 2.4, rx));
+      if (pos === 'STP' && isFarSide) rx += (isHome ? -2.2 : 2.2); // 2nd CB cover cushion!
+      const ry = my * wMark + formY * (1 - wMark);
+      const dToMark = Math.hypot(pl.x - rx, pl.y - ry);
+      return {
+        x: Math.max(5.5, Math.min(PITCH_W - 5.5, rx)),
+        y: Math.max(5.5, Math.min(PITCH_H - 5.5, ry)),
+        state: dToMark > 2.5 ? 'run' : 'defend'
+      };
+    }
+
+    return {
+      x: Math.max(5.5, Math.min(PITCH_W - 5.5, fx)),
+      y: Math.max(5.5, Math.min(PITCH_H - 5.5, formY)),
+      state: 'defend'
+    };
+  };
+
+  const _v59Init = eng.initForMatch.bind(eng);
+  eng.initForMatch = function(home, away) {
+    _v59Init(home, away);
+    this.v60OutroReceptions = 0;
+    this.v60LongSpeedSum = 0;
+    this.v60LongSpeedCnt = 0;
   };
 })();
 
