@@ -853,7 +853,7 @@ select:focus, select:active, button:focus, button:active, input:focus, a:focus {
 <div class="menu-logo-ring">
 <svg class="svg-icon" style="width:28px;height:28px;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m12 6 3 4-1 5H10l-1-5 3-4Z"/><path d="M12 2v4"/><path d="m4.93 10.93 4.07-.93"/><path d="m19.07 10.93-4.07-.93"/><path d="m6.5 18.5 3.5-3.5"/><path d="m17.5 18.5-3.5-3.5"/></svg>
 </div>
-<div class="btn-soft" style="display:inline-flex;padding:3px 10px;border-radius:999px;font-size:10px;font-weight:700;margin-bottom:6px;">2026–27 DÜNYA SÜRÜMÜ · 7 LİG · v47</div>
+<div class="btn-soft" style="display:inline-flex;padding:3px 10px;border-radius:999px;font-size:10px;font-weight:700;margin-bottom:6px;">2026–27 DÜNYA SÜRÜMÜ · 7 LİG · v48</div>
 <h1 style="font-size:24px;font-weight:800;margin:0 0 4px;letter-spacing:-0.02em;">Soccer Simulator</h1>
 <p style="font-size:12px;color:var(--muted);margin:0;">Kendi teknik direktörlük kariyerini kur ve yönet.</p>
 </div>
@@ -12309,19 +12309,19 @@ enterCareer = function(careerObj) {
       const sy = (m) => (m / PITCH_H) * innerH;
 
       // 1. Outer grass surround
-      ctx.fillStyle = '#0f3d23';
+      ctx.fillStyle = '#092214';
       ctx.fillRect(0, 0, this.cw, this.ch);
 
       // 2. Alternating vertical turf mowing stripes (10 stripes)
       const stripes = 10;
       const sw = innerW / stripes;
       for (let i = 0; i < stripes; i++) {
-        ctx.fillStyle = i % 2 === 0 ? '#166534' : '#15803d';
+        ctx.fillStyle = i % 2 === 0 ? '#124022' : '#164d2a';
         ctx.fillRect(this.padX + i * sw, this.padY, sw + 0.5, innerH);
       }
 
       // 3. Pitch lines
-      ctx.strokeStyle = 'rgba(255,255,255,0.82)';
+      ctx.strokeStyle = 'rgba(255,255,255,0.74)';
       ctx.lineWidth = Math.max(1.2, this.cw * 0.0024);
 
       // Outer touchline & goal lines
@@ -12371,7 +12371,7 @@ enterCareer = function(careerObj) {
         ctx.fillRect(goalX, goalY, goalDepth, goalH);
         ctx.strokeStyle = '#ffffff';
         ctx.strokeRect(goalX, goalY, goalDepth, goalH);
-        ctx.strokeStyle = 'rgba(255,255,255,0.82)';
+        ctx.strokeStyle = 'rgba(255,255,255,0.74)';
       };
       drawHalfBoxes(true);
       drawHalfBoxes(false);
@@ -12396,7 +12396,7 @@ enterCareer = function(careerObj) {
       if (this.pitchCache) {
         ctx.drawImage(this.pitchCache, 0, 0, this.cw, this.ch);
       } else {
-        ctx.fillStyle = '#166534';
+        ctx.fillStyle = '#124022';
         ctx.fillRect(0, 0, this.cw, this.ch);
       }
 
@@ -16751,7 +16751,7 @@ enterCareer = function(careerObj) {
 
 
 // =========================================================================
-// v47: SMART OPEN-LANE PASSING, PLAYING OUT FROM THE BACK, EMERGENCY-ONLY
+// v48: SMART OPEN-LANE PASSING, PLAYING OUT FROM THE BACK, EMERGENCY-ONLY
 //      LONG CLEARANCES, SMOOTH 2s OUTRO & 15-19 HIGHLIGHTS PER MATCH!
 // =========================================================================
 (function initMatch2DV47() {
@@ -17122,6 +17122,794 @@ enterCareer = function(careerObj) {
           break;
         }
       }
+    }
+  };
+})();
+
+
+// =========================================================================
+// v48: FORWARD-FIRST AI & OPEN-LANE SOLO DRIVES, ZERO BLATANT OFFSIDE PASSES,
+//      PASSES TO FEET / RUNNING PATH + ANY-OPPONENT INTERCEPTIONS,
+//      FULL FM BUILD-UP HIGHLIGHTS FROM DEEP & DARKER FM TURF!
+// =========================================================================
+(function initMatch2DV48() {
+  const eng = window.Match2DEngine;
+  if (!eng) return;
+
+  const PITCH_W = 105;
+  const PITCH_H = 68;
+
+  eng.passMeta = null;
+  eng.soloDrives = 0;
+  eng.oppInterceptions = 0;
+  eng.blatantOffsidesAvoided = 0;
+  eng.forwardPassCount = 0;
+  eng.backwardPassCount = 0;
+
+  const SCENARIOS_V48 = [
+    'buildup_central',
+    'wing_overlap_build',
+    'one_on_one_through',
+    'cutback_tapin',
+    'fast_counter_3v2',
+    'tiki_taka_box',
+    'long_shot_screamer',
+    'high_press_steal',
+    'corner_kick',
+    'free_kick_direct',
+    'penalty_kick'
+  ];
+
+  const SCEN_HUD_V48 = {
+    buildup_central: '⚽ GERİDEN OYUN KURMA · ATAK GELİŞİMİ',
+    wing_overlap_build: '🎯 KANAT ORGANİZASYONU · BINDİRME',
+    one_on_one_through: '⚡ ORTA SAHADAN DERİN ARA PAS',
+    cutback_tapin: '🔥 KANATTAN ÇİZGİYE İNİŞ',
+    fast_counter_3v2: '🚀 HIZLI KONTRA ATAK',
+    tiki_taka_box: '⚽ KISA PASLA HÜCUM GELİŞİMİ',
+    long_shot_screamer: '💥 MERKEZDEN HÜCUM · ŞUT ARAYIŞI',
+    high_press_steal: '🔥 ÖNDE PRES · TOP KAZANIMI',
+    corner_kick: '🚩 KÖŞE VURUŞU',
+    free_kick_direct: '🎯 TEHLİKELİ FRİKİK',
+    penalty_kick: '⚠️ PENALTI VURUŞU!'
+  };
+
+  // Helper: Check if carrier has a clear open lane straight toward opponent goal!
+  eng.hasOpenDriveLane = function(pl) {
+    if (!pl || pl.pos === 'KL') return false;
+    const isHome = pl.side === 'home';
+    const dir = isHome ? 1 : -1;
+    const goalX = isHome ? PITCH_W : 0;
+    const tx = goalX - dir * 8;
+    const ty = PITCH_H / 2 + (pl.y - PITCH_H / 2) * 0.35;
+    const dx = tx - pl.x, dy = ty - pl.y;
+    const dist = Math.max(1, Math.hypot(dx, dy));
+    const ux = dx / dist, uy = dy / dist;
+    const checkLen = Math.min(13.5, dist);
+
+    for (let i = 0; i < this.players.length; i++) {
+      const op = this.players[i];
+      if (op.side !== pl.side && !op.sentOff && op.pos !== 'KL') {
+        const proj = (op.x - pl.x) * ux + (op.y - pl.y) * uy;
+        if (proj > -0.8 && proj < checkLen) {
+          const perp = Math.abs((op.x - pl.x) * (-uy) + (op.y - pl.y) * ux);
+          if (perp < 3.4) return false;
+        }
+      }
+    }
+    return true;
+  };
+
+  // 1. TIGHTER ONSIDE SHOULDER DISCIPLINE (attackers stay strictly onside 96% of the time!)
+  const _v47ComputeTarget = eng.computeStructuredTarget.bind(eng);
+  eng.computeStructuredTarget = function(pl, ballX, ballY, teamHasBall, tp) {
+    const res = _v47ComputeTarget(pl, ballX, ballY, teamHasBall, tp);
+    if (pl.pos === 'KL') return res;
+    if (teamHasBall && ['SNT', 'SLK', 'SĞK', 'OOS'].includes(pl.pos)) {
+      const isHome = pl.side === 'home';
+      const defSide = isHome ? 'away' : 'home';
+      const offLine = this.getOffsideLineX(defSide);
+      // 96% strict onside discipline; only ~4% tight marginal run right on defender's shoulder
+      const strictOnside = ((pl.slotIdx * 3 + Math.floor((this.simSeconds || 0) * 0.4)) % 25) !== 0;
+      if (strictOnside) {
+        if (isHome && res.x > offLine - 1.4) res.x = Math.min(offLine - 1.4, Math.max(ballX + 1.5, offLine - 1.4));
+        if (!isHome && res.x < offLine + 1.4) res.x = Math.max(offLine + 1.4, Math.min(ballX - 1.5, offLine + 1.4));
+      } else {
+        // Even on rare mistimed run, never camp >1.2m offside
+        if (isHome && res.x > offLine + 1.1) res.x = offLine + 1.1;
+        if (!isHome && res.x < offLine - 1.1) res.x = offLine - 1.1;
+      }
+    }
+    return res;
+  };
+
+  // 2. TRACK PASS DESTINATION & REALISTIC PASS ACCURACY (TO FEET OR RUNNING PATH!)
+  const _v47Kick = eng.kickBall.bind(eng);
+  eng.kickBall = function(fromAgent, tx, ty, type, targetAgent) {
+    let finalTx = tx, finalTy = ty;
+    let isBadPass = false;
+    const isPass = fromAgent && type !== 'shot' && type !== 'clearance';
+
+    if (isPass && targetAgent) {
+      const dist = Math.hypot(tx - fromAgent.x, ty - fromAgent.y);
+      const ovr = fromAgent.ovr || 74;
+      // Small realistic bad-pass chance only on medium/long passes (scales with player quality)
+      const errChance = dist < 11 ? 0.02 : Math.max(0.04, Math.min(0.14, 0.13 - (ovr - 70) * 0.004));
+      if (Math.random() < errChance) {
+        isBadPass = true;
+        const jitter = 2.4 + Math.random() * 2.2;
+        const ang = Math.random() * Math.PI * 2;
+        finalTx = Math.max(3, Math.min(PITCH_W - 3, tx + Math.cos(ang) * jitter));
+        finalTy = Math.max(3, Math.min(PITCH_H - 3, ty + Math.sin(ang) * jitter));
+      }
+      this.passMeta = {
+        targetId: targetAgent.id,
+        destX: finalTx,
+        destY: finalTy,
+        isThrough: type === 'through_ball' || type === 'cross',
+        isBadPass,
+        side: fromAgent.side,
+        kickerId: fromAgent.id,
+        age: 0
+      };
+    } else {
+      this.passMeta = null;
+    }
+
+    _v47Kick(fromAgent, finalTx, finalTy, type, targetAgent);
+  };
+
+  // 3. FIX PLAYER MOVEMENT:
+  //    - Carrier with open lane drives directly toward goal!
+  //    - Receiver does NOT run backwards to fetch good passes (lets pass arrive to feet, or sprints FORWARD onto running path!)
+  //    - Only chases loose ball on a BAD pass!
+  //    - Nearest opponent actively steps in to intercept nearby passes!
+  eng.stepPlayers = function(dt) {
+    if (this.setPieceWait > 0 && this.pendingSetPiece) {
+      this.setPieceWait -= dt;
+      const sp = this.pendingSetPiece;
+      if (sp.taker) {
+        const dx = this.ball.x - sp.taker.x, dy = this.ball.y - sp.taker.y;
+        const d = Math.hypot(dx, dy);
+        if (d > 1.0) {
+          sp.taker.x += (dx / d) * 4.5 * dt;
+          sp.taker.y += (dy / d) * 4.5 * dt;
+        }
+      }
+      if (this.setPieceWait <= 0) {
+        const exec = this.pendingSetPiece;
+        this.pendingSetPiece = null;
+        exec.fire();
+      }
+      return;
+    }
+
+    if (this.gkHoldSafe && this.owner && this.owner.pos === 'KL') {
+      for (let i = 0; i < this.players.length; i++) {
+        const pl = this.players[i];
+        if (pl.sentOff || pl.id === this.owner.id) continue;
+        pl.vx *= 0.92; pl.vy *= 0.92;
+        pl.x = Math.max(2, Math.min(PITCH_W - 2, pl.x + pl.vx * dt));
+        pl.y = Math.max(2, Math.min(PITCH_H - 2, pl.y + pl.vy * dt));
+      }
+      return;
+    }
+
+    if (this.tackleCooldown > 0) this.tackleCooldown = Math.max(0, this.tackleCooldown - dt);
+    if (this.kickoffFreeze > 0) { this.kickoffFreeze = Math.max(0, this.kickoffFreeze - dt); return; }
+    if (this.passMeta && !this.owner) this.passMeta.age += dt;
+    if (this.owner) this.passMeta = null;
+
+    const b = this.ball;
+    const homeTP = this.getTacticalProfile('home');
+    const awayTP = this.getTacticalProfile('away');
+
+    // Calm tackle protection only during initial build-up breath (first 3s of a 22s highlight)
+    if (this.highlightActive && !this.highlightResolved && this.highlightTimer > 19.0 && this.tackleCooldown < 0.25) {
+      this.tackleCooldown = 0.35;
+    }
+
+    // Designate 1 (or 2 for high press) defender to press ball carrier
+    const pressSet = new Set();
+    if (this.owner) {
+      const defSide = this.owner.side === 'home' ? 'away' : 'home';
+      const defTP = defSide === 'home' ? homeTP : awayTP;
+      const cands = this.players
+        .filter(p => p.side === defSide && !p.sentOff && p.pos !== 'KL' && (p.recoverTimer || 0) <= 0)
+        .map(p => ({ p, d: Math.hypot(p.x - b.x, p.y - b.y) }))
+        .filter(x => x.d <= defTP.pressRadius)
+        .sort((a, b2) => a.d - b2.d);
+      for (let k = 0; k < Math.min(defTP.pressCount, cands.length); k++) pressSet.add(cands[k].p.id);
+    }
+
+    // When ball is in flight / loose (not a shot):
+    // - Nearest OPPONENT within 9.5m steps to intercept the ball!
+    // - Only if there is NO passMeta (loose ball) OR passMeta.isBadPass does the attacking side chase (b.x, b.y) directly!
+    let oppInterceptorId = null;
+    let looseH = null, looseA = null;
+    if (!this.owner && !b.isShot) {
+      if (this.passMeta) {
+        const oppSide = this.passMeta.side === 'home' ? 'away' : 'home';
+        let bestOppD = this.passMeta.isBadPass ? 7.5 : 4.8;
+        for (let i = 0; i < this.players.length; i++) {
+          const pl = this.players[i];
+          if (pl.side !== oppSide || pl.sentOff || pl.pos === 'KL' || (pl.recoverTimer || 0) > 0) continue;
+          const dBall = Math.hypot(pl.x - b.x, pl.y - b.y);
+          const dDest = Math.hypot(pl.x - this.passMeta.destX, pl.y - this.passMeta.destY);
+          const dEff = Math.min(dBall, dDest);
+          if (dEff < bestOppD) { bestOppD = dEff; oppInterceptorId = pl.id; }
+        }
+      } else {
+        let dLH = 999, dLA = 999;
+        for (let i = 0; i < this.players.length; i++) {
+          const pl = this.players[i];
+          if (pl.sentOff || (pl.recoverTimer || 0) > 0) continue;
+          const d = Math.hypot(pl.x - b.x, pl.y - b.y);
+          if (pl.side === 'home' && d < dLH) { dLH = d; looseH = pl.id; }
+          if (pl.side === 'away' && d < dLA) { dLA = d; looseA = pl.id; }
+        }
+      }
+    }
+
+    for (let i = 0; i < this.players.length; i++) {
+      const pl = this.players[i];
+      if (pl.sentOff) continue;
+      if ((pl.recoverTimer || 0) > 0) pl.recoverTimer = Math.max(0, pl.recoverTimer - dt);
+
+      const isHome = pl.side === 'home';
+      const dir = isHome ? 1 : -1;
+      const goalX = isHome ? PITCH_W : 0;
+      const tp = isHome ? homeTP : awayTP;
+      const teamHasBall = this.owner ? (this.owner.side === pl.side) : (this.lastTouchSide === pl.side);
+
+      if (this.owner && this.owner.id === pl.id) {
+        pl.state = 'carry';
+        const openLane = this.hasOpenDriveLane(pl);
+        const distGoal = Math.hypot(goalX - pl.x, PITCH_H / 2 - pl.y);
+
+        if (pl.drivingToGoal || (openLane && distGoal > 13 && distGoal < 55)) {
+          // OPEN SPACE AHEAD -> Drive straight toward goal!
+          pl.targetX = Math.max(6, Math.min(PITCH_W - 6, goalX - dir * 9.5));
+          pl.targetY = Math.max(8, Math.min(PITCH_H - 8, PITCH_H / 2 + (pl.y - PITCH_H / 2) * 0.38));
+        } else {
+          let blockedAhead = false;
+          for (let j = 0; j < this.players.length; j++) {
+            const op = this.players[j];
+            if (op.side !== pl.side && !op.sentOff && op.pos !== 'KL') {
+              const ahead = (op.x - pl.x) * dir;
+              if (ahead > 0.5 && ahead < 6.0 && Math.abs(op.y - pl.y) < 3.4) { blockedAhead = true; break; }
+            }
+          }
+          pl.targetX = Math.max(7, Math.min(PITCH_W - 7, pl.x + dir * (blockedAhead ? 3.5 : 10.5)));
+          pl.targetY = Math.max(6, Math.min(PITCH_H - 6, pl.y + (PITCH_H / 2 - pl.y) * 0.18));
+        }
+
+        // If carrier just reached great shooting distance while driving solo, shoot right away!
+        if (pl.drivingToGoal && distGoal <= 18.5 && Math.abs(pl.y - PITCH_H / 2) <= 15.5) {
+          pl.drivingToGoal = false;
+          pl.holdTimer = 0;
+        } else {
+          pl.holdTimer = (pl.holdTimer || tp.holdBase) - dt * (openLane ? 0.85 : 1.45);
+        }
+        if (pl.holdTimer <= 0) {
+          pl.drivingToGoal = false;
+          this.decideFMAction(pl);
+        }
+      } else if (!this.owner && !b.isShot && this.passMeta && pl.id === this.passMeta.targetId) {
+        // INTENDED PASS RECEIVER:
+        // - Through-ball / cross: Sprint FORWARD onto the running path (destX, destY)!
+        // - Bad pass: Chase the loose/wayward ball (b.x, b.y)!
+        // - Good pass to feet: Hold position / glide gently onto destX, destY so ball arrives crisply to feet!
+        if (this.passMeta.isThrough) {
+          pl.state = 'run';
+          pl.targetX = this.passMeta.destX;
+          pl.targetY = this.passMeta.destY;
+        } else if (this.passMeta.isBadPass || Math.hypot(b.vx, b.vy) < 3.5) {
+          pl.state = 'press';
+          pl.targetX = b.x;
+          pl.targetY = b.y;
+        } else {
+          // Good pass to feet: stay at destX, destY (do NOT jog backwards toward passer!)
+          pl.state = 'support';
+          pl.targetX = this.passMeta.destX;
+          pl.targetY = this.passMeta.destY;
+        }
+      } else if (pl.id === oppInterceptorId) {
+        // Nearby opponent actively steps into the pass path to intercept!
+        pl.state = 'press';
+        const leadB = Math.hypot(b.vx, b.vy) > 4 ? 0.18 : 0;
+        pl.targetX = Math.max(2, Math.min(PITCH_W - 2, b.x + b.vx * leadB));
+        pl.targetY = Math.max(2, Math.min(PITCH_H - 2, b.y + b.vy * leadB));
+      } else if (pressSet.has(pl.id) || pl.id === looseH || pl.id === looseA) {
+        pl.state = 'press';
+        pl.targetX = b.x;
+        pl.targetY = b.y;
+
+        // Clean Tackle
+        if (this.owner && this.owner.side !== pl.side && this.tackleCooldown <= 0 && (pl.recoverTimer || 0) <= 0) {
+          const dCarrier = Math.hypot(pl.x - this.owner.x, pl.y - this.owner.y);
+          if (dCarrier < 1.75) {
+            const defSkill = (pl.ovr || 74) + (['STP','DOS','SLB','SĞB'].includes(pl.pos) ? 5 : 0);
+            const attSkill = (this.owner.ovr || 74) + 3;
+            const winProb = Math.max(0.14, Math.min(0.45, 0.24 + (defSkill - attSkill) * 0.012));
+            this.tackleCooldown = 1.85;
+            if (Math.random() < winProb) {
+              const victim = this.owner;
+              victim.recoverTimer = 1.85;
+              victim.drivingToGoal = false;
+              victim.vx *= 0.2; victim.vy *= 0.2;
+              this.owner = pl;
+              this.lastTouchSide = pl.side;
+              pl.state = 'carry';
+              pl.holdTimer = 0.45;
+              this.aiMetrics.tackles++;
+              this.emit2DEvent({ type: 'tackle', side: pl.side, player: pl, victim });
+            } else {
+              pl.recoverTimer = 1.25;
+            }
+          }
+        }
+      } else {
+        const st = this.computeStructuredTarget(pl, b.x, b.y, teamHasBall, tp);
+        pl.targetX = st.x;
+        pl.targetY = st.y;
+        pl.state = st.state;
+      }
+
+      // Smooth FM steering & velocity integration
+      const dx = (pl.targetX - pl.x), dy = (pl.targetY - pl.y);
+      const dist = Math.hypot(dx, dy);
+      let maxSpd = this.getMaxSpeed(pl);
+      if (pl.state === 'carry') maxSpd *= pl.drivingToGoal ? 0.96 : 0.91;
+      else if (pl.state === 'run' || pl.state === 'press') maxSpd *= 1.03;
+      else if (pl.state === 'support') maxSpd *= 0.72;
+      else maxSpd *= 0.84;
+
+      if ((pl.recoverTimer || 0) > 0) maxSpd *= 0.45;
+
+      const desiredVx = dist > 0.35 ? (dx / dist) * Math.min(maxSpd, dist * 3.8) : 0;
+      const desiredVy = dist > 0.35 ? (dy / dist) * Math.min(maxSpd, dist * 3.8) : 0;
+      const blend = Math.min(1, dt * 7.2);
+      pl.vx += (desiredVx - pl.vx) * blend;
+      pl.vy += (desiredVy - pl.vy) * blend;
+      pl.x = Math.max(2.0, Math.min(PITCH_W - 2.0, pl.x + pl.vx * dt));
+      pl.y = Math.max(2.0, Math.min(PITCH_H - 2.0, pl.y + pl.vy * dt));
+    }
+
+    // Gentle full-pitch separation so players never clump into a pile
+    for (let i = 0; i < this.players.length; i++) {
+      const a = this.players[i];
+      if (a.sentOff || a.pos === 'KL') continue;
+      let px = 0, py = 0;
+      for (let j = i + 1; j < this.players.length; j++) {
+        const b2 = this.players[j];
+        if (b2.sentOff || b2.pos === 'KL') continue;
+        const dx = a.x - b2.x, dy = a.y - b2.y;
+        const d = Math.hypot(dx, dy);
+        const minR = a.side === b2.side ? 9.0 : 2.4;
+        if (d > 0.05 && d < minR) {
+          const f = ((minR - d) / minR) * 1.7 * dt;
+          const ux = dx / d, uy = dy / d;
+          px += ux * f; py += uy * f;
+          b2.x = Math.max(2.5, Math.min(PITCH_W - 2.5, b2.x - ux * f));
+          b2.y = Math.max(2.5, Math.min(PITCH_H - 2.5, b2.y - uy * f));
+        }
+      }
+      a.x = Math.max(2.5, Math.min(PITCH_W - 2.5, a.x + px));
+      a.y = Math.max(2.5, Math.min(PITCH_H - 2.5, a.y + py));
+    }
+  };
+
+  // 4. ANY NEARBY PLAYER (INCLUDING OPPONENTS) CAN INTERCEPT/CLAIM PASSES IN FLIGHT!
+  const _v47StepBall = eng.stepBall.bind(eng);
+  eng.stepBall = function(dt) {
+    const b = this.ball;
+    const prevOwner = this.owner;
+    const prevSide = this.lastTouchSide;
+
+    // Pre-check realistic opponent interception on rolling/low passes before default pickup!
+    if (!this.owner && !b.isShot && !b.isClearance && b.z < 1.85 && this.passMeta && this.passMeta.age > 0.22) {
+      let interceptor = null, bestD = 2.05;
+      for (let i = 0; i < this.players.length; i++) {
+        const pl = this.players[i];
+        if (pl.sentOff || (pl.recoverTimer || 0) > 0) continue;
+        if (pl.id === this.lastPasserId) continue;
+        const d = Math.hypot(pl.x - b.x, pl.y - b.y);
+        const isOpp = pl.side !== this.passMeta.side;
+        const oppReach = this.passMeta.isBadPass ? 1.78 : 1.32;
+        const reach = pl.pos === 'KL' ? 2.6 : (isOpp ? oppReach : (pl.id === this.passMeta.targetId ? 2.40 : 1.75));
+        if (d < reach && d < bestD) {
+          bestD = d;
+          interceptor = pl;
+        }
+      }
+      if (interceptor) {
+        const wasOpp = interceptor.side !== this.passMeta.side;
+        this.owner = interceptor;
+        this.lastTouchSide = interceptor.side;
+        this.passTargetId = null;
+        this.passMeta = null;
+        interceptor.state = 'carry';
+        const tp = this.getTacticalProfile(interceptor.side);
+        interceptor.holdTimer = wasOpp ? 0.42 : Math.max(0.48, tp.holdBase * 1.05);
+        if (wasOpp) {
+          this.oppInterceptions++;
+          if (this.offsideSnap) this.offsideSnap.clear();
+          if (liveState && !liveState.finished) {
+            if (prevSide === 'home') liveState.hPassAtt = (liveState.hPassAtt || 0) + 1;
+            else liveState.aPassAtt = (liveState.aPassAtt || 0) + 1;
+          }
+        }
+        return;
+      }
+    }
+
+    _v47StepBall(dt);
+
+    if (!prevOwner && this.owner && this.owner.side !== prevSide) {
+      this.oppInterceptions++;
+    }
+  };
+
+  // 5. FORWARD-FIRST AI + SOLO GOAL DRIVE WHEN OPEN + ZERO BLATANT OFFSIDE PASSES!
+  const _v47DecideFM = eng.decideFMAction.bind(eng);
+  eng.decideFMAction = function(pl) {
+    const isHome = pl.side === 'home';
+    const dir = isHome ? 1 : -1;
+    const defSide = isHome ? 'away' : 'home';
+    const goalX = isHome ? PITCH_W : 0;
+    const distGoal = Math.hypot(goalX - pl.x, PITCH_H / 2 - pl.y);
+    const angleY = Math.abs(pl.y - PITCH_H / 2);
+    const tp = this.getTacticalProfile(pl.side);
+
+    // Let v47 handle GK and defending-team turnover (counter / calm build-out / emergency clearance)
+    if (pl.pos === 'KL' || (this.highlightActive && !this.highlightResolved && pl.side !== this.highlightSide)) {
+      _v47DecideFM(pl);
+      return;
+    }
+
+    // PRIORITY 1: SHOOT WHEN IN GOOD SCORING POSITION!
+    if (this.highlightActive && pl.side === this.highlightSide) {
+      const isScreamer = this.lastScenario === 'long_shot_screamer' && distGoal <= 26.5 && angleY <= 14;
+      const inBox = distGoal <= 20.5 && angleY <= 16.5;
+      if (inBox || (isScreamer && Math.random() < 0.85)) {
+        const cornerBias = (Math.random() < 0.5 ? -1 : 1) * (0.9 + Math.random() * 2.4);
+        this.kickBall(pl, goalX, PITCH_H / 2 + cornerBias, 'shot', null);
+        if (isHome) this.aiMetrics.shotsHome++; else this.aiMetrics.shotsAway++;
+        const xg = inBox
+          ? Number(Math.max(0.14, Math.min(0.56, (21.5 - distGoal) * 0.030 * (1 - angleY / 28))).toFixed(2))
+          : Number(Math.max(0.05, Math.min(0.12, (28 - distGoal) * 0.014)).toFixed(2));
+        this.ball.shotDist = distGoal;
+        this.emit2DEvent({ type: 'shot', side: pl.side, player: pl, xg, distGoal });
+        return;
+      }
+    }
+
+    // PRIORITY 2: IF PATH TO GOAL IS WIDE OPEN -> KEEP DRIBBLING FORWARD TO SCORE (DON'T TURN BACK!)
+    const inAttackingZone = isHome ? (pl.x > 46) : (pl.x < 59);
+    if (inAttackingZone && distGoal > 13.5 && distGoal < 52 && this.hasOpenDriveLane(pl)) {
+      // Check if an even better onside teammate is completely free right inside the box (<16m from goal)
+      const offLine = this.getOffsideLineX(defSide);
+      const tapInMate = this.findOpenTeammates(pl, 32).find(o => {
+        if (o.blockers > 0 || o.m.pos === 'KL') return false;
+        const mOff = this.isPlayerOffside(o.m, this.ball.x);
+        const mDist = Math.hypot(goalX - o.m.x, PITCH_H / 2 - o.m.y);
+        return !mOff && mDist < Math.min(16, distGoal - 6) && o.minOppD > 3.5;
+      });
+      if (!tapInMate && Math.random() < 0.84) {
+        pl.drivingToGoal = true;
+        pl.holdTimer = 0.68;
+        this.soloDrives++;
+        return;
+      }
+    }
+
+    // PRIORITY 3: WING CROSS / CUTBACK FROM FINAL THIRD BYLINE
+    const inFinalThird = isHome ? (pl.x > 78) : (pl.x < 27);
+    const isWide = pl.y < 15 || pl.y > PITCH_H - 15;
+    if (inFinalThird && isWide && Math.random() < 0.80) {
+      const boxMates = this.players.filter(m =>
+        m.side === pl.side && m.id !== pl.id && !m.sentOff &&
+        !this.isPlayerOffside(m, this.ball.x) &&
+        ['SNT', 'OOS', 'SLK', 'SĞK', 'OS'].includes(m.pos)
+      );
+      if (boxMates.length) {
+        boxMates.sort((a, b) => ((b.x - a.x) * dir));
+        const target = boxMates[0];
+        const bx = Math.max(8, Math.min(PITCH_W - 8, target.x + dir * 2.2));
+        const by = Math.max(20, Math.min(48, target.y));
+        this.kickBall(pl, bx, by, 'cross', target);
+        this.highlightPasses++;
+        this.forwardPassCount++;
+        if (isHome) this.aiMetrics.passesHome++; else this.aiMetrics.passesAway++;
+        this.emit2DEvent({ type: 'pass', side: pl.side, player: pl, passType: 'cross' });
+        return;
+      }
+    }
+
+    // PRIORITY 4: FORWARD-FIRST, ZERO-BLATANT-OFFSIDE, OPEN-LANE PASS SELECTION!
+    const offLine = this.getOffsideLineX(defSide);
+    const rawOpts = this.findOpenTeammates(pl, 46).filter(x => x.m.pos !== 'KL');
+
+    // HARD EXCLUDE blatantly offside teammates (> 0.85m beyond offside line)!
+    const validOpts = [];
+    for (let i = 0; i < rawOpts.length; i++) {
+      const o = rawOpts[i];
+      const mOff = this.isPlayerOffside(o.m, this.ball.x);
+      const offMargin = isHome ? (o.m.x - offLine) : (offLine - o.m.x);
+      if (mOff && offMargin > 0.85) {
+        this.blatantOffsidesAvoided++;
+        continue; // NEVER pass to someone blatantly offside!
+      }
+      o.mOff = mOff;
+      validOpts.push(o);
+    }
+
+    if (validOpts.length) {
+      // FORWARD-FIRST RULE: Never pass backwards if ANY open forward/level onside teammate exists!
+      const openForward = validOpts.filter(o => o.blockers === 0 && !o.mOff && (o.m.x - pl.x) * dir >= -1.5);
+      const pool = openForward.length ? openForward : validOpts;
+
+      let best = null, bestScore = -999;
+      for (let i = 0; i < pool.length; i++) {
+        const o = pool[i];
+        const m = o.m;
+        const fwdGain = (m.x - pl.x) * dir;
+        const mDistGoal = Math.hypot(goalX - m.x, PITCH_H / 2 - m.y);
+
+        let score = fwdGain * 1.65 + Math.min(11, o.minOppD) * 1.4 - o.blockers * 30 + (Math.random() - 0.5) * 2.5;
+        if (!o.mOff && mDistGoal <= 21 && o.blockers === 0) score += 30;
+        else if (!o.mOff && mDistGoal <= 30 && fwdGain > 3 && o.blockers === 0) score += 16;
+        if (o.mOff) score -= 50; // Even tight marginal offside heavily discouraged
+        if (fwdGain < -2) score -= 28;
+        if (m.state === 'run' && fwdGain > 3 && o.blockers === 0 && !o.mOff) score += 12;
+        if (score > bestScore) { bestScore = score; best = o; }
+      }
+
+      if (best) {
+        const m = best.m;
+        const fwd = (m.x - pl.x) * dir;
+        const isThrough = (m.state === 'run' || ['SNT','SLK','SĞK','OOS'].includes(m.pos)) && fwd > 6 && best.dist > 11 && best.blockers === 0 && !best.mOff;
+        const pType = isThrough ? 'through_ball' : (best.dist > 28 && tp.passing !== 'kisa' ? 'long_pass' : 'short_pass');
+
+        // Accurate lead into running path (for through-ball) OR directly to feet (for short/long pass)!
+        let tx, ty;
+        if (isThrough) {
+          // Ensure lead point stays on pitch & doesn't run straight into GK
+          const leadDist = Math.min(6.2, Math.max(3.2, (isHome ? (PITCH_W - 10 - m.x) : (m.x - 10)) * 0.55));
+          tx = Math.max(5, Math.min(PITCH_W - 5, m.x + dir * leadDist));
+          ty = Math.max(5, Math.min(PITCH_H - 5, m.y + (PITCH_H / 2 - m.y) * 0.10));
+        } else {
+          tx = Math.max(4, Math.min(PITCH_W - 4, m.x + m.vx * 0.14));
+          ty = Math.max(4, Math.min(PITCH_H - 4, m.y + m.vy * 0.14));
+        }
+
+        this.kickBall(pl, tx, ty, pType, m);
+        this.highlightPasses++;
+        if (fwd >= -1.5) this.forwardPassCount++; else this.backwardPassCount++;
+        if (isHome) this.aiMetrics.passesHome++; else this.aiMetrics.passesAway++;
+        this.emit2DEvent({ type: 'pass', side: pl.side, player: pl, passType: pType });
+        return;
+      }
+    }
+
+    // Fallback: if all forward options are blocked, dribble forward briefly or safe pass
+    if (this.hasOpenDriveLane(pl)) {
+      pl.drivingToGoal = true;
+      pl.holdTimer = 0.55;
+      return;
+    }
+    _v47DecideFM(pl);
+  };
+
+  // 6. FULL FM-STYLE BUILD-UP HIGHLIGHTS STARTING DEEPER (WATCH THE ENTIRE ATTACK UNFOLD OVER 10-18s!)
+  eng.startHighlightSequence = function(attSide) {
+    const isHome = attSide === 'home';
+    const dir = isHome ? 1 : -1;
+    const defSide = isHome ? 'away' : 'home';
+    const attClub = isHome ? liveState.home : liveState.away;
+    const attTP = this.getTacticalProfile(attSide);
+    const defTP = this.getTacticalProfile(defSide);
+
+    let pool = SCENARIOS_V48.filter(s => !this.recentScenarios.includes(s));
+    if (Math.random() > 0.07) pool = pool.filter(s => s !== 'penalty_kick');
+    if (!pool.length) pool = SCENARIOS_V48.filter(s => s !== 'penalty_kick');
+    const scen = pick(pool);
+    this.lastScenario = scen;
+    this.recentScenarios.push(scen);
+    if (this.recentScenarios.length > 3) this.recentScenarios.shift();
+    this.v46ScenarioCounts[scen] = (this.v46ScenarioCounts[scen] || 0) + 1;
+
+    this.highlightActive = true;
+    this.highlightResolved = false;
+    this.highlightFlippedOnce = false;
+    this.highlightSide = attSide;
+    this.highlightTimer = 22.0; // Generous FM Mobile build-up window (~10-18s real watch time!)
+    this.highlightOutro = 0;
+    this.highlightPasses = 0;
+    this.highlightsShown++;
+    this.tackleCooldown = 1.3;
+    this.gkHoldSafe = false;
+    this.pendingKickoffSide = null;
+    this.kickoffStage = 0;
+    this.setPieceWait = 0;
+    this.pendingSetPiece = null;
+    this.passMeta = null;
+    this.offsideSnap = new Set();
+    this.offsideLineFlash = null;
+    this.ballTrail = [];
+
+    const attPs = this.players.filter(p => p.side === attSide && !p.sentOff && p.pos !== 'KL');
+    const defPs = this.players.filter(p => p.side === defSide && !p.sentOff && p.pos !== 'KL');
+    const defGk = this.players.find(p => p.side === defSide && p.pos === 'KL' && !p.sentOff);
+    const goalX = isHome ? PITCH_W : 0;
+
+    const placeBase = (bx, by) => {
+      this.ball = { x: bx, y: by, z: 0, vx: 0, vy: 0, vz: 0, isShot: false };
+      for (let i = 0; i < this.players.length; i++) {
+        const pl = this.players[i];
+        if (pl.sentOff) continue;
+        pl.vx = 0; pl.vy = 0; pl.recoverTimer = 0; pl.drivingToGoal = false;
+        const st = this.computeStructuredTarget(pl, bx, by, pl.side === attSide, pl.side === attSide ? attTP : defTP);
+        pl.x = st.x; pl.y = st.y; pl.state = st.state;
+      }
+    };
+
+    let carrier = null;
+
+    if (scen === 'penalty_kick') {
+      const px = isHome ? (PITCH_W - 11) : 11;
+      placeBase(px, PITCH_H / 2);
+      const penRoleId = attClub && attClub.roles && attClub.roles.penId;
+      const taker = (penRoleId && attPs.find(p => p.id === penRoleId)) || attPs.find(p => p.pos === 'SNT') || attPs[0];
+      this.players.forEach(p => {
+        if (p === taker || p === defGk || p.pos === 'KL') return;
+        p.x = isHome ? Math.min(PITCH_W - 18.5, p.x) : Math.max(18.5, p.x);
+      });
+      if (defGk) { defGk.x = isHome ? (PITCH_W - 2.2) : 2.2; defGk.y = PITCH_H / 2; }
+      if (taker) {
+        taker.x = px - dir * 4.5; taker.y = PITCH_H / 2;
+        this.owner = null;
+        this.penaltiesTaken++;
+        if (liveState && !liveState.finished) {
+          addFeedItem(Math.max(1, liveState.minute || 1), `⚠️ PENALTI! ${attClub.name} penaltı kazandı! Topun başında ${taker.name}!`, { type: 'attack', club: attClub });
+        }
+        this.setPieceWait = 0.9;
+        this.pendingSetPiece = {
+          taker,
+          fire: () => {
+            const aimY = PITCH_H / 2 + (Math.random() < 0.5 ? -2.7 : 2.7);
+            this.kickBall(taker, goalX, aimY, 'shot', null);
+            this.ball.shotDist = 11;
+            if (isHome) this.aiMetrics.shotsHome++; else this.aiMetrics.shotsAway++;
+            this.emit2DEvent({ type: 'shot', side: attSide, player: taker, xg: 0.76, distGoal: 11 });
+          }
+        };
+      }
+    } else if (scen === 'buildup_central') {
+      // TRUE FM BUILD-UP FROM DEFENSIVE THIRD / DEEP MIDFIELD!
+      const bx = isHome ? (34 + Math.random() * 8) : (63 + Math.random() * 8);
+      const by = PITCH_H / 2 + (Math.random() - 0.5) * 20;
+      placeBase(bx, by);
+      carrier = attPs.find(p => ['STP', 'DOS', 'OS'].includes(p.pos)) || attPs[0];
+      if (carrier) { carrier.x = bx; carrier.y = by; }
+    } else if (scen === 'wing_overlap_build') {
+      // WING PROGRESSION FROM MIDFIELD FLANK (Watch FB -> Winger -> Drive -> Cross!)
+      const topFlank = Math.random() < 0.5;
+      const bx = isHome ? (44 + Math.random() * 8) : (53 + Math.random() * 8);
+      const by = topFlank ? 11 : (PITCH_H - 11);
+      placeBase(bx, by);
+      carrier = attPs.find(p => (topFlank ? ['SLB', 'SLK'] : ['SĞB', 'SĞK']).includes(p.pos)) || attPs[0];
+      if (carrier) { carrier.x = bx; carrier.y = by; }
+    } else if (scen === 'one_on_one_through') {
+      // START IN CENTRAL MIDFIELD (x=48-56) so you watch midfield progression -> killer through-ball!
+      const bx = isHome ? (48 + Math.random() * 8) : (49 + Math.random() * 8);
+      const by = PITCH_H / 2 + (Math.random() - 0.5) * 16;
+      placeBase(bx, by);
+      carrier = attPs.find(p => ['DOS', 'OS', 'OOS'].includes(p.pos)) || attPs[0];
+      if (carrier) { carrier.x = bx; carrier.y = by; }
+    } else if (scen === 'cutback_tapin') {
+      // START IN HALF-SPACE MIDFIELD (x=54-62) so you watch the winger beat the flank & reach byline!
+      const topFlank = Math.random() < 0.5;
+      const bx = isHome ? (54 + Math.random() * 8) : (43 + Math.random() * 8);
+      const by = topFlank ? 14 : (PITCH_H - 14);
+      placeBase(bx, by);
+      carrier = attPs.find(p => ['SLK', 'SĞK', 'OOS', 'OS'].includes(p.pos)) || attPs[0];
+      if (carrier) { carrier.x = bx; carrier.y = by; }
+    } else if (scen === 'fast_counter_3v2') {
+      // FULL 60-METER COUNTER FROM OWN HALF (x=36-44)!
+      const bx = isHome ? (36 + Math.random() * 8) : (61 + Math.random() * 8);
+      const by = PITCH_H / 2 + (Math.random() - 0.5) * 16;
+      placeBase(bx, by);
+      const lanes = [14, 34, 54];
+      const trio = attPs.filter(p => ['SLK', 'SNT', 'SĞK', 'OOS'].includes(p.pos)).slice(0, 3);
+      trio.forEach((a, idx) => {
+        a.x = isHome ? (bx + 8 + idx * 4) : (bx - 8 - idx * 4);
+        a.y = lanes[idx % 3];
+        a.state = 'run';
+      });
+      defPs.forEach((d, idx) => {
+        if (d.pos === 'STP') { d.x = isHome ? 74 : 31; d.y = idx % 2 === 0 ? 25 : 43; }
+        else { d.x = isHome ? Math.min(48, d.x) : Math.max(57, d.x); }
+      });
+      carrier = attPs.find(p => ['DOS', 'OS', 'OOS'].includes(p.pos)) || trio[0] || attPs[0];
+      if (carrier) { carrier.x = bx; carrier.y = by; }
+    } else if (scen === 'tiki_taka_box') {
+      // START AT MIDFIELD (x=50-58) to watch 4-6 crisp progressive passes into the box!
+      const bx = isHome ? (50 + Math.random() * 8) : (47 + Math.random() * 8);
+      const by = PITCH_H / 2 + (Math.random() - 0.5) * 16;
+      placeBase(bx, by);
+      carrier = attPs.find(p => ['OS', 'DOS', 'OOS'].includes(p.pos)) || attPs[0];
+      if (carrier) { carrier.x = bx; carrier.y = by; }
+    } else if (scen === 'long_shot_screamer') {
+      // START AT x=56-64 so midfielder drives/combines to edge of box before shooting!
+      const bx = isHome ? (56 + Math.random() * 8) : (41 + Math.random() * 8);
+      const by = PITCH_H / 2 + (Math.random() - 0.5) * 16;
+      placeBase(bx, by);
+      carrier = attPs.find(p => ['OS', 'OOS', 'SLK', 'SĞK'].includes(p.pos)) || attPs[0];
+      if (carrier) { carrier.x = bx; carrier.y = by; }
+    } else if (scen === 'high_press_steal') {
+      // HIGH PRESS STEAL AT x=62-70 -> quick attacking transition!
+      const bx = isHome ? (62 + Math.random() * 8) : (35 + Math.random() * 8);
+      const by = PITCH_H / 2 + (Math.random() - 0.5) * 18;
+      placeBase(bx, by);
+      carrier = attPs.find(p => ['SNT', 'SLK', 'SĞK', 'OOS'].includes(p.pos)) || attPs[0];
+      if (carrier) { carrier.x = bx; carrier.y = by; }
+      const stunnedDef = defPs.sort((a, b) => Math.hypot(a.x - bx, a.y - by) - Math.hypot(b.x - bx, b.y - by))[0];
+      if (stunnedDef) stunnedDef.recoverTimer = 1.8;
+    } else if (scen === 'corner_kick') {
+      const topC = Math.random() < 0.5;
+      const cx = isHome ? PITCH_W - 1.5 : 1.5, cy = topC ? 2.0 : (PITCH_H - 2.0);
+      placeBase(isHome ? 92 : 13, PITCH_H / 2);
+      this.ball = { x: cx, y: cy, z: 0, vx: 0, vy: 0, vz: 0, isShot: false };
+      const taker = attPs.find(p => ['SLK', 'SĞK', 'OOS', 'OS'].includes(p.pos)) || attPs[0];
+      const boxX = isHome ? PITCH_W - 10.5 : 10.5;
+      attPs.filter(p => p !== taker).slice(0, 5).forEach((a, idx) => { a.x = boxX + (Math.random() - 0.5) * 5; a.y = 24 + idx * 4.8; });
+      defPs.slice(0, 6).forEach((d, idx) => { d.x = boxX + dir * 1.6; d.y = 22 + idx * 4.6; });
+      if (taker) {
+        taker.x = cx; taker.y = cy;
+        const targetH = attPs.find(p => p !== taker && ['SNT', 'STP'].includes(p.pos)) || attPs[1];
+        this.owner = taker;
+        this.kickBall(taker, boxX + dir * 1.2, targetH ? targetH.y : PITCH_H / 2, 'cross', targetH);
+        this.highlightPasses = 2;
+      }
+    } else if (scen === 'free_kick_direct') {
+      const fx = isHome ? PITCH_W - 22 : 22, fy = PITCH_H / 2 + (Math.random() - 0.5) * 14;
+      placeBase(fx, fy);
+      const fkRoleId = attClub && attClub.roles && attClub.roles.fkId;
+      const taker = (fkRoleId && attPs.find(p => p.id === fkRoleId)) || attPs.find(p => ['OOS', 'SNT', 'SLK', 'SĞK'].includes(p.pos)) || attPs[0];
+      defPs.slice(0, 4).forEach((d, idx) => { d.x = fx + dir * 8.5; d.y = fy + (PITCH_H / 2 - fy) * 0.35 + (idx - 1.5) * 1.5; });
+      if (taker) {
+        taker.x = fx - dir * 3.5; taker.y = fy;
+        this.owner = null;
+        this.setPieceWait = 0.85;
+        this.pendingSetPiece = {
+          taker,
+          fire: () => {
+            const aimY = PITCH_H / 2 + (Math.random() < 0.5 ? -2.5 : 2.5);
+            this.kickBall(taker, goalX, aimY, 'shot', null);
+            this.ball.shotDist = 22;
+            if (isHome) this.aiMetrics.shotsHome++; else this.aiMetrics.shotsAway++;
+            this.emit2DEvent({ type: 'shot', side: attSide, player: taker, xg: 0.12, distGoal: 22 });
+          }
+        };
+      }
+    }
+
+    if (carrier) {
+      this.owner = carrier;
+      this.lastTouchSide = attSide;
+      carrier.holdTimer = 0.62;
+      carrier.state = 'carry';
+    }
+
+    const ov = document.getElementById('live2dFastOverlay');
+    if (ov) ov.style.opacity = '0';
+    const hud = document.getElementById('live2dHudTag');
+    if (hud && attClub) {
+      hud.textContent = `${SCEN_HUD_V48[scen] || '🔥 ATAK'} · ${attClub.short} (${liveState.minute}')`;
+      hud.style.background = scen === 'penalty_kick' ? 'rgba(234,179,8,0.95)' : 'rgba(220,38,38,0.88)';
+      hud.style.color = scen === 'penalty_kick' ? '#0f172a' : '#ffffff';
     }
   };
 })();
