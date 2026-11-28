@@ -853,7 +853,7 @@ select:focus, select:active, button:focus, button:active, input:focus, a:focus {
 <div class="menu-logo-ring">
 <svg class="svg-icon" style="width:28px;height:28px;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m12 6 3 4-1 5H10l-1-5 3-4Z"/><path d="M12 2v4"/><path d="m4.93 10.93 4.07-.93"/><path d="m19.07 10.93-4.07-.93"/><path d="m6.5 18.5 3.5-3.5"/><path d="m17.5 18.5-3.5-3.5"/></svg>
 </div>
-<div class="btn-soft" style="display:inline-flex;padding:3px 10px;border-radius:999px;font-size:10px;font-weight:700;margin-bottom:6px;">2026–27 DÜNYA SÜRÜMÜ · 7 LİG · v53</div>
+<div class="btn-soft" style="display:inline-flex;padding:3px 10px;border-radius:999px;font-size:10px;font-weight:700;margin-bottom:6px;">2026–27 DÜNYA SÜRÜMÜ · 7 LİG · v54</div>
 <h1 style="font-size:24px;font-weight:800;margin:0 0 4px;letter-spacing:-0.02em;">Soccer Simulator</h1>
 <p style="font-size:12px;color:var(--muted);margin:0;">Kendi teknik direktörlük kariyerini kur ve yönet.</p>
 </div>
@@ -12401,8 +12401,8 @@ enterCareer = function(careerObj) {
       }
 
       // Draw 22 players (circular FM-style discs + jersey numbers)
-      const radius = Math.max(4.7, Math.min(7.8, this.cw * 0.0132));
-      const fontSize = Math.max(6.5, Math.round(radius * 1.15));
+      const radius = Math.max(5.7, Math.min(9.2, this.cw * 0.0156));
+      const fontSize = Math.max(7.2, Math.round(radius * 1.10));
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.font = `800 ${fontSize}px system-ui, -apple-system, sans-serif`;
@@ -16751,7 +16751,7 @@ enterCareer = function(careerObj) {
 
 
 // =========================================================================
-// v53: SMART OPEN-LANE PASSING, PLAYING OUT FROM THE BACK, EMERGENCY-ONLY
+// v54: SMART OPEN-LANE PASSING, PLAYING OUT FROM THE BACK, EMERGENCY-ONLY
 //      LONG CLEARANCES, SMOOTH 2s OUTRO & 15-19 HIGHLIGHTS PER MATCH!
 // =========================================================================
 (function initMatch2DV47() {
@@ -20292,6 +20292,442 @@ enterCareer = function(careerObj) {
     }
 
     _v52DecideFM(pl);
+  };
+})();
+
+
+// =========================================================================
+// v54: FULL TACTICAL & POSITIONAL FOOTBALL SIMULATION
+//      - FORMATION-FAITHFUL SHAPES (4-3-3, 4-2-3-1, 4-4-2, 3-5-2, 4-1-4-1...)
+//      - SYNCHRONIZED BACK-LINE MOVEMENT & TACTICAL PRESSING (YÜKSEK/ORTA/DÜŞÜK)
+//      - DISTINCT ATTACKING ORGANIZATIONS & LIVE COUNTER-ATTACK SHAPE SHIFT
+//      - ROLE & ATTRIBUTE IMPACT (PLAYMAKERS, WINGERS, FINISHERS, PASSING/WIDTH)
+//      - BALANCED PLAYER DISC SIZE & SMOOTH CONTINUOUS MOTION
+// =========================================================================
+(function initMatch2DV54() {
+  const eng = window.Match2DEngine;
+  if (!eng) return;
+
+  const PITCH_W = 105;
+  const PITCH_H = 68;
+
+  // Calibrate shot placement variance so on-target rate sits at realistic ~58% (~2.6-3.3 goals/match!)
+  const _v53Kick = eng.kickBall.bind(eng);
+  eng.kickBall = function(fromAgent, tx, ty, type, targetAgent) {
+    _v53Kick(fromAgent, tx, ty, type, targetAgent);
+    if (type === 'shot') {
+      const b = this.ball;
+      const spd = Math.hypot(b.vx, b.vy);
+      if (spd > 1) {
+        const extraSpread = (Math.random() - 0.5) * 0.38;
+        b.defPressOnShot = (b.defPressOnShot || 0) + 0.55;
+        const c = Math.cos(extraSpread), s = Math.sin(extraSpread);
+        const nvx = b.vx * c - b.vy * s;
+        const nvy = b.vx * s + b.vy * c;
+        b.vx = nvx; b.vy = nvy;
+      }
+    }
+  };
+
+  // Read REAL tactical settings from club (supporting both club.press and club.tactic.*!)
+  eng.getRealTactics = function(side) {
+    const club = side === 'home' ? (this.homeClubRef || (liveState && liveState.home)) : (this.awayClubRef || (liveState && liveState.away));
+    const t = (club && club.tactic) || {};
+    const formation = (club && club.formation) || t.formation || '4-2-3-1';
+    const ment = (club && club.mentality) || t.mentality || 'dengeli';
+    const press = (club && club.press) || t.press || (club && club.pressing) || t.pressing || 'orta';
+    const tempo = (club && club.tempo) || t.tempo || 'normal';
+    const passing = (club && club.passing) || t.passing || 'karisik';
+    const attSide = (club && club.attackSide) || t.attackSide || 'dengeli';
+
+    let lineShift = 0;
+    if (ment === 'asiri_defans') lineShift = -0.10;
+    else if (ment === 'defansif') lineShift = -0.06;
+    else if (ment === 'kontra') lineShift = -0.05;
+    else if (ment === 'ofansif') lineShift = 0.06;
+    else if (ment === 'asiri_hucum') lineShift = 0.11;
+
+    let pressLine = 0, pressers = 1, wMark = 0.65, standoff = 2.65, markCushion = 2.45;
+    if (press === 'yuksek' || press === 'gegenpress' || press === 'cok_yuksek') {
+      pressLine = 0.07; pressers = 2; wMark = 0.86; standoff = 2.25; markCushion = 2.15;
+    } else if (press === 'dusuk' || press === 'pasif') {
+      pressLine = -0.06; pressers = 1; wMark = 0.36; standoff = 3.15; markCushion = 2.95;
+    }
+
+    const widthMult = attSide === 'kanatlar' ? 1.14 : (attSide === 'merkez' ? 0.86 : 1.02);
+    const holdBase = tempo === 'yuksek' ? 0.34 : (tempo === 'dusuk' ? 0.72 : 0.48);
+
+    return { formation, ment, press, tempo, passing, attSide, lineShift, pressLine, pressers, wMark, standoff, markCushion, widthMult, holdBase };
+  };
+
+  // Override v50 pressing config to use REAL club.press!
+  eng.getPressingConfig = function(side) {
+    const rt = this.getRealTactics(side);
+    return {
+      standoff: rt.standoff,
+      markCushion: rt.markCushion,
+      lineBonus: rt.pressLine,
+      pressTriggerDist: rt.press === 'yuksek' ? 36 : (rt.press === 'dusuk' ? 16 : 24),
+      pressers: rt.pressers
+    };
+  };
+
+  // Compute each player's exact normalized formation slot (slotDepth: 0=CB..1=ST, slotWidth: -1=left..+1=right)
+  // directly from FORMATIONS[club.formation] so 4-3-3, 4-2-3-1, 4-4-2, 3-5-2 genuinely play differently!
+  eng.assignFormationSlots = function(side) {
+    const rt = this.getRealTactics(side);
+    const formRows = (typeof FORMATIONS !== 'undefined' && FORMATIONS[rt.formation]) ? FORMATIONS[rt.formation] : null;
+    const teamOut = this.players.filter(p => p.side === side && p.pos !== 'KL');
+    const isHome = side === 'home';
+
+    if (formRows && formRows.length >= 2) {
+      // formRows[0] is front line (ST), formRows[len-2] is back line (DEF), formRows[len-1] is KL
+      const outRows = formRows.filter(r => !(r.slots.length === 1 && r.slots[0] === 'KL'));
+      const numRows = Math.max(1, outRows.length);
+      const slotList = [];
+      for (let r = 0; r < numRows; r++) {
+        const slots = outRows[r].slots;
+        // r=0 -> front (depth 1.0), r=numRows-1 -> back line (depth 0.0)
+        const depth = numRows === 1 ? 0.5 : (1.0 - r / (numRows - 1));
+        for (let c = 0; c < slots.length; c++) {
+          const w = slots.length === 1 ? 0 : (-1 + (2 * c) / (slots.length - 1));
+          slotList.push({ pos: slots[c], depth, width: isHome ? w : -w, rowIdx: r, rowCount: numRows, colIdx: c, colCount: slots.length });
+        }
+      }
+      // Match each outfield player to their closest matching formation slot
+      const used = new Set();
+      for (let i = 0; i < teamOut.length; i++) {
+        const pl = teamOut[i];
+        let bestIdx = -1;
+        for (let s = 0; s < slotList.length; s++) {
+          if (!used.has(s) && slotList[s].pos === pl.pos) { bestIdx = s; break; }
+        }
+        if (bestIdx === -1) {
+          for (let s = 0; s < slotList.length; s++) {
+            if (!used.has(s)) { bestIdx = s; break; }
+          }
+        }
+        if (bestIdx !== -1) {
+          used.add(bestIdx);
+          pl.fSlot = slotList[bestIdx];
+        }
+      }
+    }
+  };
+
+  // Re-assign formation slots on every match init!
+  const _v53Init = eng.initForMatch.bind(eng);
+  eng.initForMatch = function(home, away) {
+    _v53Init(home, away);
+    this.assignFormationSlots('home');
+    this.assignFormationSlots('away');
+  };
+
+  // Individual player speed reflects REAL position & OVR (fast wingers/strikers vs slower CBs!)
+  const _v53GetMaxSpeed = eng.getMaxSpeed ? eng.getMaxSpeed.bind(eng) : null;
+  eng.getMaxSpeed = function(pl) {
+    const base = _v53GetMaxSpeed ? _v53GetMaxSpeed(pl) : 7.6;
+    if (!pl || pl.pos === 'KL') return base;
+    const ovrFactor = 0.90 + Math.max(0, Math.min(25, (pl.ovr || 74) - 65)) * 0.008;
+    const roleBonus = ['SLK', 'SĞK', 'SNT'].includes(pl.pos) ? 1.07 : (['SLB', 'SĞB'].includes(pl.pos) ? 1.03 : (pl.pos === 'STP' ? 0.95 : 1.0));
+    return base * ovrFactor * roleBonus;
+  };
+
+  // 1. FORMATION-FAITHFUL POSITIONAL ENGINE + SYNCHRONIZED BACK LINE + COUNTER-ATTACK SHAPE SHIFT!
+  eng.computeStructuredTarget = function(pl, ballX, ballY, teamHasBall, tp) {
+    const isHome = pl.side === 'home';
+    const dir = isHome ? 1 : -1;
+    const oppSide = isHome ? 'away' : 'home';
+    const pos = pl.pos;
+    const prog = isHome ? (ballX / PITCH_W) : ((PITCH_W - ballX) / PITCH_W);
+    const ballShiftY = (ballY - PITCH_H / 2) * 0.30;
+    const rt = this.getRealTactics(pl.side);
+
+    if (pos === 'KL') {
+      const gx = isHome ? (3.5 + prog * 11) : (PITCH_W - 3.5 - prog * 11);
+      const gy = PITCH_H / 2 + Math.max(-5.5, Math.min(5.5, (ballY - PITCH_H / 2) * 0.25));
+      return { x: gx, y: gy, state: 'defend' };
+    }
+
+    if (!pl.fSlot) this.assignFormationSlots(pl.side);
+    const slot = pl.fSlot || { depth: 0.5, width: 0, rowIdx: 1, rowCount: 3, colIdx: 0, colCount: 1 };
+    const isBackLine = slot.depth <= 0.12 || ['STP', 'SLB', 'SĞB'].includes(pos);
+    const isFrontLine = slot.depth >= 0.85 || pos === 'SNT';
+    const isWinger = (pos === 'SLK' || pos === 'SĞK');
+    const isCounterActive = teamHasBall && (this.highlightFlippedOnce || rt.ment === 'kontra' || this.lastScenario === 'fast_counter_3v2');
+
+    if (teamHasBall) {
+      // A. COUNTER-ATTACK SHAPE TRANSFORMATION (3-4 explosive vertical lanes attacking space behind!)
+      if (isCounterActive && (isFrontLine || isWinger || pos === 'OOS')) {
+        const counterProg = Math.min(0.94, Math.max(0.62, prog + 0.26 + slot.depth * 0.10));
+        let tx = isHome ? (counterProg * PITCH_W) : ((1 - counterProg) * PITCH_W);
+        const offLine = this.getOffsideLineX(oppSide);
+        if (isHome && tx > offLine - 1.3) tx = Math.min(offLine - 1.3, Math.max(ballX + 2.0, offLine - 1.3));
+        if (!isHome && tx < offLine + 1.3) tx = Math.max(offLine + 1.3, Math.min(ballX - 2.0, offLine + 1.3));
+        const laneY = PITCH_H / 2 + slot.width * 22.0;
+        return {
+          x: Math.max(5, Math.min(PITCH_W - 5, tx)),
+          y: Math.max(5.5, Math.min(PITCH_H - 5.5, laneY)),
+          state: 'run'
+        };
+      }
+
+      // B. FORMATION-FAITHFUL ATTACKING SHAPE (4-3-3 vs 4-2-3-1 vs 4-4-2 vs 3-5-2 genuinely distinct!)
+      const backDepth = Math.max(0.16, Math.min(0.42, 0.14 + prog * 0.28 + rt.lineShift));
+      const frontDepth = Math.min(0.92, Math.max(backDepth + 0.44, prog + 0.24 + rt.lineShift * 0.4));
+      let targetProg = backDepth + slot.depth * (frontDepth - backDepth);
+
+      // Keep wide players (wingers & fullbacks) genuinely providing width; keep CBs compact!
+      let halfSpanY = 23.0 * rt.widthMult;
+      if (pos === 'STP') halfSpanY = slot.colCount >= 3 ? 13.5 : 8.0; // 3-at-the-back vs compact 2-CB pair!
+      else if (pos === 'SLB' || pos === 'SĞB') halfSpanY = Math.min(28.5, 25.5 * rt.widthMult);
+      else if (isWinger) halfSpanY = Math.min(28.0, 25.0 * rt.widthMult);
+      else if (pos === 'SNT' && slot.colCount >= 2) halfSpanY = 10.5; // 4-4-2 two-striker partnership!
+      else if (pos === 'DOS' && slot.colCount >= 2) halfSpanY = 9.5;  // 4-2-3-1 double pivot!
+      else if (pos === 'OS') halfSpanY = 14.5 * rt.widthMult;
+
+      let targetY = PITCH_H / 2 + slot.width * halfSpanY + ballShiftY * (isWinger || pos === 'SLB' || pos === 'SĞB' ? 0.18 : 0.42);
+      let state = (slot.depth >= 0.65) ? 'run' : 'support';
+
+      // Fullback overlap when attacking on their flank
+      if ((pos === 'SLB' || pos === 'SĞB') && prog > 0.48) {
+        const onMyFlank = Math.sign(ballY - PITCH_H / 2) === Math.sign(slot.width);
+        if (onMyFlank || rt.ment === 'ofansif' || rt.ment === 'asiri_hucum' || rt.attSide === 'kanatlar') {
+          targetProg = Math.min(0.84, targetProg + 0.14);
+          state = 'run';
+        }
+      }
+
+      // Dynamic FM Mobile final-third off-the-ball runs (far-post winger, late CAM cutback, striker shoulder run)
+      let tx = isHome ? (targetProg * PITCH_W) : ((1 - targetProg) * PITCH_W);
+      if (prog > 0.56) {
+        const ballTop = ballY < 24, ballBot = ballY > PITCH_H - 24;
+        const onOppositeFlank = (ballTop && slot.width > 0.3) || (ballBot && slot.width < -0.3);
+        if (isWinger && onOppositeFlank) {
+          tx = isHome ? Math.min(PITCH_W - 10, ballX + 9) : Math.max(10, ballX - 9);
+          targetY = PITCH_H / 2 + Math.sign(slot.width) * 12.5; // Back-post diagonal run!
+          state = 'run';
+        } else if (pos === 'OOS' && prog > 0.64) {
+          tx = isHome ? Math.min(PITCH_W - 13, ballX + 4) : Math.max(13, ballX - 4);
+          targetY = PITCH_H / 2 + (ballY < PITCH_H / 2 ? 4.5 : -4.5); // Late arrival at cutback spot!
+          state = 'run';
+        } else if (pos === 'SNT') {
+          targetY += Math.sin((this.simSeconds || 0) * 0.85 + pl.slotIdx) * 5.0;
+          state = 'run';
+        }
+      }
+
+      // Strict onside shoulder discipline for front runners
+      if (['SNT', 'SLK', 'SĞK', 'OOS'].includes(pos)) {
+        const offLine = this.getOffsideLineX(oppSide);
+        if (isHome && tx > offLine - 1.3) tx = Math.min(offLine - 1.3, Math.max(ballX + 2.0, offLine - 1.3));
+        if (!isHome && tx < offLine + 1.3) tx = Math.max(offLine + 1.3, Math.min(ballX - 2.0, offLine + 1.3));
+      }
+
+      return {
+        x: Math.max(5, Math.min(PITCH_W - 5, tx)),
+        y: Math.max(4.5, Math.min(PITCH_H - 4.5, targetY)),
+        state
+      };
+    }
+
+    // OUT OF POSSESSION:
+    // 1. SYNCHRONIZED DEFENSIVE LINE + COMPACT FORMATION BLOCK (SCALED BY MENTALITY & PRESSING!)
+    const syncDefProg = Math.max(0.11, Math.min(0.45, prog - 0.22 + rt.lineShift + rt.pressLine));
+    const blockSpan = rt.press === 'dusuk' ? 0.24 : (rt.press === 'yuksek' ? 0.34 : 0.29);
+    const formProg = isBackLine ? syncDefProg : Math.min(0.68, syncDefProg + slot.depth * blockSpan);
+    const fx = isHome ? (formProg * PITCH_W) : ((1 - formProg) * PITCH_W);
+
+    // Compact horizontal defensive shift toward ball side
+    let defHalfSpanY = 20.5;
+    if (pos === 'STP') defHalfSpanY = slot.colCount >= 3 ? 11.5 : 6.2;
+    else if (pos === 'SLB' || pos === 'SĞB') defHalfSpanY = 19.5;
+    else if (pos === 'DOS' || pos === 'OS') defHalfSpanY = 12.5;
+    const formY = PITCH_H / 2 + slot.width * defHalfSpanY + ballShiftY * 0.58;
+
+    // Striker stays upfield as counter outlet (or presses opponent CB on high/medium press)
+    if (pos === 'SNT') {
+      if (rt.press !== 'dusuk' && this.owner && this.owner.side === oppSide && this.owner.pos === 'STP') {
+        const ownGoalX = isHome ? 0 : PITCH_W;
+        const dx = ownGoalX - this.owner.x, dy = PITCH_H / 2 - this.owner.y;
+        const d = Math.max(1, Math.hypot(dx, dy));
+        return {
+          x: Math.max(6, Math.min(PITCH_W - 6, this.owner.x + (dx / d) * rt.standoff)),
+          y: Math.max(6, Math.min(PITCH_H - 6, this.owner.y + (dy / d) * 1.4)),
+          state: 'run'
+        };
+      }
+      const outletProg = Math.max(0.46, Math.min(0.64, prog + 0.28));
+      return {
+        x: Math.max(8, Math.min(PITCH_W - 8, isHome ? (outletProg * PITCH_W) : ((1 - outletProg) * PITCH_W))),
+        y: Math.max(9, Math.min(PITCH_H - 9, PITCH_H / 2 + slot.width * 10 + ballShiftY * 0.35)),
+        state: 'support'
+      };
+    }
+
+    // Blend zonal formation shape with 1-to-1 man-marking based on team's tactical pressing style!
+    // - Yüksek Pres: heavy man-tracking (0.86)
+    // - Orta Pres: balanced hybrid zonal-man (0.65)
+    // - Düşük Pres: disciplined zonal 2-bank block (0.36)
+    const assignedMap = this.v49MarkingMap.get(pl.side);
+    const markTarget = assignedMap ? assignedMap.get(pl.id) : null;
+    if (markTarget && !markTarget.sentOff) {
+      const predX = markTarget.x + (markTarget.vx || 0) * 0.22;
+      const predY = markTarget.y + (markTarget.vy || 0) * 0.22;
+      const ownGoalX = isHome ? 0 : PITCH_W;
+      const toGoalX = ownGoalX - predX;
+      const toGoalY = (PITCH_H / 2) - predY;
+      const gDist = Math.max(1, Math.hypot(toGoalX, toGoalY));
+      const mx = predX + (toGoalX / gDist) * rt.markCushion;
+      const my = predY + (toGoalY / gDist) * (rt.markCushion * 0.55);
+
+      const ballNear = isHome ? (ballX < 62) : (ballX > 43);
+      const wMark = ballNear ? rt.wMark : (rt.wMark * 0.65);
+      let rx = mx * wMark + fx * (1 - wMark);
+      // Keep back-line defenders synchronized along syncDefProg (within ±2.8m) so offside line moves as ONE unit!
+      if (isBackLine) {
+        const maxDrift = 2.8;
+        rx = Math.max(fx - maxDrift, Math.min(fx + maxDrift, rx));
+      }
+      const ry = my * wMark + formY * (1 - wMark);
+      const dToMark = Math.hypot(pl.x - rx, pl.y - ry);
+      return {
+        x: Math.max(5.5, Math.min(PITCH_W - 5.5, rx)),
+        y: Math.max(5.0, Math.min(PITCH_H - 5.0, ry)),
+        state: dToMark > 2.6 ? 'run' : 'defend'
+      };
+    }
+
+    return {
+      x: Math.max(5.5, Math.min(PITCH_W - 5.5, fx)),
+      y: Math.max(5.0, Math.min(PITCH_H - 5.0, formY)),
+      state: 'defend'
+    };
+  };
+
+  // 2. TACTIC-AWARE PASSING & ROLE INTELLIGENCE (KISA / DİREKT / KANATLAR / MERKEZ / KONTRA!)
+  const _v53DecideFM = eng.decideFMAction.bind(eng);
+  eng.decideFMAction = function(pl) {
+    const isHome = pl.side === 'home';
+    const dir = isHome ? 1 : -1;
+    const defSide = isHome ? 'away' : 'home';
+    const goalX = isHome ? PITCH_W : 0;
+    const distGoal = Math.hypot(goalX - pl.x, PITCH_H / 2 - pl.y);
+    const angleY = Math.abs(pl.y - PITCH_H / 2);
+    const rt = this.getRealTactics(pl.side);
+
+    // Delegate GK, defending-team turnovers, 1v1 breakaways, box shots & crosses to v53
+    if (pl.pos === 'KL' || (this.highlightActive && !this.highlightResolved && pl.side !== this.highlightSide)) {
+      _v53DecideFM(pl);
+      return;
+    }
+
+    const defsAhead = this.countDefendersAhead(pl);
+    const isOneOnOne = defsAhead <= 1 && distGoal <= 34 && angleY <= 20;
+    const clearBreakaway = this.hasClearCentralBreakaway(pl);
+    const inBox = distGoal <= 22.0 && angleY <= 17.5;
+    const edgeShot = distGoal <= 26.0 && angleY <= 15.0 && this.highlightPasses >= 1 && Math.random() < (['SNT','OOS'].includes(pl.pos) ? 0.68 : 0.54);
+    const inFinalThird = isHome ? (pl.x > 78) : (pl.x < 27);
+    const isWide = pl.y < 15 || pl.y > PITCH_H - 15;
+
+    if (isOneOnOne || clearBreakaway || inBox || edgeShot || (inFinalThird && isWide)) {
+      _v53DecideFM(pl);
+      return;
+    }
+
+    // TACTIC & ROLE-DRIVEN PASS SELECTION!
+    const isPlaymaker = ['OOS', 'OS', 'DOS'].includes(pl.pos) || (pl.ovr || 74) >= 82;
+    const scanRange = isPlaymaker ? 56 : 46;
+    const offLine = this.getOffsideLineX(defSide);
+    const rawOpts = this.findOpenTeammates(pl, scanRange).filter(x => x.m.pos !== 'KL');
+
+    const validOpts = [];
+    for (let i = 0; i < rawOpts.length; i++) {
+      const o = rawOpts[i];
+      const mOff = this.isPlayerOffside(o.m, this.ball.x);
+      const offMargin = isHome ? (o.m.x - offLine) : (offLine - o.m.x);
+      if (mOff && offMargin > 0.85) { this.blatantOffsidesAvoided++; continue; }
+      o.mOff = mOff;
+      validOpts.push(o);
+    }
+
+    if (validOpts.length) {
+      const safeClean = validOpts.filter(o => o.blockers === 0 && !o.mOff && o.minOppD >= 2.5);
+      const pool = safeClean.length ? safeClean : validOpts;
+
+      let best = null, bestScore = -999;
+      for (let i = 0; i < pool.length; i++) {
+        const o = pool[i];
+        const m = o.m;
+        const fwdGain = (m.x - pl.x) * dir;
+        const mDistGoal = Math.hypot(goalX - m.x, PITCH_H / 2 - m.y);
+        const isWinger = (m.pos === 'SLK' || m.pos === 'SĞK');
+        const isWideMate = m.y < 18 || m.y > PITCH_H - 18;
+        const isCentralMate = Math.abs(m.y - PITCH_H / 2) < 14;
+        const isAttacker = (m.pos === 'SNT' || m.pos === 'OOS' || isWinger);
+        const spaceAhead = isHome ? (PITCH_W - 10 - m.x) : (m.x - 10);
+        const isKillerThrough = !o.mOff && o.blockers === 0 && isAttacker && fwdGain >= 4.5 && o.dist >= 9 && o.dist <= 36 && o.minOppD >= 3.4 && spaceAhead > 7;
+
+        let score = fwdGain * 1.12 + Math.min(13, o.minOppD) * 2.0 - o.blockers * 38 + (Math.random() - 0.5) * 1.8;
+
+        // TACTIC 1: Passing Style (kisa vs uzun/direkt)
+        if (rt.passing === 'kisa') {
+          if (o.dist <= 18 && o.blockers === 0) score += 24;
+          if (o.dist > 26) score -= 14;
+        } else if (rt.passing === 'uzun' || rt.passing === 'direkt' || rt.ment === 'kontra' || this.highlightFlippedOnce) {
+          if (fwdGain > 10 && o.dist >= 16 && o.blockers === 0) score += 20;
+          if (isKillerThrough) score += 16;
+        } else {
+          if (o.dist >= 6.5 && o.dist <= 22 && o.blockers === 0 && o.minOppD >= 3.2) score += 18;
+        }
+
+        // TACTIC 2: Attack Side (kanatlar vs merkez)
+        if (rt.attSide === 'kanatlar' && isWideMate && fwdGain >= -1) score += 15;
+        if (rt.attSide === 'merkez' && isCentralMate && fwdGain >= 0) score += 15;
+
+        // ROLE IMPACT: Playmakers love spotting killer through-balls to wingers & strikers!
+        if (isKillerThrough) score += (isPlaymaker ? 38 : 30) + (isWinger ? 5 : 0);
+        if (!o.mOff && mDistGoal <= 22 && o.blockers === 0 && o.minOppD >= 2.8) score += 32;
+
+        if (fwdGain > 8 && o.minOppD < 2.6) score -= 24;
+        if (o.mOff) score -= 54;
+        if (fwdGain < -3) score -= (distGoal < 32 ? 38 : 14);
+
+        if (score > bestScore) { bestScore = score; best = o; }
+      }
+
+      if (best) {
+        const m = best.m;
+        const fwd = (m.x - pl.x) * dir;
+        const isWinger = (m.pos === 'SLK' || m.pos === 'SĞK');
+        const isAttacker = (m.pos === 'SNT' || m.pos === 'OOS' || isWinger);
+        const spaceAhead = isHome ? (PITCH_W - 9 - m.x) : (m.x - 9);
+        const isThrough = !best.mOff && best.blockers === 0 && isAttacker && fwd >= 4.5 && best.dist >= 9 && best.dist <= 36 && best.minOppD >= 3.2 && spaceAhead > 6;
+        const pType = isThrough ? 'through_ball' : (best.dist > 26 ? 'long_pass' : 'short_pass');
+
+        let tx, ty;
+        if (isThrough) {
+          const leadDist = Math.min(6.8, Math.max(3.6, spaceAhead * 0.30));
+          tx = Math.max(6, Math.min(PITCH_W - 6, m.x + dir * leadDist));
+          const yPull = isWinger ? ((PITCH_H / 2 - m.y) * 0.14) : ((PITCH_H / 2 - m.y) * 0.08);
+          ty = Math.max(6.0, Math.min(PITCH_H - 6.0, m.y + yPull));
+          this.v53ThroughBalls++;
+          if (isWinger) this.v53WingThroughBalls++;
+        } else {
+          tx = Math.max(4, Math.min(PITCH_W - 4, m.x + m.vx * 0.13));
+          ty = Math.max(4, Math.min(PITCH_H - 4, m.y + m.vy * 0.13));
+        }
+
+        this.kickBall(pl, tx, ty, pType, m);
+        this.highlightPasses++;
+        if (fwd >= -1.5) this.forwardPassCount++; else this.backwardPassCount++;
+        if (isHome) this.aiMetrics.passesHome++; else this.aiMetrics.passesAway++;
+        this.emit2DEvent({ type: 'pass', side: pl.side, player: pl, passType: pType });
+        return;
+      }
+    }
+
+    _v53DecideFM(pl);
   };
 })();
 
