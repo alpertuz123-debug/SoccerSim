@@ -853,7 +853,7 @@ select:focus, select:active, button:focus, button:active, input:focus, a:focus {
 <div class="menu-logo-ring">
 <svg class="svg-icon" style="width:28px;height:28px;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m12 6 3 4-1 5H10l-1-5 3-4Z"/><path d="M12 2v4"/><path d="m4.93 10.93 4.07-.93"/><path d="m19.07 10.93-4.07-.93"/><path d="m6.5 18.5 3.5-3.5"/><path d="m17.5 18.5-3.5-3.5"/></svg>
 </div>
-<div class="btn-soft" style="display:inline-flex;padding:3px 10px;border-radius:999px;font-size:10px;font-weight:700;margin-bottom:6px;">2026–27 DÜNYA SÜRÜMÜ · 7 LİG · v55</div>
+<div class="btn-soft" style="display:inline-flex;padding:3px 10px;border-radius:999px;font-size:10px;font-weight:700;margin-bottom:6px;">2026–27 DÜNYA SÜRÜMÜ · 7 LİG · v56</div>
 <h1 style="font-size:24px;font-weight:800;margin:0 0 4px;letter-spacing:-0.02em;">Soccer Simulator</h1>
 <p style="font-size:12px;color:var(--muted);margin:0;">Kendi teknik direktörlük kariyerini kur ve yönet.</p>
 </div>
@@ -16751,7 +16751,7 @@ enterCareer = function(careerObj) {
 
 
 // =========================================================================
-// v55: SMART OPEN-LANE PASSING, PLAYING OUT FROM THE BACK, EMERGENCY-ONLY
+// v56: SMART OPEN-LANE PASSING, PLAYING OUT FROM THE BACK, EMERGENCY-ONLY
 //      LONG CLEARANCES, SMOOTH 2s OUTRO & 15-19 HIGHLIGHTS PER MATCH!
 // =========================================================================
 (function initMatch2DV47() {
@@ -21450,6 +21450,263 @@ enterCareer = function(careerObj) {
     }
 
     _v54DecideFM(pl);
+  };
+})();
+
+
+// =========================================================================
+// v56: COORDINATED FM 2D OFF-THE-BALL INTENT ENGINE, TRUE FORMATION GEOMETRY
+//      (4-3-3 / 4-2-3-1 / 4-4-2 / 3-5-2 / 4-1-4-1), ANTI-MIDFIELD-CLUMPING,
+//      COMPACT DEF-MID BLOCK & DEFENSIVE COVERING! (PRESERVES v55 DISC SIZE!)
+// =========================================================================
+(function initMatch2DV56() {
+  const eng = window.Match2DEngine;
+  if (!eng) return;
+
+  const PITCH_W = 105;
+  const PITCH_H = 68;
+
+  eng.v56IntentTimer = 0;
+  eng.v56IntentStats = { run_in_behind: 0, check_to_feet: 0, overlap: 0, stretch_wide: 0, def_cover: 0 };
+
+  // 1. TRUE REAL-WORLD FORMATION GEOMETRY (distinct midfield triangles, double pivots, 2-striker pairs, 3-CB lines!)
+  const _v55AssignRoles = eng.assignPlayerRoles.bind(eng);
+  eng.assignPlayerRoles = function(side) {
+    _v55AssignRoles(side);
+    const rt = this.getClubPhilosophy(side);
+    const f = rt.formation || '4-2-3-1';
+    const isHome = side === 'home';
+    const flip = (w) => isHome ? w : -w;
+    const teamOut = this.players.filter(p => p.side === side && p.pos !== 'KL');
+
+    // Fine-tune depth & width per real formation so 4-3-3, 4-2-3-1, 4-4-2, 3-5-2 look unmistakably distinct!
+    let osIdx = 0, dosIdx = 0, stIdx = 0, stpIdx = 0;
+    const stpCount = teamOut.filter(p => p.pos === 'STP').length;
+
+    for (let i = 0; i < teamOut.length; i++) {
+      const pl = teamOut[i];
+      if (!pl.fSlot) pl.fSlot = { depth: 0.5, width: 0, colCount: 1 };
+
+      if (pl.pos === 'STP') {
+        stpIdx++;
+        pl.fSlot.depth = 0.0;
+        if (stpCount >= 3) {
+          pl.fSlot.width = flip(stpIdx === 1 ? -0.58 : (stpIdx === 2 ? 0.0 : 0.58));
+          pl.fSlot.colCount = 3;
+        } else {
+          pl.fSlot.width = flip(stpIdx === 1 ? -0.30 : 0.30);
+          pl.fSlot.colCount = 2;
+        }
+      } else if (pl.pos === 'SLB') {
+        pl.fSlot.depth = (stpCount >= 3) ? 0.34 : 0.06; // Wingbacks start higher in 3-5-2!
+        pl.fSlot.width = flip(-0.96);
+      } else if (pl.pos === 'SĞB') {
+        pl.fSlot.depth = (stpCount >= 3) ? 0.34 : 0.06;
+        pl.fSlot.width = flip(0.96);
+      } else if (f === '4-3-3') {
+        if (pl.pos === 'DOS') { pl.fSlot.depth = 0.32; pl.fSlot.width = 0; }
+        else if (pl.pos === 'OS') { osIdx++; pl.fSlot.depth = 0.56; pl.fSlot.width = flip(osIdx === 1 ? -0.46 : 0.46); }
+        else if (pl.pos === 'SLK') { pl.fSlot.depth = 0.88; pl.fSlot.width = flip(-0.96); }
+        else if (pl.pos === 'SĞK') { pl.fSlot.depth = 0.88; pl.fSlot.width = flip(0.96); }
+        else if (pl.pos === 'SNT') { pl.fSlot.depth = 1.00; pl.fSlot.width = 0; }
+      } else if (f === '4-2-3-1') {
+        if (pl.pos === 'DOS') { dosIdx++; pl.fSlot.depth = 0.30; pl.fSlot.width = flip(dosIdx === 1 ? -0.36 : 0.36); }
+        else if (pl.pos === 'OOS') { pl.fSlot.depth = 0.68; pl.fSlot.width = 0; }
+        else if (pl.pos === 'SLK') { pl.fSlot.depth = 0.72; pl.fSlot.width = flip(-0.96); }
+        else if (pl.pos === 'SĞK') { pl.fSlot.depth = 0.72; pl.fSlot.width = flip(0.96); }
+        else if (pl.pos === 'SNT') { pl.fSlot.depth = 1.00; pl.fSlot.width = 0; }
+      } else if (f === '4-4-2') {
+        if (pl.pos === 'OS' || pl.pos === 'DOS') { osIdx++; pl.fSlot.depth = 0.44; pl.fSlot.width = flip(osIdx === 1 ? -0.34 : 0.34); }
+        else if (pl.pos === 'SLK') { pl.fSlot.depth = 0.52; pl.fSlot.width = flip(-0.96); }
+        else if (pl.pos === 'SĞK') { pl.fSlot.depth = 0.52; pl.fSlot.width = flip(0.96); }
+        else if (pl.pos === 'SNT') { stIdx++; pl.fSlot.depth = stIdx === 1 ? 1.00 : 0.88; pl.fSlot.width = flip(stIdx === 1 ? -0.38 : 0.38); pl.fSlot.colCount = 2; }
+      } else if (f === '4-1-4-1') {
+        if (pl.pos === 'DOS') { pl.fSlot.depth = 0.28; pl.fSlot.width = 0; }
+        else if (pl.pos === 'OS') { osIdx++; pl.fSlot.depth = 0.58; pl.fSlot.width = flip(osIdx === 1 ? -0.38 : 0.38); }
+        else if (pl.pos === 'SLK') { pl.fSlot.depth = 0.64; pl.fSlot.width = flip(-0.96); }
+        else if (pl.pos === 'SĞK') { pl.fSlot.depth = 0.64; pl.fSlot.width = flip(0.96); }
+        else if (pl.pos === 'SNT') { pl.fSlot.depth = 1.00; pl.fSlot.width = 0; }
+      }
+    }
+  };
+
+  // 2. COORDINATED OFF-THE-BALL INTENT PLANNER (RUNS EVERY 0.65s FOR THE TEAM IN POSSESSION!)
+  //    Coordinates 3 simultaneous, complementary team runs so players NEVER move randomly or clump around the ball!
+  eng.updateOffBallIntents = function(dt) {
+    // Tick down existing player intents
+    for (let i = 0; i < this.players.length; i++) {
+      const p = this.players[i];
+      if (p.offIntent && p.offIntent.timer > 0) {
+        p.offIntent.timer -= dt;
+        if (p.offIntent.timer <= 0) p.offIntent = null;
+      }
+    }
+
+    this.v56IntentTimer -= dt;
+    if (this.v56IntentTimer > 0 || !this.owner || this.owner.pos === 'KL') return;
+    this.v56IntentTimer = 0.65;
+
+    const carrier = this.owner;
+    const attSide = carrier.side;
+    const oppSide = attSide === 'home' ? 'away' : 'home';
+    const isHome = attSide === 'home';
+    const dir = isHome ? 1 : -1;
+    const offLine = this.getOffsideLineX(oppSide);
+    const mates = this.players.filter(p => p.side === attSide && p.id !== carrier.id && !p.sentOff && p.pos !== 'KL');
+
+    // Clear stale intents of opposite team
+    this.players.forEach(p => { if (p.side !== attSide) p.offIntent = null; });
+
+    // INTENT A: DEPTH RUN IN BEHIND (Winger or Striker darts diagonally behind the back line!)
+    const runners = mates.filter(m => ['SNT', 'SLK', 'SĞK', 'OOS'].includes(m.pos) && !m.offIntent);
+    if (runners.length) {
+      // Pick runner on the most open channel ahead of carrier
+      runners.sort((a, b) => {
+        const scoreA = (a.pos === 'SLK' || a.pos === 'SĞK' ? 8 : 5) + Math.abs(a.y - carrier.y) * 0.25;
+        const scoreB = (b.pos === 'SLK' || b.pos === 'SĞK' ? 8 : 5) + Math.abs(b.y - carrier.y) * 0.25;
+        return scoreB - scoreA;
+      });
+      const r = runners[0];
+      const targetX = isHome ? Math.min(PITCH_W - 7, Math.max(carrier.x + 12, offLine - 1.2)) : Math.max(7, Math.min(carrier.x - 12, offLine + 1.2));
+      const isW = (r.pos === 'SLK' || r.pos === 'SĞK');
+      const targetY = isW ? (r.y < PITCH_H / 2 ? 12 : PITCH_H - 12) : (PITCH_H / 2 + (carrier.y < PITCH_H / 2 ? 7 : -7));
+      r.offIntent = { type: 'run_in_behind', x: targetX, y: targetY, timer: 1.85 };
+      this.v56IntentStats.run_in_behind++;
+    }
+
+    // INTENT B: SUPPORT CHECK-TO-FEET (CM/DM/DLF drops into a clean 10-14m diagonal passing angle!)
+    const supporters = mates.filter(m => ['OS', 'DOS', 'OOS'].includes(m.pos) || m.fmRole === 'DLF')
+      .filter(m => !m.offIntent)
+      .sort((a, b) => Math.hypot(a.x - carrier.x, a.y - carrier.y) - Math.hypot(b.x - carrier.x, b.y - carrier.y));
+    if (supporters.length) {
+      const s = supporters[0];
+      const sideSign = s.y >= carrier.y ? 1 : -1;
+      const sx = Math.max(8, Math.min(PITCH_W - 8, carrier.x + dir * 7.5));
+      const sy = Math.max(7, Math.min(PITCH_H - 7, carrier.y + sideSign * 10.5));
+      s.offIntent = { type: 'check_to_feet', x: sx, y: sy, timer: 1.45 };
+      this.v56IntentStats.check_to_feet++;
+    }
+
+    // INTENT C: FLANK OVERLAP OR WEAK-SIDE WIDTH STRETCH (Always guarantees a wide outlet!)
+    const ballOnTop = carrier.y < 24, ballOnBot = carrier.y > PITCH_H - 24;
+    if (ballOnTop || ballOnBot) {
+      // Ball-side fullback overlaps past the carrier!
+      const fb = mates.find(m => !m.offIntent && (m.pos === 'SLB' || m.pos === 'SĞB') && ((ballOnTop && m.y < PITCH_H / 2) || (ballOnBot && m.y >= PITCH_H / 2)));
+      if (fb) {
+        fb.offIntent = {
+          type: 'overlap',
+          x: Math.max(6, Math.min(PITCH_W - 6, carrier.x + dir * 14)),
+          y: ballOnTop ? 5.5 : (PITCH_H - 5.5),
+          timer: 2.0
+        };
+        this.v56IntentStats.overlap++;
+      }
+      // Opposite winger stretches wide on the far touchline!
+      const farW = mates.find(m => !m.offIntent && (m.pos === 'SLK' || m.pos === 'SĞK') && ((ballOnTop && m.y > PITCH_H / 2) || (ballOnBot && m.y <= PITCH_H / 2)));
+      if (farW) {
+        farW.offIntent = {
+          type: 'stretch_wide',
+          x: Math.max(8, Math.min(PITCH_W - 8, carrier.x + dir * 15)),
+          y: ballOnTop ? (PITCH_H - 7.0) : 7.0,
+          timer: 2.1
+        };
+        this.v56IntentStats.stretch_wide++;
+      }
+    }
+  };
+
+  // 3. ENHANCED ANTI-CLUMPING POSITIONING + ACTIVE OFF-BALL INTENTS + COMPACT DEF-MID BLOCK + DEFENSIVE COVERING!
+  const _v55ComputeTarget = eng.computeStructuredTarget.bind(eng);
+  eng.computeStructuredTarget = function(pl, ballX, ballY, teamHasBall, tp) {
+    const isHome = pl.side === 'home';
+    const dir = isHome ? 1 : -1;
+    const oppSide = isHome ? 'away' : 'home';
+    const pos = pl.pos;
+    const rt = this.getClubPhilosophy(pl.side);
+
+    // 1. Honor active coordinated Off-the-Ball Intent when in possession!
+    if (teamHasBall && pl.offIntent && pl.offIntent.timer > 0 && (!this.owner || this.owner.id !== pl.id)) {
+      let ix = pl.offIntent.x, iy = pl.offIntent.y;
+      if (['SNT', 'SLK', 'SĞK', 'OOS'].includes(pos)) {
+        const offLine = this.getOffsideLineX(oppSide);
+        if (isHome && ix > offLine - 1.2) ix = Math.min(offLine - 1.2, Math.max(ballX + 2.0, offLine - 1.2));
+        if (!isHome && ix < offLine + 1.2) ix = Math.max(offLine + 1.2, Math.min(ballX - 2.0, offLine + 1.2));
+      }
+      return {
+        x: Math.max(5, Math.min(PITCH_W - 5, ix)),
+        y: Math.max(4.5, Math.min(PITCH_H - 4.5, iy)),
+        state: pl.offIntent.type === 'check_to_feet' ? 'support' : 'run'
+      };
+    }
+
+    const res = _v55ComputeTarget(pl, ballX, ballY, teamHasBall, tp);
+    if (pos === 'KL') return res;
+
+    const prog = isHome ? (ballX / PITCH_W) : ((PITCH_W - ballX) / PITCH_W);
+
+    if (teamHasBall) {
+      // ANTI-MIDFIELD-CLUMPING:
+      // - Keep CBs holding real rest-defense depth (at least 16-22m behind ball when ball is in midfield!)
+      // - Keep weak-side winger hugging wide touchline (NEVER drifting into the midfield crowd!)
+      // - Keep attackers from crowding right on top of the ball carrier (stay >= 10m away unless checking to feet!)
+      if (pos === 'STP') {
+        const restX = isHome ? Math.min(res.x, Math.max(14, ballX - 18)) : Math.max(res.x, Math.min(PITCH_W - 14, ballX + 18));
+        res.x = restX;
+      } else if ((pos === 'SLK' || pos === 'SĞK') && pl.fSlot) {
+        const wideY = pl.fSlot.width < 0 ? 6.5 : (PITCH_H - 6.5);
+        // Far-side winger ALWAYS holds touchline width to stretch the field!
+        if (Math.abs(ballY - wideY) > 26) {
+          res.y = wideY;
+        }
+      }
+      if (this.owner && this.owner.side === pl.side && this.owner.id !== pl.id && ['SNT', 'SLK', 'SĞK', 'OOS'].includes(pos)) {
+        const dCarrier = Math.hypot(res.x - this.owner.x, res.y - this.owner.y);
+        if (dCarrier < 10.5) {
+          // Push ahead into open space instead of crowding around the carrier!
+          res.x = Math.max(6, Math.min(PITCH_W - 6, res.x + dir * (11.5 - dCarrier)));
+        }
+      }
+    } else {
+      // DEFENDING COHESION & COVERING:
+      // 1. Keep defense-to-midfield vertical gap strictly compact (11-15m between back line & midfield bank!)
+      const syncDefProg = Math.max(0.10, Math.min(0.42, prog - 0.24 + rt.lineShift + rt.pressLine));
+      const defLineX = isHome ? (syncDefProg * PITCH_W) : ((1 - syncDefProg) * PITCH_W);
+      if (['DOS', 'OS'].includes(pos)) {
+        const idealMidX = defLineX + dir * (rt.press === 'dusuk' ? 11.5 : 13.5);
+        res.x = res.x * 0.45 + idealMidX * 0.55;
+      }
+      // 2. Defensive Cover: if a teammate CB/FB steps out to press the ball carrier, adjacent CB/DM slides across to plug the gap!
+      if ((pos === 'STP' || pos === 'DOS') && this.owner && this.owner.side === oppSide) {
+        const dBall = Math.hypot(pl.x - ballX, pl.y - ballY);
+        if (dBall > 5.0 && dBall < 18.0) {
+          const ownGoalX = isHome ? 0 : PITCH_W;
+          const coverX = ballX * 0.40 + ownGoalX * 0.60;
+          const coverY = ballY * 0.55 + (PITCH_H / 2) * 0.45;
+          res.x = res.x * 0.68 + coverX * 0.32;
+          res.y = res.y * 0.68 + coverY * 0.32;
+          this.v56IntentStats.def_cover++;
+        }
+      }
+    }
+
+    res.x = Math.max(5, Math.min(PITCH_W - 5, res.x));
+    res.y = Math.max(4.5, Math.min(PITCH_H - 4.5, res.y));
+    return res;
+  };
+
+  // Run updateOffBallIntents cleanly inside stepPlayers!
+  const _v55StepPlayers = eng.stepPlayers.bind(eng);
+  eng.stepPlayers = function(dt) {
+    this.updateOffBallIntents(dt);
+    _v55StepPlayers(dt);
+  };
+
+  const _v55Init = eng.initForMatch.bind(eng);
+  eng.initForMatch = function(home, away) {
+    _v55Init(home, away);
+    this.v56IntentTimer = 0;
+    this.v56IntentStats = { run_in_behind: 0, check_to_feet: 0, overlap: 0, stretch_wide: 0, def_cover: 0 };
+    this.players.forEach(p => { p.offIntent = null; });
   };
 })();
 
