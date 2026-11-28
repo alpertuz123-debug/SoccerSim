@@ -853,7 +853,7 @@ select:focus, select:active, button:focus, button:active, input:focus, a:focus {
 <div class="menu-logo-ring">
 <svg class="svg-icon" style="width:28px;height:28px;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m12 6 3 4-1 5H10l-1-5 3-4Z"/><path d="M12 2v4"/><path d="m4.93 10.93 4.07-.93"/><path d="m19.07 10.93-4.07-.93"/><path d="m6.5 18.5 3.5-3.5"/><path d="m17.5 18.5-3.5-3.5"/></svg>
 </div>
-<div class="btn-soft" style="display:inline-flex;padding:3px 10px;border-radius:999px;font-size:10px;font-weight:700;margin-bottom:6px;">2026–27 DÜNYA SÜRÜMÜ · 7 LİG · v48</div>
+<div class="btn-soft" style="display:inline-flex;padding:3px 10px;border-radius:999px;font-size:10px;font-weight:700;margin-bottom:6px;">2026–27 DÜNYA SÜRÜMÜ · 7 LİG · v49</div>
 <h1 style="font-size:24px;font-weight:800;margin:0 0 4px;letter-spacing:-0.02em;">Soccer Simulator</h1>
 <p style="font-size:12px;color:var(--muted);margin:0;">Kendi teknik direktörlük kariyerini kur ve yönet.</p>
 </div>
@@ -16751,7 +16751,7 @@ enterCareer = function(careerObj) {
 
 
 // =========================================================================
-// v48: SMART OPEN-LANE PASSING, PLAYING OUT FROM THE BACK, EMERGENCY-ONLY
+// v49: SMART OPEN-LANE PASSING, PLAYING OUT FROM THE BACK, EMERGENCY-ONLY
 //      LONG CLEARANCES, SMOOTH 2s OUTRO & 15-19 HIGHLIGHTS PER MATCH!
 // =========================================================================
 (function initMatch2DV47() {
@@ -17910,6 +17910,376 @@ enterCareer = function(careerObj) {
       hud.textContent = `${SCEN_HUD_V48[scen] || '🔥 ATAK'} · ${attClub.short} (${liveState.minute}')`;
       hud.style.background = scen === 'penalty_kick' ? 'rgba(234,179,8,0.95)' : 'rgba(220,38,38,0.88)';
       hud.style.color = scen === 'penalty_kick' ? '#0f172a' : '#ffffff';
+    }
+  };
+})();
+
+
+// =========================================================================
+// v49: NATURAL WIDE/DEEP TEAM SPACING (NO BUNCHING), FAST CRISP PASS SPEEDS,
+//      TRUE 1-TO-1 TIGHT MAN-MARKING FOR BOTH TEAMS & REAL COUNTER-ATTACKS
+//      INSTEAD OF PREMATURE "TAKIM SAKİNCE ÇIKTI"!
+// =========================================================================
+(function initMatch2DV49() {
+  const eng = window.Match2DEngine;
+  if (!eng) return;
+
+  const PITCH_W = 105;
+  const PITCH_H = 68;
+
+  eng.v49PassSpeedSum = 0;
+  eng.v49PassSpeedCount = 0;
+  eng.v49MarkingMap = new Map();
+  eng.v49MarkAssignTick = -1;
+
+  // 1. FASTER, CRISPER PASS SPEEDS (SNAPPY FM WET-TURF ZIP!)
+  const _v48Kick = eng.kickBall.bind(eng);
+  eng.kickBall = function(fromAgent, tx, ty, type, targetAgent) {
+    _v48Kick(fromAgent, tx, ty, type, targetAgent);
+    if (type !== 'shot' && type !== 'clearance') {
+      const b = this.ball;
+      const curSpd = Math.hypot(b.vx, b.vy);
+      if (curSpd > 0.5) {
+        const dx = tx - (fromAgent ? fromAgent.x : b.x);
+        const dy = ty - (fromAgent ? fromAgent.y : b.y);
+        const dist = Math.max(1, Math.hypot(dx, dy));
+        let targetSpd = curSpd * 1.42;
+        if (type === 'short_pass') {
+          targetSpd = Math.min(35.0, Math.max(26.0, dist * 1.30 + 14.0));
+        } else if (type === 'through_ball') {
+          targetSpd = Math.min(36.0, Math.max(27.5, dist * 1.26 + 14.5));
+        } else if (type === 'long_pass') {
+          targetSpd = Math.min(40.0, Math.max(30.5, dist * 0.94 + 16.0));
+        } else if (type === 'cross') {
+          targetSpd = Math.min(36.0, Math.max(27.5, dist * 1.00 + 14.5));
+        }
+        const scale = targetSpd / curSpd;
+        b.vx *= scale;
+        b.vy *= scale;
+        this.v49PassSpeedSum += targetSpd;
+        this.v49PassSpeedCount++;
+      }
+    }
+  };
+
+  // Crisp pass flight pace so passes zip smoothly across the pitch
+  const _v48Pace = eng.getAdaptivePace.bind(eng);
+  eng.getAdaptivePace = function() {
+    const b = this.ball;
+    if (!this.owner && b && !b.isShot && Math.hypot(b.vx, b.vy) > 16) return 0.88;
+    return _v48Pace();
+  };
+
+  // 2. TRUE 1-TO-1 SYMMETRIC MAN-MARKING ASSIGNMENT (BOTH HOME & AWAY!)
+  eng.refreshMarkingAssignments = function(defSide) {
+    const isHome = defSide === 'home';
+    const oppSide = isHome ? 'away' : 'home';
+    const b = this.ball;
+
+    // Threats: opposing outfield players in our defensive 72% of the pitch (excluding ball carrier, who is pressed)
+    const carrierId = this.owner ? this.owner.id : null;
+    const threats = this.players.filter(o =>
+      o.side === oppSide && !o.sentOff && o.pos !== 'KL' && o.id !== carrierId &&
+      (isHome ? (o.x < 76) : (o.x > 29))
+    );
+    // Prioritize closest threats to our own goal!
+    threats.sort((a, c) => {
+      const da = isHome ? a.x : (PITCH_W - a.x);
+      const dc = isHome ? c.x : (PITCH_W - c.x);
+      return da - dc;
+    });
+
+    // Available markers: CBs, FBs, DMs, CMs, and wingers tracking back (NOT our striker, who stays up for counters!)
+    const markers = this.players.filter(d =>
+      d.side === defSide && !d.sentOff && d.pos !== 'KL' && d.pos !== 'SNT'
+    );
+
+    const assigned = new Map(); // defenderId -> opponent player
+    const usedMarkers = new Set();
+
+    for (let i = 0; i < threats.length; i++) {
+      const th = threats[i];
+      let bestDef = null, bestCost = 9999;
+      for (let j = 0; j < markers.length; j++) {
+        const d = markers[j];
+        if (usedMarkers.has(d.id)) continue;
+        // Role compatibility bonus so CBs mark ST/CAM, FBs mark wingers, DMs/CMs mark midfielders!
+        let rolePenalty = 0;
+        const thIsCentral = ['SNT', 'OOS'].includes(th.pos);
+        const thIsWide = ['SLK', 'SĞK', 'SLB', 'SĞB'].includes(th.pos);
+        if (d.pos === 'STP' && thIsCentral) rolePenalty = -10;
+        else if ((d.pos === 'SLB' || d.pos === 'SĞB') && thIsWide) rolePenalty = -9;
+        else if ((d.pos === 'DOS' || d.pos === 'OS') && ['OOS', 'OS', 'DOS'].includes(th.pos)) rolePenalty = -8;
+        else if (['SLK', 'SĞK', 'OOS'].includes(d.pos)) rolePenalty = 7;
+
+        const dist = Math.hypot(d.x - th.x, d.y - th.y);
+        const cost = dist + rolePenalty;
+        if (cost < bestCost && dist < 38) {
+          bestCost = cost;
+          bestDef = d;
+        }
+      }
+      if (bestDef) {
+        assigned.set(bestDef.id, th);
+        usedMarkers.add(bestDef.id);
+      }
+    }
+    this.v49MarkingMap.set(defSide, assigned);
+  };
+
+  // 3. WIDE, NATURAL FM PITCH SPREAD (IN POSSESSION) + TIGHT 1-TO-1 GOAL-SIDE MARKING (OUT OF POSSESSION)!
+  eng.computeStructuredTarget = function(pl, ballX, ballY, teamHasBall, tp) {
+    const isHome = pl.side === 'home';
+    const dir = isHome ? 1 : -1;
+    const defDir = -dir; // Toward own goal
+    const oppSide = isHome ? 'away' : 'home';
+    const pos = pl.pos;
+    const prog = isHome ? (ballX / PITCH_W) : ((PITCH_W - ballX) / PITCH_W);
+    const ballShiftY = (ballY - PITCH_H / 2) * 0.22;
+
+    if (pos === 'KL') {
+      const gx = isHome ? (3.5 + prog * 10) : (PITCH_W - 3.5 - prog * 10);
+      const gy = PITCH_H / 2 + Math.max(-5.5, Math.min(5.5, (ballY - PITCH_H / 2) * 0.25));
+      return { x: gx, y: gy, state: 'defend' };
+    }
+
+    if (teamHasBall) {
+      // NATURAL SPREAD-OUT ATTACKING SHAPE (32-44m depth, full 58m pitch width — ZERO BUNCHING!)
+      const backLine = Math.max(0.22, Math.min(0.46, 0.20 + prog * 0.30 + tp.lineShift * 0.003));
+      let targetProg = backLine + 0.18;
+      let targetY = pl.baseY;
+      let state = 'support';
+
+      if (pos === 'STP') {
+        targetProg = backLine;
+        const isLeftCB = (pl.slotIdx % 2 === 0);
+        targetY = isLeftCB ? 22 : (PITCH_H - 22);
+      } else if (pos === 'SLB' || pos === 'SĞB') {
+        const overlap = (tp.ment === 'ofansif' || tp.ment === 'asiri_hucum' || tp.attSide === 'kanatlar') ? 0.16 : 0.10;
+        targetProg = Math.min(0.80, backLine + 0.16 + overlap * prog);
+        targetY = pos === 'SLB' ? (isHome ? 6.5 : PITCH_H - 6.5) : (isHome ? PITCH_H - 6.5 : 6.5);
+        if (prog > 0.52) state = 'run';
+      } else if (pos === 'DOS') {
+        targetProg = Math.min(0.68, backLine + 0.18);
+        targetY = PITCH_H / 2 + ballShiftY * 0.55;
+      } else if (pos === 'OS') {
+        targetProg = Math.min(0.78, backLine + 0.28);
+        targetY = PITCH_H / 2 + (pl.baseY < PITCH_H / 2 ? -13 : 13) + ballShiftY * 0.4;
+      } else if (pos === 'OOS') {
+        targetProg = Math.min(0.86, Math.max(0.56, prog + 0.15));
+        targetY = PITCH_H / 2 + (ballY > PITCH_H / 2 ? -10 : 10);
+        state = 'run';
+      } else if (pos === 'SLK' || pos === 'SĞK') {
+        targetProg = Math.min(0.90, Math.max(0.62, prog + 0.19));
+        const wideY = pos === 'SLK' ? (isHome ? 8.5 : PITCH_H - 8.5) : (isHome ? PITCH_H - 8.5 : 8.5);
+        const sameFlank = Math.abs(ballY - wideY) < 28;
+        targetY = sameFlank ? wideY : (PITCH_H / 2 + (wideY < PITCH_H / 2 ? -14 : 14));
+        state = 'run';
+      } else if (pos === 'SNT') {
+        targetProg = Math.min(0.92, Math.max(0.68, prog + 0.23));
+        targetY = PITCH_H / 2 + Math.sin((this.simSeconds || 0) * 0.9 + pl.slotIdx) * 10.0;
+        state = 'run';
+      }
+
+      let tx = isHome ? (targetProg * PITCH_W) : ((1 - targetProg) * PITCH_W);
+
+      // Strict onside shoulder discipline for attackers (96% strictly onside!)
+      if (['SNT', 'SLK', 'SĞK', 'OOS'].includes(pos)) {
+        const offLine = this.getOffsideLineX(oppSide);
+        const strictOnside = ((pl.slotIdx * 3 + Math.floor((this.simSeconds || 0) * 0.4)) % 25) !== 0;
+        if (strictOnside) {
+          if (isHome && tx > offLine - 1.4) tx = Math.min(offLine - 1.4, Math.max(ballX + 1.5, offLine - 1.4));
+          if (!isHome && tx < offLine + 1.4) tx = Math.max(offLine + 1.4, Math.min(ballX - 1.5, offLine + 1.4));
+        }
+      }
+
+      return {
+        x: Math.max(5, Math.min(PITCH_W - 5, tx)),
+        y: Math.max(4.5, Math.min(PITCH_H - 4.5, targetY)),
+        state
+      };
+    }
+
+    // OUT OF POSSESSION: TIGHT 1-TO-1 GOAL-SIDE MAN-MARKING (FOR BOTH HOME & AWAY!)
+    const assignedMap = this.v49MarkingMap.get(pl.side);
+    const markTarget = assignedMap ? assignedMap.get(pl.id) : null;
+    if (markTarget && !markTarget.sentOff) {
+      // Stick TIGHTLY goal-side (1.9-2.5m between opponent and our own goal!)
+      const tightness = (pos === 'STP') ? 1.9 : ((pos === 'SLB' || pos === 'SĞB') ? 2.1 : 2.4);
+      const ownGoalX = isHome ? 0 : PITCH_W;
+      const toGoalX = ownGoalX - markTarget.x;
+      const toGoalY = (PITCH_H / 2) - markTarget.y;
+      const gDist = Math.max(1, Math.hypot(toGoalX, toGoalY));
+      const mx = markTarget.x + (toGoalX / gDist) * tightness;
+      const my = markTarget.y + (toGoalY / gDist) * (tightness * 0.65);
+      const dToMark = Math.hypot(pl.x - mx, pl.y - my);
+      return {
+        x: Math.max(5.5, Math.min(PITCH_W - 5.5, mx)),
+        y: Math.max(4.5, Math.min(PITCH_H - 4.5, my)),
+        state: dToMark > 2.8 ? 'run' : 'defend'
+      };
+    }
+
+    // Unassigned players (e.g. Striker staying upfield as counter outlet, or spare defender holding shape)
+    if (pos === 'SNT') {
+      const counterProg = Math.max(0.46, Math.min(0.62, prog + 0.28));
+      return {
+        x: Math.max(8, Math.min(PITCH_W - 8, isHome ? (counterProg * PITCH_W) : ((1 - counterProg) * PITCH_W))),
+        y: Math.max(10, Math.min(PITCH_H - 10, PITCH_H / 2 + (ballY > PITCH_H / 2 ? -11 : 11))),
+        state: 'support'
+      };
+    }
+
+    // Spread-out zonal defensive fallback (wide & structured, never bunched!)
+    const defAnchor = Math.max(0.13, Math.min(0.44, prog - 0.16 + tp.lineShift * 0.004));
+    let targetProg = defAnchor + 0.14;
+    let targetY = pl.baseY;
+    if (pos === 'STP' || pos === 'SLB' || pos === 'SĞB') {
+      targetProg = defAnchor;
+      targetY = PITCH_H / 2 + (pl.baseY - PITCH_H / 2) * 0.88 + ballShiftY * 0.55;
+    } else if (pos === 'DOS' || pos === 'OS') {
+      targetProg = defAnchor + 0.15;
+      targetY = PITCH_H / 2 + (pl.baseY - PITCH_H / 2) * 0.86 + ballShiftY * 0.65;
+    } else {
+      targetProg = defAnchor + 0.26;
+      targetY = PITCH_H / 2 + (pl.baseY - PITCH_H / 2) * 0.90 + ballShiftY * 0.50;
+    }
+
+    const tx = isHome ? (targetProg * PITCH_W) : ((1 - targetProg) * PITCH_W);
+    return {
+      x: Math.max(5.5, Math.min(PITCH_W - 5.5, tx)),
+      y: Math.max(4.5, Math.min(PITCH_H - 4.5, targetY)),
+      state: 'defend'
+    };
+  };
+
+  // Refresh 1-to-1 marking maps every stepPlayers tick & keep teammate spacing natural while allowing tight 1.8m marking!
+  const _v48StepPlayers = eng.stepPlayers.bind(eng);
+  eng.stepPlayers = function(dt) {
+    const defSide = this.owner ? (this.owner.side === 'home' ? 'away' : 'home') : (this.lastTouchSide === 'home' ? 'away' : 'home');
+    this.refreshMarkingAssignments(defSide);
+    // Also keep opposite side map clear so in-possession team spreads freely
+    this.v49MarkingMap.delete(defSide === 'home' ? 'away' : 'home');
+
+    _v48StepPlayers(dt);
+
+    // Extra teammate-only anti-bunching separation (12.0m for teammates, NEVER pushing a defender off their marked opponent!)
+    for (let i = 0; i < this.players.length; i++) {
+      const a = this.players[i];
+      if (a.sentOff || a.pos === 'KL') continue;
+      for (let j = i + 1; j < this.players.length; j++) {
+        const b2 = this.players[j];
+        if (b2.sentOff || b2.pos === 'KL' || a.side !== b2.side) continue;
+        // Skip separation if either player is actively carrying or receiving a pass
+        if ((this.owner && (this.owner.id === a.id || this.owner.id === b2.id))) continue;
+        const dx = a.x - b2.x, dy = a.y - b2.y;
+        const d = Math.hypot(dx, dy);
+        if (d > 0.05 && d < 12.0) {
+          const push = ((12.0 - d) / 12.0) * 3.4 * dt;
+          const ux = dx / d, uy = dy / d;
+          a.x = Math.max(2.5, Math.min(PITCH_W - 2.5, a.x + ux * push));
+          a.y = Math.max(2.5, Math.min(PITCH_H - 2.5, a.y + uy * push));
+          b2.x = Math.max(2.5, Math.min(PITCH_W - 2.5, b2.x - ux * push));
+          b2.y = Math.max(2.5, Math.min(PITCH_H - 2.5, b2.y - uy * push));
+        }
+      }
+    }
+  };
+
+  // 4. REAL COUNTER-ATTACK PRIORITY: NEVER KILL A COUNTER OPPORTUNITY WITH "TAKIM SAKİNCE ÇIKTI"!
+  const _v48DecideFM = eng.decideFMAction.bind(eng);
+  eng.decideFMAction = function(pl) {
+    // Intercept defending-team ball win inside a highlight!
+    if (this.highlightActive && !this.highlightResolved && pl.side !== this.highlightSide && pl.pos !== 'KL') {
+      const isHome = pl.side === 'home';
+      const dir = isHome ? 1 : -1;
+      const inOwnDeepBox = isHome ? (pl.x < 14.5) : (pl.x > PITCH_W - 14.5);
+
+      let nearestPressD = 99;
+      for (let i = 0; i < this.players.length; i++) {
+        const op = this.players[i];
+        if (op.side !== pl.side && !op.sentOff) {
+          const d = Math.hypot(op.x - pl.x, op.y - pl.y);
+          if (d < nearestPressD) nearestPressD = d;
+        }
+      }
+
+      const allOpen = this.findOpenTeammates(pl, 50).filter(x => x.blockers === 0 && x.m.pos !== 'KL');
+      const fwdRunners = allOpen.filter(x => (x.m.x - pl.x) * dir > 5 && !this.isPlayerOffside(x.m, this.ball.x));
+      const canDriveCounter = this.hasOpenDriveLane(pl) && !inOwnDeepBox;
+
+      // PRIORITY 1: LAUNCH LIVE COUNTER-ATTACK whenever ANY forward runner OR open drive lane exists!
+      if (!this.highlightFlippedOnce && (fwdRunners.length >= 1 || canDriveCounter)) {
+        this.highlightFlippedOnce = true;
+        this.highlightSide = pl.side;
+        this.highlightTimer = 17.0; // Full time to finish the counter-attack!
+        this.highlightPasses = 1;
+        this.countersFlipped++;
+        const counterClub = isHome ? (liveState && liveState.home) : (liveState && liveState.away);
+        const hud = document.getElementById('live2dHudTag');
+        if (hud && counterClub) {
+          hud.textContent = `🚀 KONTRA ATAK · ${counterClub.short} (${liveState ? liveState.minute : ''}')`;
+          hud.style.background = 'rgba(245,158,11,0.94)';
+          hud.style.color = '#0f172a';
+        }
+        if (fwdRunners.length >= 1) {
+          fwdRunners.sort((a, b) => ((b.m.x - a.m.x) * dir));
+          const runner = fwdRunners[0].m;
+          const leadX = Math.max(5, Math.min(PITCH_W - 5, runner.x + dir * 6.5));
+          this.kickBall(pl, leadX, runner.y, 'through_ball', runner);
+          this.forwardPassCount++;
+          if (isHome) this.aiMetrics.passesHome++; else this.aiMetrics.passesAway++;
+          this.emit2DEvent({ type: 'pass', side: pl.side, player: pl, passType: 'through_ball' });
+        } else {
+          // Carry forward on the counter immediately!
+          pl.drivingToGoal = true;
+          pl.holdTimer = 0.65;
+          this.soloDrives++;
+        }
+        return;
+      }
+
+      // PRIORITY 2: ONLY conclude with "TAKIM SAKİNCE ÇIKTI" when NO counter opportunity exists (or counter already happened)
+      const safeOpts = this.findOpenTeammates(pl, 40).filter(x => x.blockers === 0 && x.minOppD >= 2.8);
+      if (safeOpts.length >= 1 && !(inOwnDeepBox && nearestPressD < 2.6)) {
+        safeOpts.sort((a, b) => b.minOppD - a.minOppD);
+        const safeMate = safeOpts[0].m;
+        this.kickBall(pl, safeMate.x, safeMate.y, 'short_pass', safeMate);
+        this.emit2DEvent({ type: 'pass', side: pl.side, player: pl, passType: 'short_pass' });
+        this.buildOutPlays++;
+        this.calmRecycles++;
+        this.concludeHighlight('🔄 TAKIM SAKİNCE ÇIKTI', 'rgba(15,23,42,0.88)', 1.85);
+        return;
+      }
+
+      // PRIORITY 3: EXTREME EMERGENCY ONLY -> Long booming 50m clearance!
+      this.bootRealClearance(pl);
+      this.clearancesCount++;
+      this.concludeHighlight('🦵 TEHLİKE UZAKLAŞTIRILDI!', 'rgba(30,41,59,0.9)', 1.95);
+      return;
+    }
+
+    _v48DecideFM(pl);
+  };
+
+  // Start every highlight with defending players already tightly positioned on their 1-to-1 marks!
+  const _v48StartHL = eng.startHighlightSequence.bind(eng);
+  eng.startHighlightSequence = function(attSide) {
+    _v48StartHL(attSide);
+    if (this.lastScenario === 'penalty_kick' || this.lastScenario === 'free_kick_direct' || this.lastScenario === 'corner_kick') return;
+    const defSide = attSide === 'home' ? 'away' : 'home';
+    const defTP = this.getTacticalProfile(defSide);
+    this.refreshMarkingAssignments(defSide);
+    const mmap = this.v49MarkingMap.get(defSide);
+    if (mmap) {
+      mmap.forEach((opp, defId) => {
+        const def = this.players.find(p => p.id === defId && !p.sentOff && p.pos !== 'KL');
+        if (def && opp && (def.recoverTimer || 0) <= 0) {
+          const st = this.computeStructuredTarget(def, this.ball.x, this.ball.y, false, defTP);
+          def.x = st.x;
+          def.y = st.y;
+        }
+      });
     }
   };
 })();
