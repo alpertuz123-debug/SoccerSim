@@ -853,7 +853,7 @@ select:focus, select:active, button:focus, button:active, input:focus, a:focus {
 <div class="menu-logo-ring">
 <svg class="svg-icon" style="width:28px;height:28px;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m12 6 3 4-1 5H10l-1-5 3-4Z"/><path d="M12 2v4"/><path d="m4.93 10.93 4.07-.93"/><path d="m19.07 10.93-4.07-.93"/><path d="m6.5 18.5 3.5-3.5"/><path d="m17.5 18.5-3.5-3.5"/></svg>
 </div>
-<div class="btn-soft" style="display:inline-flex;padding:3px 10px;border-radius:999px;font-size:10px;font-weight:700;margin-bottom:6px;">2026–27 DÜNYA SÜRÜMÜ · 7 LİG · v56</div>
+<div class="btn-soft" style="display:inline-flex;padding:3px 10px;border-radius:999px;font-size:10px;font-weight:700;margin-bottom:6px;">2026–27 DÜNYA SÜRÜMÜ · 7 LİG · v57</div>
 <h1 style="font-size:24px;font-weight:800;margin:0 0 4px;letter-spacing:-0.02em;">Soccer Simulator</h1>
 <p style="font-size:12px;color:var(--muted);margin:0;">Kendi teknik direktörlük kariyerini kur ve yönet.</p>
 </div>
@@ -16751,7 +16751,7 @@ enterCareer = function(careerObj) {
 
 
 // =========================================================================
-// v56: SMART OPEN-LANE PASSING, PLAYING OUT FROM THE BACK, EMERGENCY-ONLY
+// v57: SMART OPEN-LANE PASSING, PLAYING OUT FROM THE BACK, EMERGENCY-ONLY
 //      LONG CLEARANCES, SMOOTH 2s OUTRO & 15-19 HIGHLIGHTS PER MATCH!
 // =========================================================================
 (function initMatch2DV47() {
@@ -21707,6 +21707,477 @@ enterCareer = function(careerObj) {
     this.v56IntentTimer = 0;
     this.v56IntentStats = { run_in_behind: 0, check_to_feet: 0, overlap: 0, stretch_wide: 0, def_cover: 0 };
     this.players.forEach(p => { p.offIntent = null; });
+  };
+})();
+
+
+// =========================================================================
+// v57: REAL CORNER REST-DEFENSE & BOX ORGANIZATION, FULL-PITCH 1v1 BREAKAWAY
+//      & UTILITY DECISION ENGINE, SHORT/MEDIUM PASS PRIORITY (LOW LONG-BALL
+//      SPAM), AND TRUE COUNTER-ONLY MATCH FLOW (NO INFINITE PING-PONG!)
+// =========================================================================
+(function initMatch2DV57() {
+  const eng = window.Match2DEngine;
+  if (!eng) return;
+
+  const PITCH_W = 105;
+  const PITCH_H = 68;
+
+  eng.v57TrueCounters = 0;
+  eng.v57ShortMedPasses = 0;
+  eng.v57LongPassAtt = 0;
+  eng.v57Midfield1v1Drives = 0;
+  eng.v57CornerRestDefSum = 0;
+  eng.v57CornerDefBoxSum = 0;
+  eng.v57CornerChecks = 0;
+
+  // Helper: Check if carrier has an UNCONTESTED path straight to goal (works from ANYWHERE on pitch, including midfield!)
+  eng.hasOpenGoalBreakaway = function(pl) {
+    if (!pl || pl.pos === 'KL') return false;
+    const isHome = pl.side === 'home';
+    const dir = isHome ? 1 : -1;
+    const goalX = isHome ? PITCH_W : 0;
+    const distGoal = Math.hypot(goalX - pl.x, PITCH_H / 2 - pl.y);
+    if (distGoal < 12 || distGoal > 72) return false;
+
+    const defsAhead = this.countDefendersAhead(pl);
+    // Case A: ZERO outfield defenders between carrier and goalkeeper -> 100% pure breakaway from ANYWHERE!
+    if (defsAhead === 0) return true;
+
+    // Case B: 1 defender ahead, but central corridor straight toward goal is wide open!
+    if (defsAhead <= 1 && distGoal <= 56 && Math.abs(pl.y - PITCH_H / 2) <= 24) {
+      const tx = goalX - dir * 10;
+      const ty = PITCH_H / 2 + (pl.y - PITCH_H / 2) * 0.22;
+      const dx = tx - pl.x, dy = ty - pl.y;
+      const len = Math.max(1, Math.hypot(dx, dy));
+      const ux = dx / len, uy = dy / len;
+      const checkLen = Math.min(24, len);
+      for (let i = 0; i < this.players.length; i++) {
+        const op = this.players[i];
+        if (op.side !== pl.side && !op.sentOff && op.pos !== 'KL') {
+          const proj = (op.x - pl.x) * ux + (op.y - pl.y) * uy;
+          if (proj > -0.5 && proj < checkLen) {
+            const perp = Math.abs((op.x - pl.x) * (-uy) + (op.y - pl.y) * ux);
+            if (perp < 4.4) return false;
+          }
+        }
+      }
+      return true;
+    }
+    return false;
+  };
+
+  // Helper: Check if a turnover is a GENUINE counter-attack opportunity (high opponent line + space behind!)
+  eng.isTrueCounterOpportunity = function(pl, fwdRunners) {
+    if (this.highlightFlippedOnce) return false; // NEVER infinite counter ping-pong!
+    const isHome = pl.side === 'home';
+    const dir = isHome ? 1 : -1;
+    // Count how many opposing outfield defenders are already goal-side of our furthest runner (or carrier)
+    const refX = fwdRunners.length ? fwdRunners[0].m.x : (pl.x + dir * 10);
+    let oppDefendersBack = 0;
+    for (let i = 0; i < this.players.length; i++) {
+      const op = this.players[i];
+      if (op.side !== pl.side && !op.sentOff && op.pos !== 'KL') {
+        if (isHome ? (op.x > refX - 2) : (op.x < refX + 2)) oppDefendersBack++;
+      }
+    }
+    // True counter ONLY when <= 3 opposing defenders are back behind the break AND we have a runner or open breakaway!
+    return oppDefendersBack <= 3 && (fwdRunners.length >= 1 || this.hasOpenGoalBreakaway(pl));
+  };
+
+  // 1. REAL CORNER ORGANIZATION (ATTACKING REST-DEFENSE + FULL DEFENSIVE BOX SETUP + COUNTER OUTLET!)
+  const _v56StartHL = eng.startHighlightSequence.bind(eng);
+  eng.startHighlightSequence = function(attSide) {
+    _v56StartHL(attSide);
+    // Keep highlight budget realistic (~18s max) so matches flow naturally like FM Mobile!
+    this.highlightTimer = 18.0;
+    if (this.owner && !['corner_kick','free_kick_direct','penalty_kick'].includes(this.lastScenario)) {
+      const isH = attSide === 'home';
+      const minStart = isH ? 50 : 55;
+      if ((isH && this.owner.x < minStart) || (!isH && this.owner.x > minStart)) {
+        const shiftX = minStart - this.owner.x;
+        this.owner.x = minStart;
+        this.ball.x = minStart;
+        this.players.forEach(p => {
+          if (p.pos !== 'KL' && p !== this.owner) {
+            p.x = Math.max(8, Math.min(PITCH_W - 8, p.x + shiftX * 0.65));
+          }
+        });
+      }
+    }
+
+    if (this.lastScenario !== 'corner_kick') return;
+
+    const isHome = attSide === 'home';
+    const dir = isHome ? 1 : -1;
+    const defSide = isHome ? 'away' : 'home';
+    const attRT = this.getClubPhilosophy(attSide);
+    const defRT = this.getClubPhilosophy(defSide);
+
+    const topC = this.ball.y < PITCH_H / 2;
+    const cx = isHome ? PITCH_W - 1.2 : 1.2;
+    const cy = topC ? 1.5 : (PITCH_H - 1.5);
+    const boxX = isHome ? (PITCH_W - 10.5) : 10.5;
+    const edgeX = isHome ? (PITCH_W - 19.5) : 19.5;
+    const restX = isHome ? 54 : 51; // Attacking team's rest-defense near halfway line!
+
+    const attPs = this.players.filter(p => p.side === attSide && !p.sentOff && p.pos !== 'KL');
+    const defPs = this.players.filter(p => p.side === defSide && !p.sentOff && p.pos !== 'KL');
+    const attGk = this.players.find(p => p.side === attSide && p.pos === 'KL' && !p.sentOff);
+    const defGk = this.players.find(p => p.side === defSide && p.pos === 'KL' && !p.sentOff);
+
+    if (attGk) { attGk.x = isHome ? 12 : (PITCH_W - 12); attGk.y = PITCH_H / 2; attGk.vx = 0; attGk.vy = 0; }
+    if (defGk) { defGk.x = isHome ? (PITCH_W - 2.4) : 2.4; defGk.y = PITCH_H / 2 + (topC ? -1.5 : 1.5); defGk.vx = 0; defGk.vy = 0; }
+
+    // --- ATTACKING TEAM CORNER DUTIES (1 Taker, 5 Box, 1 Edge, 3 Rest-Defense — or 2 if ultra-attacking!) ---
+    const taker = attPs.find(p => ['SLK', 'SĞK', 'OOS', 'OS'].includes(p.pos)) || attPs[0];
+    const attRem = attPs.filter(p => p !== taker);
+    const restCount = (attRT.ment === 'asiri_hucum') ? 2 : 3;
+
+    // Pick rest-defense guards: fullbacks + defensive midfielder stay back to prevent 1v1 counters!
+    const restGuards = [];
+    ['SLB', 'SĞB', 'DOS', 'OS', 'STP'].forEach(pos => {
+      attRem.forEach(p => {
+        if (restGuards.length < restCount && p.pos === pos && !restGuards.includes(p)) restGuards.push(p);
+      });
+    });
+    const edgeAtt = attRem.find(p => !restGuards.includes(p) && ['OOS', 'OS', 'DOS', 'SLK', 'SĞK'].includes(p.pos));
+    const boxAtt = attRem.filter(p => !restGuards.includes(p) && p !== edgeAtt);
+
+    // Position Rest-Defense cleanly near halfway line (protecting against opponent counter striker!)
+    restGuards.forEach((g, idx) => {
+      g.x = restX + (idx === 1 ? -dir * 4 : 0);
+      g.y = PITCH_H / 2 + (idx - (restGuards.length - 1) / 2) * 14;
+      g.vx = 0; g.vy = 0;
+    });
+    if (edgeAtt) {
+      edgeAtt.x = edgeX; edgeAtt.y = PITCH_H / 2 + (topC ? -6 : 6);
+      edgeAtt.vx = 0; edgeAtt.vy = 0;
+    }
+    const attBoxYs = [25, 30, 34, 38, 43];
+    boxAtt.forEach((a, idx) => {
+      a.x = boxX + (idx % 2 === 0 ? -1.6 : 1.6);
+      a.y = attBoxYs[idx % attBoxYs.length];
+      a.vx = 0; a.vy = 0;
+    });
+
+    // --- DEFENDING TEAM CORNER DUTIES (7-8 Box Defenders, 1 Edge Screen, 1-2 Counter Outlets!) ---
+    const outletCount = (defRT.ment === 'kontra' || defRT.ment === 'ofansif') ? 2 : 1;
+    const defOutlets = [];
+    ['SNT', 'SLK', 'SĞK', 'OOS'].forEach(pos => {
+      defPs.forEach(p => {
+        if (defOutlets.length < outletCount && p.pos === pos && !defOutlets.includes(p)) defOutlets.push(p);
+      });
+    });
+    const defRem = defPs.filter(p => !defOutlets.includes(p));
+    const defEdge = defRem.find(p => ['OOS', 'OS', 'DOS'].includes(p.pos)) || defRem[defRem.length - 1];
+    const defBox = defRem.filter(p => p !== defEdge);
+
+    // Position Defending Box Players (strictly inside/around box & >= 12m from corner flag!)
+    defBox.forEach((d, idx) => {
+      const row = idx < 4 ? 0 : 1;
+      d.x = boxX + dir * (row === 0 ? 2.6 : -0.6);
+      d.y = 22 + (idx % 4) * 7.5 + (row * 2.5);
+      d.vx = 0; d.vy = 0;
+    });
+    if (defEdge) {
+      defEdge.x = edgeX + dir * 2.2;
+      defEdge.y = PITCH_H / 2 + (topC ? 5 : -5);
+      defEdge.vx = 0; defEdge.vy = 0;
+    }
+    // Counter outlets stay near halfway line (marked by attacking rest-defense!)
+    defOutlets.forEach((o, idx) => {
+      o.x = restX + dir * 4;
+      o.y = PITCH_H / 2 + (idx === 0 ? -6 : 12);
+      o.vx = 0; o.vy = 0;
+    });
+
+    this.v57CornerRestDefSum += restGuards.length;
+    this.v57CornerDefBoxSum += defBox.length;
+    this.v57CornerChecks++;
+
+    if (taker) {
+      this.ball = { x: cx, y: cy, z: 0, vx: 0, vy: 0, vz: 0, isShot: false };
+      taker.x = cx; taker.y = cy; taker.vx = 0; taker.vy = 0;
+      const targetH = boxAtt.find(p => p.pos === 'SNT' || p.pos === 'STP') || boxAtt[0];
+      const aimX = boxX + dir * 0.8;
+      const aimY = targetH ? targetH.y : PITCH_H / 2;
+      this.owner = taker;
+      this.kickBall(taker, aimX, aimY, 'corner_cross', targetH);
+      this.highlightPasses = 2;
+    }
+  };
+
+  // 2. UTILITY DECISION ENGINE:
+  //    - FULL-PITCH 1v1 BREAKAWAY -> ALWAYS DRIVE STRAIGHT AT GOALKEEPER & FINISH (NEVER PASS WIDE!)
+  //    - SHORT/MEDIUM PASSING PRIORITY -> LONG PASSES ONLY WHEN TACTICALLY & POSITIONALLY JUSTIFIED!
+  //    - TRUE COUNTER-ATTACK TRIGGER ONLY -> NORMAL TURNOVERS CONCLUDE CLEANLY WITHOUT INFINITE PING-PONG!
+  const _v55DecideFM = eng.decideFMAction.bind(eng);
+  eng.decideFMAction = function(pl) {
+    const isHome = pl.side === 'home';
+    const dir = isHome ? 1 : -1;
+    const defSide = isHome ? 'away' : 'home';
+    const goalX = isHome ? PITCH_W : 0;
+    const distGoal = Math.hypot(goalX - pl.x, PITCH_H / 2 - pl.y);
+    const angleY = Math.abs(pl.y - PITCH_H / 2);
+    const rt = this.getClubPhilosophy(pl.side);
+
+    // Goalkeeper safe distribution
+    if (pl.pos === 'KL') {
+      _v55DecideFM(pl);
+      return;
+    }
+
+    // DEFENDING TEAM WON THE BALL INSIDE A HIGHLIGHT:
+    // ONLY flip into a live counter-attack when a TRUE counter-attack opportunity exists (and max ONCE per highlight!)
+    if (this.highlightActive && !this.highlightResolved && pl.side !== this.highlightSide) {
+      const inOwnDeepBox = isHome ? (pl.x < 14.5) : (pl.x > PITCH_W - 14.5);
+      let nearestPressD = 99;
+      for (let i = 0; i < this.players.length; i++) {
+        const op = this.players[i];
+        if (op.side !== pl.side && !op.sentOff) {
+          const d = Math.hypot(op.x - pl.x, op.y - pl.y);
+          if (d < nearestPressD) nearestPressD = d;
+        }
+      }
+
+      const allOpen = this.findOpenTeammates(pl, 44).filter(x => x.blockers === 0 && x.m.pos !== 'KL');
+      const fwdRunners = allOpen.filter(x => (x.m.x - pl.x) * dir > 5 && !this.isPlayerOffside(x.m, this.ball.x) && x.minOppD >= 3.5);
+      fwdRunners.sort((a, b) => ((b.m.x - a.m.x) * dir));
+
+      // PRIORITY 1: TRUE COUNTER-ATTACK (max 1 per highlight, ONLY when <= 3 opponents are back!)
+      if (this.isTrueCounterOpportunity(pl, fwdRunners)) {
+        this.highlightFlippedOnce = true;
+        this.highlightSide = pl.side;
+        this.highlightTimer = Math.min(Math.max(this.highlightTimer, 9.5), 12.5);
+        this.highlightPasses = 1;
+        this.countersFlipped++;
+        this.v57TrueCounters++;
+        const counterClub = isHome ? (liveState && liveState.home) : (liveState && liveState.away);
+        const hud = document.getElementById('live2dHudTag');
+        if (hud && counterClub) {
+          hud.textContent = `🚀 KONTRA ATAK · ${counterClub.short} (${liveState ? liveState.minute : ''}')`;
+          hud.style.background = 'rgba(245,158,11,0.94)';
+          hud.style.color = '#0f172a';
+        }
+        if (this.hasOpenGoalBreakaway(pl)) {
+          pl.drivingToGoal = true;
+          pl.holdTimer = 0.55;
+          this.soloDrives++;
+          this.v57Midfield1v1Drives++;
+        } else if (fwdRunners.length >= 1) {
+          const runner = fwdRunners[0].m;
+          const leadX = Math.max(6, Math.min(PITCH_W - 6, runner.x + dir * 5.8));
+          const pType = fwdRunners[0].dist > 26 ? 'long_pass' : 'through_ball';
+          if (pType === 'long_pass') this.v57LongPassAtt++; else this.v57ShortMedPasses++;
+          this.kickBall(pl, leadX, runner.y, pType, runner);
+          this.forwardPassCount++;
+          if (isHome) this.aiMetrics.passesHome++; else this.aiMetrics.passesAway++;
+          this.emit2DEvent({ type: 'pass', side: pl.side, player: pl, passType: pType });
+        }
+        return;
+      }
+
+      // PRIORITY 2: Emergency clearance ONLY if trapped inside own box under heavy pressure
+      if (inOwnDeepBox && nearestPressD < 3.4) {
+        this.bootRealClearance(pl);
+        this.clearancesCount++;
+        this.concludeHighlight('🦵 TEHLİKE UZAKLAŞTIRILDI!', 'rgba(30,41,59,0.9)', 1.85);
+        return;
+      }
+
+      // PRIORITY 3: Normal turnover with defense already set -> play 1 clean short outlet pass & return to match flow!
+      const safeShort = this.findOpenTeammates(pl, 28).filter(x => x.blockers === 0 && x.minOppD >= 2.5);
+      if (safeShort.length) {
+        safeShort.sort((a, b) => b.minOppD - a.minOppD);
+        const safeMate = safeShort[0].m;
+        this.kickBall(pl, safeMate.x, safeMate.y, 'short_pass', safeMate);
+        this.v57ShortMedPasses++;
+        this.emit2DEvent({ type: 'pass', side: pl.side, player: pl, passType: 'short_pass' });
+      }
+      this.concludeHighlight('🔄 TOP EL DEĞİŞTİRDİ', 'rgba(15,23,42,0.88)', 1.25);
+      return;
+    }
+
+    // --- ATTACKING TEAM UTILITY DECISION (SHOOT vs BREAKAWAY DRIVE vs SHORT/MED PASS vs RARE LONG PASS) ---
+
+    // 1. FULL-PITCH 1v1 BREAKAWAY CHECK (e.g., striker alone at midfield with only GK ahead -> NEVER pass wide!)
+    const openBreakaway = this.hasOpenGoalBreakaway(pl);
+    if (openBreakaway && distGoal > 18.5) {
+      pl.drivingToGoal = true;
+      pl.holdTimer = 0.50;
+      this.soloDrives++;
+      this.v57Midfield1v1Drives++;
+      return;
+    }
+
+    // 2. SHOOT EVALUATION (based on distance, angle, GK proximity, defender pressure & shooter OVR/role)
+    const inBox = distGoal <= 22.5 && angleY <= 17.5;
+    const shooterBonus = (pl.pos === 'SNT' || pl.pos === 'OOS' || (pl.ovr || 74) >= 81) ? 0.12 : 0.0;
+    const edgeShot = distGoal <= 26.5 && angleY <= 15.5 && this.highlightPasses >= 1 && Math.random() < (0.58 + shooterBonus);
+
+    if (inBox || (openBreakaway && distGoal <= 18.5) || edgeShot) {
+      const cornerBias = (Math.random() < 0.5 ? -1 : 1) * (1.10 + Math.random() * 2.10);
+      this.kickBall(pl, goalX, PITCH_H / 2 + cornerBias, 'shot', null);
+      if (openBreakaway) this.v50OneOnOneShots++;
+      if (isHome) this.aiMetrics.shotsHome++; else this.aiMetrics.shotsAway++;
+      const xg = (inBox || openBreakaway)
+        ? Number(Math.max(0.18, Math.min(0.65, (23.0 - distGoal) * 0.032 * (1 - angleY / 28))).toFixed(2))
+        : Number(Math.max(0.06, Math.min(0.15, (28 - distGoal) * 0.015)).toFixed(2));
+      this.ball.shotDist = distGoal;
+      this.emit2DEvent({ type: 'shot', side: pl.side, player: pl, xg, distGoal });
+      return;
+    }
+
+    // 3. WING CROSS / CUTBACK FROM BYLINE
+    const inFinalThird = isHome ? (pl.x > 78) : (pl.x < 27);
+    const isWide = pl.y < 15 || pl.y > PITCH_H - 15;
+    if (inFinalThird && isWide && Math.random() < 0.80) {
+      const boxMates = this.players.filter(m =>
+        m.side === pl.side && m.id !== pl.id && !m.sentOff &&
+        !this.isPlayerOffside(m, this.ball.x) &&
+        ['SNT', 'OOS', 'SLK', 'SĞK', 'OS'].includes(m.pos)
+      );
+      if (boxMates.length) {
+        boxMates.sort((a, b) => ((b.x - a.x) * dir));
+        const target = boxMates[0];
+        const bx = Math.max(8, Math.min(PITCH_W - 8, target.x + dir * 2.4));
+        const by = Math.max(20, Math.min(48, target.y));
+        this.kickBall(pl, bx, by, 'cross', target);
+        this.highlightPasses++;
+        this.v57ShortMedPasses++;
+        this.forwardPassCount++;
+        if (isHome) this.aiMetrics.passesHome++; else this.aiMetrics.passesAway++;
+        this.emit2DEvent({ type: 'pass', side: pl.side, player: pl, passType: 'cross' });
+        return;
+      }
+    }
+
+    // 4. SHORT/MEDIUM-FIRST PASS SELECTION (LONG PASSES ONLY WHEN TACTICALLY & POSITIONALLY SOUND!)
+    const isPlaymaker = pl.fmRole === 'AP' || pl.fmRole === 'DLP' || (pl.ovr || 74) >= 81;
+    const passerOvr = pl.ovr || 74;
+    const scanRange = (rt.passing === 'uzun' || rt.passing === 'direkt' || isPlaymaker) ? 46 : 36;
+    const offLine = this.getOffsideLineX(defSide);
+    const rawOpts = this.findOpenTeammates(pl, scanRange).filter(x => x.m.pos !== 'KL');
+
+    const validOpts = [];
+    for (let i = 0; i < rawOpts.length; i++) {
+      const o = rawOpts[i];
+      const mOff = this.isPlayerOffside(o.m, this.ball.x);
+      const offMargin = isHome ? (o.m.x - offLine) : (offLine - o.m.x);
+      if (mOff && offMargin > 0.85) { this.blatantOffsidesAvoided++; continue; }
+      o.mOff = mOff;
+      o.pred = this.predictArrivalSpace(pl, o.m, 34);
+      validOpts.push(o);
+    }
+
+    if (validOpts.length) {
+      const safeClean = validOpts.filter(o => o.blockers === 0 && !o.mOff && o.pred.minFutureOppD >= 2.6);
+      const pool = safeClean.length ? safeClean : validOpts;
+
+      let best = null, bestScore = -999;
+      for (let i = 0; i < pool.length; i++) {
+        const o = pool[i];
+        const m = o.m;
+        const fwdGain = (m.x - pl.x) * dir;
+        const mDistGoal = Math.hypot(goalX - m.x, PITCH_H / 2 - m.y);
+        const isWinger = (m.pos === 'SLK' || m.pos === 'SĞK');
+        const isWideMate = m.y < 18 || m.y > PITCH_H - 18;
+        const isCentralMate = Math.abs(m.y - PITCH_H / 2) < 14;
+        const isAttacker = (m.pos === 'SNT' || m.pos === 'OOS' || isWinger);
+        const spaceAhead = isHome ? (PITCH_W - 10 - m.x) : (m.x - 10);
+        const futOppD = o.pred.minFutureOppD;
+        const isShortMed = o.dist >= 6.0 && o.dist <= 24.0;
+        const isLongBall = o.dist > 26.0;
+        const isKillerThrough = !o.mOff && o.blockers === 0 && isAttacker && fwdGain >= 4.5 && o.dist >= 9 && o.dist <= 27 && futOppD >= 3.2 && spaceAhead > 7;
+
+        let score = fwdGain * 1.05 + Math.min(12, futOppD) * 2.1 - o.blockers * 40 + (Math.random() - 0.5) * 2.0;
+
+        // STRONG SHORT & MEDIUM PASS PRIORITY (eliminates mindless long-ball spam!)
+        if (isShortMed && o.blockers === 0 && futOppD >= 2.8) {
+          score += (rt.passing === 'kisa') ? 32 : (rt.passing === 'karisik' ? 24 : 14);
+        }
+
+        // LONG PASSES (>26m): Penalized by default unless tactic is uzun/direkt AND receiver is truly wide open AND passer has technique!
+        if (isLongBall) {
+          const longJustified = (rt.passing === 'uzun' || rt.passing === 'direkt') || (isPlaymaker && futOppD >= 6.0 && fwdGain > 8);
+          if (longJustified && o.blockers === 0 && futOppD >= 5.2 && !o.mOff) {
+            score += (passerOvr >= 78 ? 10 : 2);
+          } else {
+            score -= 28; // Discourage low-percentage long-ball spam!
+          }
+        }
+
+        if (rt.attSide === 'kanatlar' && isWideMate && fwdGain >= -1) score += 14;
+        if (rt.attSide === 'merkez' && isCentralMate && fwdGain >= 0) score += 14;
+        if (isKillerThrough) score += (isPlaymaker ? 34 : 26) + (isWinger ? 4 : 0);
+        if (!o.mOff && mDistGoal <= 22 && o.blockers === 0 && futOppD >= 2.6) score += 30;
+
+        if (fwdGain > 8 && futOppD < 2.5) score -= 24;
+        if (o.mOff) score -= 54;
+        if (fwdGain < -3) score -= (distGoal < 32 ? 36 : 12);
+
+        if (score > bestScore) { bestScore = score; best = o; }
+      }
+
+      if (best) {
+        const m = best.m;
+        const fwd = (m.x - pl.x) * dir;
+        const isWinger = (m.pos === 'SLK' || m.pos === 'SĞK');
+        const isAttacker = (m.pos === 'SNT' || m.pos === 'OOS' || isWinger);
+        const spaceAhead = isHome ? (PITCH_W - 9 - m.x) : (m.x - 9);
+        const isThrough = !best.mOff && best.blockers === 0 && isAttacker && fwd >= 4.5 && best.dist >= 9 && best.dist <= 27 && best.pred.minFutureOppD >= 3.0 && spaceAhead > 6;
+        const pType = isThrough ? 'through_ball' : (best.dist > 26 ? 'long_pass' : 'short_pass');
+
+        if (pType === 'long_pass') this.v57LongPassAtt++; else this.v57ShortMedPasses++;
+
+        let tx, ty;
+        if (isThrough) {
+          const leadDist = Math.min(6.4, Math.max(3.5, spaceAhead * 0.28));
+          tx = Math.max(6, Math.min(PITCH_W - 6, m.x + dir * leadDist));
+          const yPull = isWinger ? ((PITCH_H / 2 - m.y) * 0.14) : ((PITCH_H / 2 - m.y) * 0.08);
+          ty = Math.max(6.0, Math.min(PITCH_H - 6.0, m.y + yPull));
+          this.v53ThroughBalls++;
+          if (isWinger) this.v53WingThroughBalls++;
+        } else {
+          tx = Math.max(4, Math.min(PITCH_W - 4, best.pred.arrX));
+          ty = Math.max(4, Math.min(PITCH_H - 4, best.pred.arrY));
+        }
+
+        this.v55PredictivePasses++;
+        this.kickBall(pl, tx, ty, pType, m);
+        this.highlightPasses++;
+        if (fwd >= -1.5) this.forwardPassCount++; else this.backwardPassCount++;
+        if (isHome) this.aiMetrics.passesHome++; else this.aiMetrics.passesAway++;
+        this.emit2DEvent({ type: 'pass', side: pl.side, player: pl, passType: pType });
+        return;
+      }
+    }
+
+    _v55DecideFM(pl);
+  };
+
+  // 3. NATURAL FM MATCH PACING: ~13-16 MEANINGFUL HIGHLIGHTS PER MATCH (NO CONSTANT NON-STOP INTERRUPTIONS!)
+  const _v47StepPhysics = eng.stepPhysics.bind(eng);
+  eng.stepPhysics = function(dt) {
+    const wasHL = this.highlightActive;
+    _v47StepPhysics(dt);
+    // When a highlight just started, set a natural 4-minute cooldown so match flows smoothly like FM Mobile!
+    if (!wasHL && this.highlightActive && this.highlightCooldownMin < 4) {
+      this.highlightCooldownMin = 3;
+    }
+  };
+
+  const _v56Init = eng.initForMatch.bind(eng);
+  eng.initForMatch = function(home, away) {
+    _v56Init(home, away);
+    this.v57TrueCounters = 0;
+    this.v57ShortMedPasses = 0;
+    this.v57LongPassAtt = 0;
+    this.v57Midfield1v1Drives = 0;
+    this.v57CornerRestDefSum = 0;
+    this.v57CornerDefBoxSum = 0;
+    this.v57CornerChecks = 0;
   };
 })();
 
